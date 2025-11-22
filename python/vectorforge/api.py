@@ -1,6 +1,11 @@
-from fastapi import FastAPI, HTTPException, status
-from models import Document, SearchQuery, SearchResult
+from fastapi import FastAPI, File, UploadFile, HTTPException, status
+from datetime import datetime, timezone
+from typing import Optional
 import uvicorn
+import uuid
+
+from models import Document, SearchQuery, SearchResult
+from utils import extract_file_content
 
 
 API_VERSION = "0.1.0"
@@ -15,13 +20,47 @@ app = FastAPI(
 # Document Management Endpoints 
 # =============================================================================
 
-@app.post('/doc')
-def doc(doc: Document):
-    """Add a single doc"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+@app.post('/docs/upload', status_code=status.HTTP_201_CREATED)
+async def doc(
+    file: UploadFile = File(...),
+    title: Optional[str] = None,
+    author: Optional[str] = None
+):
+    """Upload a file"""
+    content = await file.read()
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="No filename provided"
+        )
+
+    if file.filename.endswith('.pdf'):
+        text = extract_file_content(content, file_type='.pdf')
+    elif file.filename.endswith('.txt'):
+        text = extract_file_content(content, file_type='.txt')
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {file.filename}"
+        )
+    
+    doc_id = str(uuid.uuid4())
+    metadata = {
+        "filename": file.filename,
+        "title": title or file.filename,
+        "author": author,
+        "upload_date": datetime.now(timezone.utc).isoformat()
+    }
+
+    # TODO: Process and index text here...
+
+    return {
+        "id": doc_id,
+        "filename": file.filename,
+        "content_length": len(text),
+        "status": "indexed"
+    }
 
 @app.post('/docs/batch')
 def doc_batch():
