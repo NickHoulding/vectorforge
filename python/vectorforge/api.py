@@ -1,12 +1,13 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, status
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from torch import Tensor
 import uvicorn
 import uuid
 
+from utils import extract_file_content, create_chunks, generate_embeddings
 from models import Document, SearchQuery, SearchResult
-from utils import extract_file_content
-
+from vector_engine import VectorEngine
 
 API_VERSION = "0.1.0"
 API_PORT = 3001
@@ -14,6 +15,7 @@ app = FastAPI(
     title="VectorForge API",
     version=API_VERSION
 )
+VECTOR_ENGINE = VectorEngine()
 
 
 # =============================================================================
@@ -27,7 +29,7 @@ async def doc(
     author: Optional[str] = None
 ):
     """Upload a file"""
-    content = await file.read()
+    content: bytes = await file.read()
 
     if not file.filename:
         raise HTTPException(
@@ -36,27 +38,26 @@ async def doc(
         )
 
     if file.filename.endswith('.pdf'):
-        text = extract_file_content(content, file_type='.pdf')
+        text: str = extract_file_content(content, file_type='.pdf')
     elif file.filename.endswith('.txt'):
-        text = extract_file_content(content, file_type='.txt')
+        text: str = extract_file_content(content, file_type='.txt')
     else:
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported file type: {file.filename}"
         )
     
-    doc_id = str(uuid.uuid4())
-    metadata = {
+    doc_id: str = str(uuid.uuid4())
+    metadata: Dict[str, Any] = {
         "filename": file.filename,
         "title": title or file.filename,
         "author": author,
         "upload_date": datetime.now(timezone.utc).isoformat()
     }
 
-    # TODO: Process and index text here...
-    # chunks = chunk_text(text)
-    # embeddings = generate_embeddings(chunks)
-    # vector_engine.add_docs(content=chunk, metadata={...})
+    chunks: List[Dict[str, Any]] = create_chunks(text=text, metadata=metadata)
+    embeddings: List[Tensor] = generate_embeddings(chunks=chunks)
+    VECTOR_ENGINE.add_docs(chunks=chunks, embeddings=embeddings)
 
     return {
         "id": doc_id,

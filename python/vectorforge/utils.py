@@ -1,5 +1,7 @@
 import fitz
-from typing import cast
+from sentence_transformers import SentenceTransformer
+from typing import cast, List, Dict, Any
+from torch import Tensor
 
 
 def extract_pdf(content: bytes) -> str:
@@ -19,3 +21,43 @@ def extract_file_content(content: bytes, file_type: str) -> str:
         return extract_pdf(content)
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
+
+def create_chunks(
+        text: str, 
+        metadata: Dict[str, Any],
+        chunk_size: int = 500, 
+        overlap: int = 50
+    ) -> List[Dict[str, Any]]:
+    """Format text into chunks with metadata"""
+    chunks: List[Dict[str, Any]] = []
+    start: int = 0
+    chunk_idx: int = 0
+
+    while start < len(text):
+        end: int = min(start + chunk_size, len(text))
+        chunk_text: str = text[start:end].strip()
+
+        if chunk_text:
+            chunk: Dict[str, Any] = {
+                "text": chunk_text,
+                "chunk_index": chunk_idx,
+                "metadata": metadata
+            }
+            chunks.append(chunk)
+
+        start: int = end - overlap if end < len(text) else len(text)
+        chunk_idx += 1
+
+    return chunks
+
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+def generate_embeddings(chunks: List[Dict[str, Any]]) -> List[Tensor]:
+    """Generates embeddings for each chunk of text"""
+    embeddings: List[Tensor] = []
+
+    for chunk in chunks:
+        embedding: Tensor = embedding_model.encode(chunk.get("text", ""))
+        embeddings.append(embedding)
+
+    return embeddings

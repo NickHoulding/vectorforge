@@ -9,4 +9,5 @@ dependencies = [
     "pytest>=8.0.0",
     "uuid>=1.30",
     "pymupdf>=1.26.6",
+    "sentence-transformers>=5.1.2",
 ]
