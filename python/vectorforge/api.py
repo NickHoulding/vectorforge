@@ -54,6 +54,9 @@ async def doc(
     }
 
     # TODO: Process and index text here...
+    # chunks = chunk_text(text)
+    # embeddings = generate_embeddings(chunks)
+    # vector_engine.add_docs(content=chunk, metadata={...})
 
     return {
         "id": doc_id,
