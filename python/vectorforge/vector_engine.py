@@ -10,13 +10,14 @@ class VectorEngine:
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
         self.index_to_doc_id = []
         self.doc_id_to_index = {}
+        self.deleted_docs = set()
 
     def add_doc(
             self, 
             content: str, 
             metadata: Dict[str, Any] | None = None
         ) -> str:
-        """Adds the doc to the vector index"""
+        """Adds a new doc with the specified content and metadata"""
         doc_id: str = str(uuid.uuid4())
 
         self.documents[doc_id] = {
@@ -32,3 +33,16 @@ class VectorEngine:
         self.doc_id_to_index[doc_id] = vector_index
 
         return doc_id
+
+    def remove_doc(self, doc_id: str) -> bool:
+        """Removes the doc with the specified doc_id (lazy deletion)"""
+        if doc_id not in self.documents:
+            return False
+
+        del self.documents[doc_id]
+        self.deleted_docs.add(doc_id)
+
+        # TODO: Implement compaction to free memory when too many deleted docs accumulate
+        # Then, add forced compaction on startup when there is any amount of deleted docs
+
+        return True

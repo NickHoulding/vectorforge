@@ -55,12 +55,20 @@ def doc_batch():
     )
 
 @app.delete('/docs/{doc_id}')
-def doc_delete():
+def doc_delete(doc_id: str):
     """Remove a doc"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    try:
+        if engine.remove_doc(doc_id):
+            message = f"Doc: {doc_id} deleted successfully"
+        else:
+            message = f"Issue encountered deleting doc: {doc_id}"
+        
+        return {
+            "message": message
+        }
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 @app.get('/docs/{doc_id}')
 def doc_get():
