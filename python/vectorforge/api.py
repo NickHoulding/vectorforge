@@ -71,13 +71,23 @@ def doc_delete(doc_id: str):
         print(f"Unexpected error: {e}")
 
 @app.get('/docs/{doc_id}')
-def doc_get():
+def doc_get(doc_id: str):
     """Retrieve a doc"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    try: 
+        doc = engine.get_doc(doc_id=doc_id)
 
+        if doc:
+            message = f"Doc successfully retreived"
+        else:
+            message = f"Doc: {doc_id} not found"
+
+        return {
+            "message": message,
+            "doc": doc
+        }
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 # =============================================================================
 # Search Endpoints

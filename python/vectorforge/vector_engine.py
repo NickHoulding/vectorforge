@@ -1,5 +1,5 @@
 from sentence_transformers import SentenceTransformer
-from typing import List, Dict, Any
+from typing import List, Dict, Union, Any
 from torch import Tensor
 import uuid
 
@@ -11,11 +11,15 @@ class VectorEngine:
         self.index_to_doc_id = []
         self.doc_id_to_index = {}
         self.deleted_docs = set()
+    
+    def get_doc(self, doc_id: str) -> Union[Dict, None]:
+        """Retreive a doc with the specified doc id"""
+        return self.documents.get(doc_id, None)
 
     def add_doc(
             self, 
             content: str, 
-            metadata: Dict[str, Any] | None = None
+            metadata: Union[Dict[str, Any], None] = None
         ) -> str:
         """Adds a new doc with the specified content and metadata"""
         doc_id: str = str(uuid.uuid4())
