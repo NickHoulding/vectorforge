@@ -1,11 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, status
-from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
-from torch import Tensor
+from typing import List
 import uvicorn
-import uuid
 
-from utils import extract_file_content, create_chunks, generate_embeddings
+from doc_processor import extract_file_content, chunk_text 
 from models import Document, SearchQuery, SearchResult
 from vector_engine import VectorEngine
 
@@ -15,7 +12,7 @@ app = FastAPI(
     title="VectorForge API",
     version=API_VERSION
 )
-VECTOR_ENGINE = VectorEngine()
+engine = VectorEngine()
 
 
 # =============================================================================
@@ -23,48 +20,31 @@ VECTOR_ENGINE = VectorEngine()
 # =============================================================================
 
 @app.post('/docs/upload', status_code=status.HTTP_201_CREATED)
-async def doc(
-    file: UploadFile = File(...),
-    title: Optional[str] = None,
-    author: Optional[str] = None
-):
+async def doc(file: UploadFile = File(...)):
     """Upload a file"""
-    content: bytes = await file.read()
+    try:
+        doc_ids: List[str] = []
+        text: str = await extract_file_content(file)
+        chunks: List[str] = chunk_text(text)
 
-    if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="No filename provided"
-        )
+        for i, chunk in enumerate(chunks):
+            doc_id: str = engine.add_doc(
+                content=chunk,
+                metadata={
+                    "source_file": file.filename,
+                    "chunk_index": i
+                }
+            )
+            doc_ids.append(doc_id)
 
-    if file.filename.endswith('.pdf'):
-        text: str = extract_file_content(content, file_type='.pdf')
-    elif file.filename.endswith('.txt'):
-        text: str = extract_file_content(content, file_type='.txt')
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file.filename}"
-        )
+        return {
+            "doc_ids": doc_ids
+        }
     
-    doc_id: str = str(uuid.uuid4())
-    metadata: Dict[str, Any] = {
-        "filename": file.filename,
-        "title": title or file.filename,
-        "author": author,
-        "upload_date": datetime.now(timezone.utc).isoformat()
-    }
-
-    chunks: List[Dict[str, Any]] = create_chunks(text=text, metadata=metadata)
-    embeddings: List[Tensor] = generate_embeddings(chunks=chunks)
-    VECTOR_ENGINE.add_docs(chunks=chunks, embeddings=embeddings)
-
-    return {
-        "id": doc_id,
-        "filename": file.filename,
-        "content_length": len(text),
-        "status": "indexed"
-    }
+    except HTTPException as e:
+        print(f"HTTPException: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 @app.post('/docs/batch')
 def doc_batch():
