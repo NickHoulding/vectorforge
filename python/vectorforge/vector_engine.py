@@ -42,7 +42,7 @@ class VectorEngine:
         self.deleted_docs.clear()
 
     def search(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
-        """"""
+        """Search the vector index based on the query"""
         query_embedding = self.model.encode(query)
 
         for pos, embedding in enumerate(self.embeddings):
@@ -51,10 +51,9 @@ class VectorEngine:
             if doc_id in self.deleted_docs:
                 continue
 
-        # TODO: Implement the remaining search logic
+            # TODO: Implement the remaining search logic
 
         return []
-            
     
     def get_doc(self, doc_id: str) -> Union[Dict, None]:
         """Retreive a doc with the specified doc id"""

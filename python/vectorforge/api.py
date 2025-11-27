@@ -82,20 +82,19 @@ def doc_get(doc_id: str):
 # =============================================================================
 
 @app.post('/search')
-def search():
-    """Single search query"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
+def search(search_request: SearchQuery):
+    """Perform a single search on the index"""
+
+    # TODO: Extract json data and check for query field
+
+    docs = engine.search(
+        query=search_request.query, 
+        top_k=search_request.top_k
     )
 
-@app.post('/search/batch')
-def search_batch():
-    """Search multiple queries at once"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    return {
+        "results": docs
+    }
 
 
 # =============================================================================
