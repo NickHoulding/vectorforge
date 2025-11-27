@@ -6,12 +6,8 @@ from doc_processor import extract_file_content, chunk_text
 from models import Document, SearchQuery, SearchResult
 from vector_engine import VectorEngine
 
-API_VERSION = "0.1.0"
 API_PORT = 3001
-app = FastAPI(
-    title="VectorForge API",
-    version=API_VERSION
-)
+app = FastAPI(title="VectorForge API")
 engine = VectorEngine()
 
 
@@ -45,14 +41,6 @@ async def doc(file: UploadFile = File(...)):
         print(f"HTTPException: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
-
-@app.post('/docs/batch')
-def doc_batch():
-    """Query for similar docs"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
 
 @app.delete('/docs/{doc_id}')
 def doc_delete(doc_id: str):
@@ -154,10 +142,7 @@ def load_index():
 @app.get('/health')
 def check_health():
     """API health check"""
-    return {
-        "status": "healthy",
-        "version": API_VERSION,
-    }
+    return {"status": "healthy"}
 
 @app.get('/metrics')
 def get_performance_metrics():

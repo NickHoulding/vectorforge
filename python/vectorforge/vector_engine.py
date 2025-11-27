@@ -11,6 +11,50 @@ class VectorEngine:
         self.index_to_doc_id = []
         self.doc_id_to_index = {}
         self.deleted_docs = set()
+
+        if self.should_compact():
+            self.compact()
+
+    def should_compact(self) -> bool:
+        """Decide whether compaction is needed based on ratio of deleted docs"""
+        if not self.embeddings:
+            return False
+
+        deleted_ratio = len(self.deleted_docs) / len(self.embeddings)
+        return deleted_ratio > 0.25
+
+    def compact(self) -> None:
+        """Rebuild index and free deleted doc memory"""
+        new_embeddings = []
+        new_index_to_doc_id = []
+        new_doc_id_to_index = {}
+
+        for old_pos, doc_id in enumerate(self.index_to_doc_id):
+            if doc_id not in self.deleted_docs:
+                new_pos = len(new_embeddings)
+                new_embeddings.append(self.embeddings[old_pos])
+                new_index_to_doc_id.append(doc_id)
+                new_doc_id_to_index[doc_id] = new_pos
+
+        self.embeddings = new_embeddings
+        self.index_to_doc_id = new_index_to_doc_id
+        self.doc_id_to_index = new_doc_id_to_index
+        self.deleted_docs.clear()
+
+    def search(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+        """"""
+        query_embedding = self.model.encode(query)
+
+        for pos, embedding in enumerate(self.embeddings):
+            doc_id = self.index_to_doc_id[pos]
+
+            if doc_id in self.deleted_docs:
+                continue
+
+        # TODO: Implement the remaining search logic
+
+        return []
+            
     
     def get_doc(self, doc_id: str) -> Union[Dict, None]:
         """Retreive a doc with the specified doc id"""
@@ -46,7 +90,7 @@ class VectorEngine:
         del self.documents[doc_id]
         self.deleted_docs.add(doc_id)
 
-        # TODO: Implement compaction to free memory when too many deleted docs accumulate
-        # Then, add forced compaction on startup when there is any amount of deleted docs
+        if self.should_compact():
+            self.compact()
 
         return True
