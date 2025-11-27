@@ -87,13 +87,13 @@ def search(search_request: SearchQuery):
 
     # TODO: Extract json data and check for query field
 
-    docs = engine.search(
+    results = engine.search(
         query=search_request.query, 
         top_k=search_request.top_k
     )
 
     return {
-        "results": docs
+        "results": results
     }
 
 

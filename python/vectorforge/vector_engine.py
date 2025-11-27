@@ -3,6 +3,9 @@ from typing import List, Dict, Union, Any
 from torch import Tensor
 import uuid
 
+from models import SearchResult
+
+
 class VectorEngine:
     def __init__(self) -> None:
         self.documents: Dict[str, Dict[str, Any]] = {}
@@ -41,9 +44,10 @@ class VectorEngine:
         self.doc_id_to_index = new_doc_id_to_index
         self.deleted_docs.clear()
 
-    def search(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 10) -> List[SearchResult]:
         """Search the vector index based on the query"""
         query_embedding = self.model.encode(query)
+        results = []
 
         for pos, embedding in enumerate(self.embeddings):
             doc_id = self.index_to_doc_id[pos]
@@ -53,7 +57,17 @@ class VectorEngine:
 
             # TODO: Implement the remaining search logic
 
-        return []
+            # When gathering results:
+            docs = list(self.documents.values())[:top_k] # TEMP
+
+            results.append(SearchResult(
+                id=doc.get("id", ""),
+                score=doc.get("score", 0.0),
+                content=doc.get("content", ""),
+                metadata=doc.get("meatdata", {})
+            ) for doc in docs)
+
+        return results
     
     def get_doc(self, doc_id: str) -> Union[Dict, None]:
         """Retreive a doc with the specified doc id"""
