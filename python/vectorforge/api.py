@@ -1,10 +1,10 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, status
-from typing import List
+from fastapi import FastAPI, UploadFile, HTTPException, File, status
 import uvicorn
 
 from doc_processor import extract_file_content, chunk_text 
-from models import Document, SearchQuery, SearchResult
+from models import *
 from vector_engine import VectorEngine
+
 
 API_PORT = 3001
 app = FastAPI(title="VectorForge API")
@@ -12,16 +12,20 @@ engine = VectorEngine()
 
 
 # =============================================================================
-# Document Management Endpoints 
+# File Management Endpoints 
 # =============================================================================
 
-@app.post('/docs/upload', status_code=status.HTTP_201_CREATED)
-async def doc(file: UploadFile = File(...)):
+@app.post(
+    '/file/upload', 
+    status_code=status.HTTP_201_CREATED, 
+    response_model=FileUploadResponse
+)
+async def upload_file(file: UploadFile = File(...)):
     """Upload a file"""
     try:
-        doc_ids: List[str] = []
+        doc_ids: list[str] = []
         text: str = await extract_file_content(file)
-        chunks: List[str] = chunk_text(text)
+        chunks: list[str] = chunk_text(text)
 
         for i, chunk in enumerate(chunks):
             doc_id: str = engine.add_doc(
@@ -33,47 +37,93 @@ async def doc(file: UploadFile = File(...)):
             )
             doc_ids.append(doc_id)
 
-        return {
-            "doc_ids": doc_ids
-        }
+        return FileUploadResponse(
+            filename=file.filename or "",
+            chunks_created=len(doc_ids),
+            doc_ids=doc_ids,
+            status="indexed"
+        )
     
     except HTTPException as e:
         print(f"HTTPException: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-@app.delete('/docs/{doc_id}')
-def doc_delete(doc_id: str):
-    """Remove a doc"""
+@app.delete('/file/delete/{filename}', response_model=FileDeleteResponse)
+def delete_file(filename: str):
+    """Delete all chunks associated with the given file"""
     try:
-        if engine.remove_doc(doc_id):
-            message = f"Doc: {doc_id} deleted successfully"
-        else:
-            message = f"Issue encountered deleting doc: {doc_id}"
-        
-        return {
-            "message": message
-        }
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Endpoint not yet implemented"
+        )
     
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-@app.get('/docs/{doc_id}')
-def doc_get(doc_id: str):
-    """Retrieve a doc"""
-    try: 
+# =============================================================================
+# Document Management Endpoints 
+# =============================================================================
+
+@app.post(
+    '/doc', 
+    status_code=status.HTTP_201_CREATED, 
+    response_model=DocumentResponse
+)
+def add_doc(doc: DocumentInput):
+    """Add a single, pre-extracted document"""
+    try:
+        doc_id = engine.add_doc(
+            content=doc.content,
+            metadata=doc.metadata
+        )
+
+        return DocumentResponse(
+            id=doc_id,
+            status="indexed"
+        )
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
+@app.delete('/doc/{doc_id}', response_model=DocumentResponse)
+def delete_doc(doc_id: str):
+    """Remove a single doc"""
+    try:
+        result: bool = engine.remove_doc(doc_id)
+
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail="Doc not found"
+            )
+        
+        return DocumentResponse(
+            id=doc_id,
+            status="deleted"
+        )
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
+@app.get('/doc/{doc_id}', response_model=DocumentDetail)
+def get_doc(doc_id: str):
+    """Retrieve a single doc"""
+    try:
         doc = engine.get_doc(doc_id=doc_id)
 
-        if doc:
-            message = f"Doc successfully retreived"
-        else:
-            message = f"Doc: {doc_id} not found"
+        if not doc:
+            raise HTTPException(
+                status_code=404,
+                detail="Doc not found"
+            )
 
-        return {
-            "message": message,
-            "doc": doc
-        }
-
+        return DocumentDetail(
+            id=doc_id,
+            content=doc["content"],
+            metadata=doc["metadata"]
+        )
+    
     except Exception as e:
         print(f"Unexpected error: {e}")
 
@@ -81,21 +131,23 @@ def doc_get(doc_id: str):
 # Search Endpoints
 # =============================================================================
 
-@app.post('/search')
-def search(search_request: SearchQuery):
-    """Perform a single search on the index"""
+@app.post('/search', response_model=SearchResponse)
+def search(search_params: SearchQuery):
+    """Perform a search on the index"""
+    try:
+        results = engine.search(
+            query=search_params.query, 
+            top_k=search_params.top_k
+        )
 
-    # TODO: Extract json data and check for query field
-
-    results = engine.search(
-        query=search_request.query, 
-        top_k=search_request.top_k
-    )
-
-    return {
-        "results": results
-    }
-
+        return SearchResponse(
+            query=search_params.query,
+            results=results,
+            count=len(results)
+        )
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 # =============================================================================
 # Index Management Endpoints
@@ -141,7 +193,9 @@ def load_index():
 @app.get('/health')
 def check_health():
     """API health check"""
-    return {"status": "healthy"}
+    return {
+        "status": "healthy"
+    }
 
 @app.get('/metrics')
 def get_performance_metrics():
@@ -153,8 +207,4 @@ def get_performance_metrics():
 
 
 if __name__ == "__main__":
-    uvicorn.run(
-        app=app, 
-        host='0.0.0.0', 
-        port=API_PORT
-    )
+    uvicorn.run(app=app, host='0.0.0.0', port=API_PORT)

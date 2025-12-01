@@ -1,5 +1,5 @@
 from sentence_transformers import SentenceTransformer
-from typing import List, Dict, Union, Any
+from typing import Any
 from torch import Tensor
 import uuid
 
@@ -8,8 +8,8 @@ from models import SearchResult
 
 class VectorEngine:
     def __init__(self) -> None:
-        self.documents: Dict[str, Dict[str, Any]] = {}
-        self.embeddings: List[Tensor] = []
+        self.documents: dict[str, dict[str, Any]] = {}
+        self.embeddings: list[Tensor] = []
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
         self.index_to_doc_id = []
         self.doc_id_to_index = {}
@@ -44,7 +44,7 @@ class VectorEngine:
         self.doc_id_to_index = new_doc_id_to_index
         self.deleted_docs.clear()
 
-    def search(self, query: str, top_k: int = 10) -> List[SearchResult]:
+    def search(self, query: str, top_k: int = 10) -> list[SearchResult]:
         """Search the vector index based on the query"""
         query_embedding = self.model.encode(query)
         results = []
@@ -57,26 +57,16 @@ class VectorEngine:
 
             # TODO: Implement the remaining search logic
 
-            # When gathering results:
-            docs = list(self.documents.values())[:top_k] # TEMP
-
-            results.append(SearchResult(
-                id=doc.get("id", ""),
-                score=doc.get("score", 0.0),
-                content=doc.get("content", ""),
-                metadata=doc.get("meatdata", {})
-            ) for doc in docs)
-
         return results
     
-    def get_doc(self, doc_id: str) -> Union[Dict, None]:
+    def get_doc(self, doc_id: str) -> dict | None:
         """Retreive a doc with the specified doc id"""
         return self.documents.get(doc_id, None)
 
     def add_doc(
             self, 
             content: str, 
-            metadata: Union[Dict[str, Any], None] = None
+            metadata: dict[str, Any] | None = None
         ) -> str:
         """Adds a new doc with the specified content and metadata"""
         doc_id: str = str(uuid.uuid4())
