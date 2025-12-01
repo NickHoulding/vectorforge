@@ -67,6 +67,9 @@ class FileDeleteResponse(BaseModel):
             }
         }
 
+class FileListResponse(BaseModel):
+    filenames: list[str]
+
 class SearchResult(BaseModel):
     id: str
     content: str

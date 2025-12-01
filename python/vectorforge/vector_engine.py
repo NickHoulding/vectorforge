@@ -59,6 +59,23 @@ class VectorEngine:
 
         return results
     
+    def list_files(self) -> list[str]:
+        """List all files"""
+        filenames = set()
+
+        for doc in self.documents.values():
+            filename = doc.get("metadata", {}).get("source_file", "")
+            
+            if filename in self.deleted_docs:
+                continue
+            else:
+                filenames.add(filename)
+
+        filenames = list(filenames)
+        filenames.sort()
+
+        return filenames
+    
     def get_doc(self, doc_id: str) -> dict | None:
         """Retreive a doc with the specified doc id"""
         return self.documents.get(doc_id, None)

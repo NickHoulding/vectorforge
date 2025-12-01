@@ -15,6 +15,17 @@ engine = VectorEngine()
 # File Management Endpoints 
 # =============================================================================
 
+@app.get('/file/list', response_model=FileListResponse)
+def list_files():
+    """List file names of all files"""
+    try:
+        return FileListResponse(
+            filenames=engine.list_files()
+        )
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
 @app.post(
     '/file/upload', 
     status_code=status.HTTP_201_CREATED, 
@@ -52,18 +63,36 @@ async def upload_file(file: UploadFile = File(...)):
 @app.delete('/file/delete/{filename}', response_model=FileDeleteResponse)
 def delete_file(filename: str):
     """Delete all chunks associated with the given file"""
-    try:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Endpoint not yet implemented"
-        )
-    
-    except Exception as e:
-        print(f"Unexpected error: {e}")
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Endpoint not yet implemented"
+    )
+
 
 # =============================================================================
 # Document Management Endpoints 
 # =============================================================================
+
+@app.get('/doc/{doc_id}', response_model=DocumentDetail)
+def get_doc(doc_id: str):
+    """Retrieve a single doc"""
+    try:
+        doc = engine.get_doc(doc_id=doc_id)
+
+        if not doc:
+            raise HTTPException(
+                status_code=404,
+                detail="Doc not found"
+            )
+
+        return DocumentDetail(
+            id=doc_id,
+            content=doc["content"],
+            metadata=doc["metadata"]
+        )
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 @app.post(
     '/doc', 
@@ -106,26 +135,6 @@ def delete_doc(doc_id: str):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-@app.get('/doc/{doc_id}', response_model=DocumentDetail)
-def get_doc(doc_id: str):
-    """Retrieve a single doc"""
-    try:
-        doc = engine.get_doc(doc_id=doc_id)
-
-        if not doc:
-            raise HTTPException(
-                status_code=404,
-                detail="Doc not found"
-            )
-
-        return DocumentDetail(
-            id=doc_id,
-            content=doc["content"],
-            metadata=doc["metadata"]
-        )
-    
-    except Exception as e:
-        print(f"Unexpected error: {e}")
 
 # =============================================================================
 # Search Endpoints
@@ -149,21 +158,22 @@ def search(search_params: SearchQuery):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 # =============================================================================
 # Index Management Endpoints
 # =============================================================================
 
-@app.post('/index/build')
-def build_index():
-    """Build/rebuild index"""
+@app.get('/index/stats')
+def get_index_stats():
+    """Index statistics (size, doc count, etc)"""
     return HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="Endpoint not yet implemented"
     )
-    
-@app.get('/index/stats')
-def get_index_stats():
-    """Index statistics (size, doc count, etc)"""
+
+@app.post('/index/build')
+def build_index():
+    """Build/rebuild index"""
     return HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="Endpoint not yet implemented"
