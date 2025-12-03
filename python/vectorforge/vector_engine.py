@@ -1,6 +1,7 @@
 from sentence_transformers import SentenceTransformer
 from typing import Any
 from torch import Tensor
+import numpy as np
 import uuid
 
 from models import SearchResult
@@ -9,7 +10,7 @@ from models import SearchResult
 class VectorEngine:
     def __init__(self) -> None:
         self.documents: dict[str, dict[str, Any]] = {}
-        self.embeddings: list[Tensor] = []
+        self.embeddings: list[np.ndarray] = []
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
         self.index_to_doc_id = []
         self.doc_id_to_index = {}
@@ -44,9 +45,23 @@ class VectorEngine:
         self.doc_id_to_index = new_doc_id_to_index
         self.deleted_docs.clear()
 
+    def _cosine_similarity(self, emb_a: np.ndarray, emb_b: np.ndarray) -> float:
+        """Calculates the cosine similarity between embeddings"""
+        dot_product = np.dot(emb_a, emb_b)
+        norm_a = np.linalg.norm(emb_a)
+        norm_b = np.linalg.norm(emb_b)
+
+        return dot_product / (norm_a * norm_b)
+
     def search(self, query: str, top_k: int = 10) -> list[SearchResult]:
         """Search the vector index based on the query"""
-        query_embedding = self.model.encode(query)
+        if not self.embeddings:
+            return []
+
+        query_embedding: np.ndarray = self.model.encode(
+            sentences=query, 
+            convert_to_numpy=True
+        )
         results = []
 
         for pos, embedding in enumerate(self.embeddings):
@@ -55,9 +70,30 @@ class VectorEngine:
             if doc_id in self.deleted_docs:
                 continue
 
-            # TODO: Implement the remaining search logic
+            score: float = self._cosine_similarity(
+                emb_a=query_embedding, 
+                emb_b=embedding
+            )
+            results.append((pos, score))
 
-        return results
+        results.sort(
+            key=lambda result: result[1], 
+            reverse=True
+        )
+
+        search_results = []
+        for pos, score in results[:top_k]:
+            doc_id = self.index_to_doc_id[pos]
+            doc = self.documents[doc_id]
+
+            search_results.append(SearchResult(
+                id=doc_id,
+                content=doc["content"],
+                metadata=doc["metadata"],
+                score=score
+            ))
+
+        return search_results
     
     def list_files(self) -> list[str]:
         """List all files"""
@@ -93,7 +129,7 @@ class VectorEngine:
             "metadata": metadata or {}
         }
 
-        embedding: Tensor = self.model.encode(content)
+        embedding: np.ndarray = self.model.encode(content, convert_to_numpy=True)
         vector_index: int = len(self.embeddings)
 
         self.embeddings.append(embedding)
