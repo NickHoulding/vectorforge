@@ -2,11 +2,15 @@ from fastapi.testclient import TestClient
 from api import app
 
 
-# Setup configuration
+# =============================================================================
+# Setup Configuration 
+# =============================================================================
 client = TestClient(app)
 
 
-# Endpoint tests
+# =============================================================================
+# Endpoint Tests 
+# =============================================================================
 def test_health_endpoint():
     response = client.get("/health")
     assert response.status_code == 200
