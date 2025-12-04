@@ -1,6 +1,5 @@
 from sentence_transformers import SentenceTransformer
 from typing import Any
-from torch import Tensor
 import numpy as np
 import uuid
 
