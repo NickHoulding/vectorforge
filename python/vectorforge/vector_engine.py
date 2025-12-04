@@ -43,15 +43,16 @@ class VectorEngine:
         self.embeddings = new_embeddings
         self.index_to_doc_id = new_index_to_doc_id
         self.doc_id_to_index = new_doc_id_to_index
+
+        for doc_id in self.deleted_docs:
+            if doc_id in self.documents:
+                del self.documents[doc_id]
+        
         self.deleted_docs.clear()
 
-    def _cosine_similarity(self, emb_a: np.ndarray, emb_b: np.ndarray) -> float:
-        """Calculates the cosine similarity between embeddings"""
-        dot_product = np.dot(emb_a, emb_b)
-        norm_a = np.linalg.norm(emb_a)
-        norm_b = np.linalg.norm(emb_b)
-
-        return dot_product / (norm_a * norm_b)
+    def cosine_similarity(self, emb_a: np.ndarray, emb_b: np.ndarray) -> float:
+        """Calculates the cosine similarity between pre-normalized embeddings"""
+        return np.dot(emb_a, emb_b)
 
     def search(self, query: str, top_k: int = 10) -> list[SearchResult]:
         """Search the vector index based on the query"""
@@ -62,6 +63,7 @@ class VectorEngine:
             sentences=query, 
             convert_to_numpy=True
         )
+        normalized_query_embedding: np.ndarray = query_embedding / np.linalg.norm(query_embedding)
         results = []
 
         for pos, embedding in enumerate(self.embeddings):
@@ -70,8 +72,8 @@ class VectorEngine:
             if doc_id in self.deleted_docs:
                 continue
 
-            score: float = self._cosine_similarity(
-                emb_a=query_embedding, 
+            score: float = self.cosine_similarity(
+                emb_a=normalized_query_embedding, 
                 emb_b=embedding
             )
             results.append((pos, score))
@@ -99,10 +101,10 @@ class VectorEngine:
         """List all files"""
         filenames = set()
 
-        for doc in self.documents.values():
+        for doc_id, doc in self.documents.items():
             filename = doc.get("metadata", {}).get("source_file", "")
             
-            if filename in self.deleted_docs:
+            if doc_id in self.deleted_docs or filename == "":
                 continue
             else:
                 filenames.add(filename)
@@ -130,9 +132,10 @@ class VectorEngine:
         }
 
         embedding: np.ndarray = self.model.encode(content, convert_to_numpy=True)
+        normalized_embedding: np.ndarray = embedding / np.linalg.norm(embedding)
         vector_index: int = len(self.embeddings)
 
-        self.embeddings.append(embedding)
+        self.embeddings.append(normalized_embedding)
         self.index_to_doc_id.append(doc_id)
         self.doc_id_to_index[doc_id] = vector_index
 
@@ -143,7 +146,6 @@ class VectorEngine:
         if doc_id not in self.documents:
             return False
 
-        del self.documents[doc_id]
         self.deleted_docs.add(doc_id)
 
         if self.should_compact():
