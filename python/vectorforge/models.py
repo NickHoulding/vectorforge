@@ -9,7 +9,7 @@ class DocumentInput(BaseModel):
     content: str = Field(..., min_length=1, description="Document text content")
     metadata: dict | None = Field(default=None, description="Optional metadata")
 
-    class Config:
+    class ConfigDict:
         json_schema_extra = {
             "example": {
                 "content": "Machine learning is a subset of AI...",
@@ -40,7 +40,7 @@ class FileUploadResponse(BaseModel):
     doc_ids: list[str]
     status: str
 
-    class Config:
+    class ConfigDict:
         json_schema_extra = {
             "example": {
                 "filename": "textbook.pdf",
@@ -56,7 +56,7 @@ class FileDeleteResponse(BaseModel):
     doc_ids: list[str]
     status: str
 
-    class Config:
+    class ConfigDict:
         json_schema_extra = {
             "example": {
                 "filename": "textbook.pdf",
