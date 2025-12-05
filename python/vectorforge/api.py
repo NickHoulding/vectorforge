@@ -26,12 +26,8 @@ def list_files():
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-@app.post(
-    '/file/upload', 
-    status_code=status.HTTP_201_CREATED, 
-    response_model=FileUploadResponse
-)
-async def upload_file(file: UploadFile = File(...)):
+@app.post('/file/upload', status_code=status.HTTP_201_CREATED, response_model=FileUploadResponse)
+async def upload_file(file: UploadFile):
     """Upload a file"""
     try:
         doc_ids: list[str] = []
@@ -73,7 +69,7 @@ def delete_file(filename: str):
 # Document Management Endpoints 
 # =============================================================================
 
-@app.get('/doc/{doc_id}', response_model=DocumentDetail)
+@app.get('/doc/{doc_id}', status_code=status.HTTP_200_OK, response_model=DocumentDetail)
 def get_doc(doc_id: str):
     """Retrieve a single doc"""
     try:
@@ -94,11 +90,7 @@ def get_doc(doc_id: str):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-@app.post(
-    '/doc', 
-    status_code=status.HTTP_201_CREATED, 
-    response_model=DocumentResponse
-)
+@app.post('/doc/add', status_code=status.HTTP_201_CREATED, response_model=DocumentResponse)
 def add_doc(doc: DocumentInput):
     """Add a single, pre-extracted document"""
     try:
