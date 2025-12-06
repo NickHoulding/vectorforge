@@ -87,8 +87,14 @@ def get_doc(doc_id: str):
             metadata=doc["metadata"]
         )
     
+    except HTTPException as e:
+        raise
     except Exception as e:
         print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 @app.post('/doc/add', status_code=status.HTTP_201_CREATED, response_model=DocumentResponse)
 def add_doc(doc: DocumentInput):
@@ -124,8 +130,14 @@ def delete_doc(doc_id: str):
             status="deleted"
         )
     
+    except HTTPException as e:
+        raise
     except Exception as e:
         print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 
 # =============================================================================
