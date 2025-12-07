@@ -163,14 +163,14 @@ class VectorEngine:
     def list_files(self) -> list[str]:
         """List all files"""
         filenames = set()
+        active_docs = [
+            (doc_id, doc) for doc_id, doc in self.documents.items() 
+            if doc_id not in self.deleted_docs
+        ]
 
-        for doc_id, doc in self.documents.items():
+        for doc_id, doc in active_docs:
             filename = doc.get("metadata", {}).get("source_file", "")
-            
-            if doc_id in self.deleted_docs or filename == "":
-                continue
-            else:
-                filenames.add(filename)
+            filenames.add(filename)
 
         filenames = list(filenames)
         filenames.sort()
@@ -179,6 +179,9 @@ class VectorEngine:
     
     def get_doc(self, doc_id: str) -> dict | None:
         """Retreive a doc with the specified doc id"""
+        if doc_id in self.deleted_docs:
+            return None
+        
         return self.documents.get(doc_id, None)
 
     def add_doc(self, content: str, metadata: dict[str, Any] | None = None) -> str:
@@ -251,9 +254,9 @@ class VectorEngine:
         
         # Calculate percentiles from query history
         sorted_times = sorted(self.metrics.query_times) if self.metrics.query_times else []
-        p50 = sorted_times[int(len(sorted_times) * 0.50)] if sorted_times else None
-        p95 = sorted_times[int(len(sorted_times) * 0.95)] if sorted_times else None
-        p99 = sorted_times[int(len(sorted_times) * 0.99)] if sorted_times else None
+        p50 = float(np.percentile(sorted_times, 50)) if sorted_times else None
+        p95 = float(np.percentile(sorted_times, 95)) if sorted_times else None
+        p99 = float(np.percentile(sorted_times, 99)) if sorted_times else None
         min_time = min(sorted_times) if sorted_times else None
         max_time = max(sorted_times) if sorted_times else None
         

@@ -25,6 +25,10 @@ def list_files():
 
     except Exception as e:
         print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 @app.post('/file/upload', status_code=status.HTTP_201_CREATED, response_model=FileUploadResponse)
 async def upload_file(file: UploadFile):
@@ -52,9 +56,13 @@ async def upload_file(file: UploadFile):
         )
     
     except HTTPException as e:
-        print(f"HTTPException: {e}")
+        raise
     except Exception as e:
         print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 @app.delete('/file/delete/{filename}', response_model=FileDeleteResponse)
 def delete_file(filename: str):
@@ -117,6 +125,10 @@ def add_doc(doc: DocumentInput):
 
     except Exception as e:
         print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 @app.delete('/doc/{doc_id}', response_model=DocumentResponse)
 def delete_doc(doc_id: str):
@@ -166,6 +178,10 @@ def search(search_params: SearchQuery):
     
     except Exception as e:
         print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 
 # =============================================================================
