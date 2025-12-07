@@ -41,6 +41,7 @@ def added_doc(client, sample_doc):
         "data": sample_doc
     }
 
+
 # =============================================================================
 # Endpoint Tests 
 # =============================================================================
@@ -114,9 +115,9 @@ def test_delete_doc_not_found(client):
     assert response.status_code == 404
 
 def test_search_endpoint(client, added_doc):
+    """Test searching for the added sample doc"""
     search_query = {
-        "query": "test document",
-        "top_k": 5
+        "query": "test document"
     }
 
     response = client.post("/search", json=search_query)
@@ -126,6 +127,18 @@ def test_search_endpoint(client, added_doc):
     assert response_data["query"] == "test document"
     assert "results" in response_data
     assert response_data["count"] >= 0
+
+def test_small_top_k(client):
+    """Handle top_k value less than the default (10)"""
+    raise NotImplementedError
+
+def test_large_top_k(client):
+    """Handle top_k value greater than the default (10)"""
+    raise NotImplementedError
+
+def test_negative_top_k(client):
+    """Make sure negative top_k values are disallowed"""
+    raise NotImplementedError
 
 def test_index_stats_endpoint(client):
     raise NotImplementedError
