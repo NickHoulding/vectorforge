@@ -298,3 +298,22 @@ class VectorEngine:
         })
         
         return metrics_dict
+
+    def get_index_stats(self) -> dict:
+        """Returns key stats of the index"""
+        total_docs = len(self.documents)
+        total_embeddings = len(self.embeddings)
+        deleted_docs = len(self.deleted_docs)
+        deleted_ratio = (
+            deleted_docs / total_embeddings 
+            if total_embeddings > 0 else 0.0
+        )
+
+        return {
+            "total_documents": total_docs,
+            "total_embeddings": total_embeddings,
+            "deleted_documents": deleted_docs,
+            "deleted_ratio": deleted_ratio,
+            "needs_compaction": self.should_compact(),
+            "embedding_dimension": self.model.get_sentence_embedding_dimension() or 0
+        }

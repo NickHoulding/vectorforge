@@ -186,3 +186,24 @@ class MetricsResponse(BaseModel):
                 }
             }
         }
+
+class IndexStatsResponse(BaseModel):
+    """Lightweight index statistics"""
+    total_documents: int = Field(..., description="Active documents")
+    total_embeddings: int = Field(..., description="Total embeddings")
+    deleted_documents: int = Field(..., description="Deleted count")
+    deleted_ratio: float = Field(..., ge=0, le=1, description="Deletion ratio")
+    needs_compaction: bool = Field(..., description="Compaction needed")
+    embedding_dimension: int = Field(..., description="Embedding size")
+
+    class ConfigDict:
+        json_schema_extra = {
+            "example": {
+                "total_documents": 1250,
+                "total_embeddings": 1500,
+                "deleted_documents": 250,
+                "deleted_ratio": 0.167,
+                "needs_compaction": False,
+                "embedding_dimension": 384
+            }
+        }

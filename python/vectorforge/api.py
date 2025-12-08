@@ -190,11 +190,30 @@ def search(search_params: SearchQuery):
 
 @app.get('/index/stats')
 def get_index_stats():
-    """Index statistics (size, doc count, etc)"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    """
+    get quick index statistics.
+
+    Lightweight endpoint for checking index health and size.
+    For detailed metrics, use GET /metrics.
+    """
+    try:
+        stats = engine.get_index_stats()
+
+        return IndexStatsResponse(
+            total_documents=stats["total_documents"],
+            total_embeddings=stats["total_embeddings"],
+            deleted_documents=stats["deleted_documents"],
+            deleted_ratio=stats["deleted_ratio"],
+            needs_compaction=stats["needs_compaction"],
+            embedding_dimension=stats["embedding_dimension"]
+        )
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 @app.post('/index/build')
 def build_index():
