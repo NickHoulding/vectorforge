@@ -54,11 +54,13 @@ class VectorEngine:
     def __init__(self) -> None:
         self.documents: dict[str, dict[str, Any]] = {}
         self.embeddings: list[np.ndarray] = []
-        self.model_name = 'all-MiniLM-L6-v2'
-        self.model = SentenceTransformer(self.model_name)
         self.index_to_doc_id = []
         self.doc_id_to_index = {}
         self.deleted_docs = set()
+        
+        self.model_name = 'all-MiniLM-L6-v2'
+        self.model = SentenceTransformer(self.model_name)
+
         self.metrics = EngineMetrics()
         self.compaction_threshold = 0.25
 
@@ -74,7 +76,7 @@ class VectorEngine:
         return deleted_ratio > self.compaction_threshold
 
     def compact(self) -> None:
-        """Rebuild index and free deleted doc memory"""
+        """Clean up index and free deleted doc memory"""
         new_embeddings = []
         new_index_to_doc_id = []
         new_doc_id_to_index = {}
@@ -97,6 +99,30 @@ class VectorEngine:
         self.deleted_docs.clear()
         
         # Update metrics
+        self.metrics.compactions_performed += 1
+        self.metrics.last_compaction_at = datetime.now().isoformat()
+
+    def build(self) -> None:
+        """Build a new index"""
+        self.documents = {
+            doc_id: doc for doc_id, doc in self.documents.items()
+            if doc_id not in self.deleted_docs
+        }
+        self.embeddings = []
+        self.index_to_doc_id = []
+        self.doc_id_to_index = {}
+
+        for doc_id, doc in self.documents.items():
+            embedding = self.model.encode(sentences=doc["content"], convert_to_numpy=True)
+            normalized_embedding = embedding / np.linalg.norm(embedding)
+
+            vector_index = len(self.embeddings)
+            self.embeddings.append(normalized_embedding)
+            self.index_to_doc_id.append(doc_id)
+            self.doc_id_to_index[doc_id] = vector_index
+
+        self.deleted_docs.clear()
+
         self.metrics.compactions_performed += 1
         self.metrics.last_compaction_at = datetime.now().isoformat()
 

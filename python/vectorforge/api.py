@@ -218,10 +218,25 @@ def get_index_stats():
 @app.post('/index/build')
 def build_index():
     """Build/rebuild index"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    try:
+        engine.build()
+        stats = engine.get_index_stats()
+
+        return IndexStatsResponse(
+            total_documents=stats["total_documents"],
+            total_embeddings=stats["total_embeddings"],
+            deleted_documents=stats["deleted_documents"],
+            deleted_ratio=stats["deleted_ratio"],
+            needs_compaction=stats["needs_compaction"],
+            embedding_dimension=stats["embedding_dimension"]
+        )
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 @app.post('/index/save')
 def save_index():
