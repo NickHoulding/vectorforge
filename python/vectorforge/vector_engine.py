@@ -505,7 +505,7 @@ class VectorEngine:
 
         return doc_id
 
-    def remove_doc(self, doc_id: str) -> bool:
+    def delete_doc(self, doc_id: str) -> bool:
         """Remove a document from the vector index (lazy deletion).
         
         Marks the document as deleted without immediately freeing memory.
@@ -531,6 +531,41 @@ class VectorEngine:
             self.compact()
 
         return True
+    
+    def delete_file(self, filename: str) -> dict:
+        """Delete all document chunks associated with a specific source file.
+        
+        Finds all documents where metadata['source_file'] matches the given
+        filename and marks them for deletion. Triggers compaction if needed.
+        
+        Args:
+            filename: Name of the source file whose chunks should be deleted.
+        
+        Returns:
+            Dictionary containing:
+                - status: 'deleted' if chunks found, 'not_found' if no matches
+                - filename: The filename that was searched for
+                - chunks_deleted: Number of chunks marked for deletion
+                - doc_ids: List of deleted document IDs
+        """
+        doc_ids = []
+
+        for doc_id, doc in self.documents.items():
+            if doc_id in self.deleted_docs:
+                continue
+
+            source = doc["metadata"].get("source_file", None)
+
+            if source == filename:
+                if self.delete_doc(doc_id=doc_id):
+                    doc_ids.append(doc_id)
+
+        return {
+            "status": "deleted" if doc_ids else "not_found",
+            "filename": filename,
+            "chunks_deleted": len(doc_ids),
+            "doc_ids": doc_ids
+        }
 
     def get_metrics(self) -> dict:
         """Get comprehensive metrics about the vector engine's state and performance.

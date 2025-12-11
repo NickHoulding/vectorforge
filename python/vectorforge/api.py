@@ -67,10 +67,28 @@ async def upload_file(file: UploadFile):
 @app.delete('/file/delete/{filename}', response_model=FileDeleteResponse)
 def delete_file(filename: str):
     """Delete all chunks associated with the given file"""
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    try:
+        deletion_metrics = engine.delete_file(filename=filename)
+
+        if deletion_metrics["status"] == "not_found":
+            raise HTTPException(
+                status_code=404,
+                detail=f"No documents found for file: {filename}"
+            )
+
+        return FileDeleteResponse(
+            status=deletion_metrics["status"],
+            filename=deletion_metrics["filename"],
+            chunks_deleted=deletion_metrics["chunks_deleted"],
+            doc_ids=deletion_metrics["doc_ids"],
+        )
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 
 # =============================================================================
@@ -134,7 +152,7 @@ def add_doc(doc: DocumentInput):
 def delete_doc(doc_id: str):
     """Remove a single doc"""
     try:
-        result: bool = engine.remove_doc(doc_id)
+        result: bool = engine.delete_doc(doc_id)
 
         if not result:
             raise HTTPException(
