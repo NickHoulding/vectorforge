@@ -207,3 +207,22 @@ class IndexStatsResponse(BaseModel):
                 "embedding_dimension": 384
             }
         }
+
+class IndexSaveResponse(BaseModel):
+    """Response from saving index to disk"""
+    status: str = Field(..., description="Operation status")
+    directory: str = Field(..., description="Save directory path")
+    metadata_size_mb: float = Field(..., ge=0, description="Metadata file size")
+    embeddings_size_mb: float = Field(..., ge=0, description="Embeddings file size")
+    total_size_mb: float = Field(..., ge=0, description="Total disk space used")
+    documents_saved: int = Field(..., ge=0, description="Number of documents saved")
+    embeddings_saved: int = Field(..., ge=0, description="Number of embeddings saved")
+
+class IndexLoadResponse(BaseModel):
+    """Response from loading index from disk"""
+    status: str = Field(..., description="Operation status")
+    directory: str = Field(..., description="Load directory path")
+    documents_loaded: int = Field(..., ge=0, description="Number of documents loaded")
+    embeddings_loaded: int = Field(..., ge=0, description="Number of embeddings loaded")
+    deleted_docs: int = Field(..., ge=0, description="Number of deleted documents")
+    version: str = Field(..., description="Index format version")

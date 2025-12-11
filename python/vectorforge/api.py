@@ -238,21 +238,55 @@ def build_index():
             detail="Internal server error"
         )
 
-@app.post('/index/save')
-def save_index():
+@app.post('/index/save', response_model=IndexSaveResponse)
+def save_index(directory: str = "./data"):
     """Persist to disk"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    try:
+        save_metrics = engine.save(directory=directory)
 
-@app.post('/index/load')
+        return IndexSaveResponse(
+            status=save_metrics["status"],
+            directory=save_metrics["directory"],
+            metadata_size_mb=save_metrics["metadata_size_mb"],
+            embeddings_size_mb=save_metrics["embeddings_size_mb"],
+            total_size_mb=save_metrics["total_size_mb"],
+            documents_saved=save_metrics["documents_saved"],
+            embeddings_saved=save_metrics["embeddings_saved"]
+        )
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
+
+@app.post('/index/load', response_model=IndexLoadResponse)
 def load_index():
     """Load from disk"""
-    return HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint not yet implemented"
-    )
+    try:
+        load_metrics = engine.load()
+
+        return IndexLoadResponse(
+            status=load_metrics["status"],
+            directory=load_metrics["directory"],
+            documents_loaded=load_metrics["documents_loaded"],
+            embeddings_loaded=load_metrics["embeddings_loaded"],
+            deleted_docs=load_metrics["deleted_docs"],
+            version=load_metrics["version"]
+        )
+
+    except FileNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Index files not found: {str(e)}"
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
 
 
 # =============================================================================
