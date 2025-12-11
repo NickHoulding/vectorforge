@@ -10,6 +10,11 @@ API_PORT = 3001
 app = FastAPI(title="VectorForge API")
 engine = VectorEngine()
 
+# TODO:
+# 1. implement docstrings for api layer, models, and doc_processor methods
+# 2. better organize models in project
+# 3. implement a VERSION variable and populate around metrics methods, etc.
+
 
 # =============================================================================
 # File Management Endpoints 
