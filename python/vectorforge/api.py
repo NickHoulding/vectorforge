@@ -11,9 +11,8 @@ app = FastAPI(title="VectorForge API")
 engine = VectorEngine()
 
 # TODO:
-# 1. implement docstrings for api layer, models, and doc_processor methods
-# 2. better organize models in project
-# 3. implement a VERSION variable and populate around metrics methods, etc.
+# 1. better organize models in project
+# 2. implement a VERSION variable and populate around metrics methods, api endpoints, etc.
 
 
 # =============================================================================
@@ -22,7 +21,18 @@ engine = VectorEngine()
 
 @app.get('/file/list', response_model=FileListResponse)
 def list_files():
-    """List file names of all files"""
+    """
+    List all indexed files
+    
+    Returns a list of all source filenames that have been uploaded and indexed
+    in the vector store.
+    
+    Returns:
+        FileListResponse: Object containing array of filenames
+        
+    Raises:
+        HTTPException: 500 if internal server error occurs
+    """
     try:
         return FileListResponse(
             filenames=engine.list_files()
@@ -37,7 +47,22 @@ def list_files():
 
 @app.post('/file/upload', status_code=status.HTTP_201_CREATED, response_model=FileUploadResponse)
 async def upload_file(file: UploadFile):
-    """Upload a file"""
+    """
+    Upload and index a file
+    
+    Uploads a file, extracts its text content, chunks it into smaller pieces,
+    and indexes each chunk as a separate document with embeddings for semantic search.
+    
+    Args:
+        file (UploadFile): File to upload (supports PDF, TXT, DOCX, MD, etc.)
+        
+    Returns:
+        FileUploadResponse: Upload confirmation with chunk count and document IDs
+        
+    Raises:
+        HTTPException: 400 if file format is unsupported
+        HTTPException: 500 if processing or indexing fails
+    """
     try:
         doc_ids: list[str] = []
         text: str = await extract_file_content(file)
@@ -71,7 +96,22 @@ async def upload_file(file: UploadFile):
 
 @app.delete('/file/delete/{filename}', response_model=FileDeleteResponse)
 def delete_file(filename: str):
-    """Delete all chunks associated with the given file"""
+    """
+    Delete all chunks associated with a file
+    
+    Removes all document chunks that were created from the specified source file,
+    including their embeddings and metadata.
+    
+    Args:
+        filename (str): Name of the source file to delete
+        
+    Returns:
+        FileDeleteResponse: Deletion confirmation with count of chunks removed
+        
+    Raises:
+        HTTPException: 404 if no documents found for the specified filename
+        HTTPException: 500 if deletion fails
+    """
     try:
         deletion_metrics = engine.delete_file(filename=filename)
 
@@ -88,6 +128,8 @@ def delete_file(filename: str):
             doc_ids=deletion_metrics["doc_ids"],
         )
     
+    except HTTPException as e:
+        raise
     except Exception as e:
         print(f"Unexpected error: {e}")
         raise HTTPException(
@@ -102,7 +144,22 @@ def delete_file(filename: str):
 
 @app.get('/doc/{doc_id}', status_code=status.HTTP_200_OK, response_model=DocumentDetail)
 def get_doc(doc_id: str):
-    """Retrieve a single doc"""
+    """
+    Retrieve a single document by ID
+    
+    Fetches the content and metadata for a specific document chunk using its
+    unique identifier.
+    
+    Args:
+        doc_id (str): Unique document identifier
+        
+    Returns:
+        DocumentDetail: Document content, metadata, and ID
+        
+    Raises:
+        HTTPException: 404 if document not found
+        HTTPException: 500 if retrieval fails
+    """
     try:
         doc = engine.get_doc(doc_id=doc_id)
 
@@ -129,7 +186,21 @@ def get_doc(doc_id: str):
 
 @app.post('/doc/add', status_code=status.HTTP_201_CREATED, response_model=DocumentResponse)
 def add_doc(doc: DocumentInput):
-    """Add a single, pre-extracted document"""
+    """
+    Add a single pre-extracted document
+    
+    Indexes a document that has already been extracted and chunked externally.
+    Useful for adding custom content without file upload.
+    
+    Args:
+        doc (DocumentInput): Document with content and optional metadata
+        
+    Returns:
+        DocumentResponse: Created document ID and status
+        
+    Raises:
+        HTTPException: 500 if indexing fails
+    """
     try:
         if not doc.metadata:
             doc.metadata = {
@@ -155,7 +226,21 @@ def add_doc(doc: DocumentInput):
 
 @app.delete('/doc/{doc_id}', response_model=DocumentResponse)
 def delete_doc(doc_id: str):
-    """Remove a single doc"""
+    """
+    Delete a single document by ID
+    
+    Removes a specific document chunk and its embedding from the index.
+    
+    Args:
+        doc_id (str): Unique document identifier to delete
+        
+    Returns:
+        DocumentResponse: Deletion confirmation with document ID
+        
+    Raises:
+        HTTPException: 404 if document not found
+        HTTPException: 500 if deletion fails
+    """
     try:
         result: bool = engine.delete_doc(doc_id)
 
@@ -186,7 +271,29 @@ def delete_doc(doc_id: str):
 
 @app.post('/search', response_model=SearchResponse)
 def search(search_params: SearchQuery):
-    """Perform a search on the index"""
+    """
+    Perform semantic search on indexed documents
+    
+    Searches the vector index using semantic similarity to find the most relevant
+    document chunks for the given query. Returns results ranked by similarity score.
+    
+    Args:
+        search_params (SearchQuery): Query string and number of results (top_k)
+        
+    Returns:
+        SearchResponse: Ranked search results with similarity scores and metadata
+        
+    Raises:
+        HTTPException: 500 if search fails
+        
+    Example:
+        ```json
+        {
+            "query": "What is machine learning?",
+            "top_k": 5
+        }
+        ```
+    """
     try:
         results: list[SearchResult] = engine.search(
             query=search_params.query, 
@@ -214,10 +321,17 @@ def search(search_params: SearchQuery):
 @app.get('/index/stats')
 def get_index_stats():
     """
-    get quick index statistics.
-
-    Lightweight endpoint for checking index health and size.
-    For detailed metrics, use GET /metrics.
+    Get quick index statistics
+    
+    Lightweight endpoint for checking index health and size. Returns essential
+    metrics including document counts, embedding dimension, and compaction status.
+    For comprehensive metrics, use GET /metrics instead.
+    
+    Returns:
+        IndexStatsResponse: Core index statistics and health indicators
+        
+    Raises:
+        HTTPException: 500 if stats retrieval fails
     """
     try:
         stats = engine.get_index_stats()
@@ -240,7 +354,19 @@ def get_index_stats():
 
 @app.post('/index/build')
 def build_index():
-    """Build/rebuild index"""
+    """
+    Build or rebuild the vector index
+    
+    Reconstructs the entire vector index from scratch. Useful for optimizing
+    search performance after many document additions/deletions. This operation
+    can be time-consuming for large indexes.
+    
+    Returns:
+        IndexStatsResponse: Updated index statistics after rebuild
+        
+    Raises:
+        HTTPException: 500 if index build fails
+    """
     try:
         engine.build()
         stats = engine.get_index_stats()
@@ -263,7 +389,24 @@ def build_index():
 
 @app.post('/index/save', response_model=IndexSaveResponse)
 def save_index(directory: str = "./data"):
-    """Persist to disk"""
+    """
+    Persist index to disk
+    
+    Saves the current vector index and all document metadata to the specified
+    directory. Creates persistent storage for index recovery and reduces startup time.
+    
+    Args:
+        directory (str, optional): Directory path for saving. Defaults to "./data"
+        
+    Returns:
+        IndexSaveResponse: Save confirmation with file sizes and document counts
+        
+    Raises:
+        HTTPException: 500 if save operation fails
+        
+    Example:
+        POST /index/save?directory=/path/to/storage
+    """
     try:
         save_metrics = engine.save(directory=directory)
 
@@ -286,7 +429,19 @@ def save_index(directory: str = "./data"):
 
 @app.post('/index/load', response_model=IndexLoadResponse)
 def load_index():
-    """Load from disk"""
+    """
+    Load index from disk
+    
+    Restores a previously saved vector index from disk, including all embeddings,
+    documents, and metadata. Faster than rebuilding the index from scratch.
+    
+    Returns:
+        IndexLoadResponse: Load confirmation with counts and version information
+        
+    Raises:
+        HTTPException: 404 if index files not found
+        HTTPException: 500 if load operation fails
+    """
     try:
         load_metrics = engine.load()
 
@@ -318,14 +473,47 @@ def load_index():
 
 @app.get('/health')
 def check_health():
-    """API health check"""
+    """
+    API health check
+    
+    Simple endpoint to verify the API is running and responsive. Returns a
+    success status for monitoring and load balancer health checks.
+    
+    Returns:
+        dict: Health status object
+        
+    Example Response:
+        ```json
+        {
+            "status": "healthy"
+        }
+        ```
+    """
     return {
         "status": "healthy"
     }
 
 @app.get('/metrics', response_model=MetricsResponse)
 def get_performance_metrics():
-    """Get comprehensive system metrics"""
+    """
+    Get comprehensive system metrics
+    
+    Returns detailed performance, usage, and system statistics including:
+    - Index statistics (documents, embeddings, compaction status)
+    - Performance metrics (query times, percentiles)
+    - Usage statistics (operations performed)
+    - Memory consumption
+    - System information and uptime
+    
+    This endpoint provides complete observability into the vector engine's state
+    and performance characteristics.
+    
+    Returns:
+        MetricsResponse: Comprehensive metrics across all categories
+        
+    Raises:
+        HTTPException: 500 if metrics collection fails
+    """
     metrics = engine.get_metrics()
     
     index_metrics = IndexMetrics(
