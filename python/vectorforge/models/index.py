@@ -31,6 +31,7 @@ class IndexSaveResponse(BaseModel):
     total_size_mb: float = Field(..., ge=0, description="Total disk space used")
     documents_saved: int = Field(..., ge=0, description="Number of documents saved")
     embeddings_saved: int = Field(..., ge=0, description="Number of embeddings saved")
+    version: str = Field(..., description="Index format version")
 
     class ConfigDict:
         json_schema_extra = {

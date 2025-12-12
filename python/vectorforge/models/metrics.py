@@ -49,6 +49,7 @@ class SystemInfo(BaseModel):
     model_name: str = Field(..., description="Embedding model name")
     model_dimension: int = Field(..., description="Embedding dimension")
     uptime_seconds: Optional[float] = Field(None, ge=0, description="Engine uptime")
+    version: str = Field(..., description="vectorforge version")
 
 class MetricsResponse(BaseModel):
     """Complete metrics response"""

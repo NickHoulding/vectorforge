@@ -9,6 +9,7 @@ import time
 import json
 import os
 
+from __init__ import __version__
 from models import SearchResult
 
 
@@ -159,7 +160,7 @@ class VectorEngine:
             "model_name": self.model_name,
             "compaction_threshold": self.compaction_threshold,
             "metrics": self.metrics.to_dict(),
-            "version": "1.0.0"
+            "version": __version__
         }
 
         metadata_path = os.path.join(directory, "metadata.json")
@@ -633,7 +634,8 @@ class VectorEngine:
             # System info
             "model_name": self.model_name,
             "model_dimension": embedding_dim,
-            "uptime_seconds": uptime
+            "uptime_seconds": uptime,
+            "version": __version__
         })
         
         return metrics_dict

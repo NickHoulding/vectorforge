@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, HTTPException, status
 import uvicorn
 
+from __init__ import __version__
 from doc_processor import extract_file_content, chunk_text 
 from models import (
     DocumentInput, DocumentResponse, DocumentDetail,
@@ -14,11 +15,12 @@ from vector_engine import VectorEngine
 
 
 API_PORT = 3001
-app = FastAPI(title="VectorForge API")
+app = FastAPI(
+    title="VectorForge API",
+    version=__version__,
+    description="High-performance in-memory vector database with semantic search"
+)
 engine = VectorEngine()
-
-# TODO:
-# 2. implement a VERSION variable and populate around metrics methods, api endpoints, etc.
 
 
 # =============================================================================
@@ -423,7 +425,8 @@ def save_index(directory: str = "./data"):
             embeddings_size_mb=save_metrics["embeddings_size_mb"],
             total_size_mb=save_metrics["total_size_mb"],
             documents_saved=save_metrics["documents_saved"],
-            embeddings_saved=save_metrics["embeddings_saved"]
+            embeddings_saved=save_metrics["embeddings_saved"],
+            version=save_metrics["version"]
         )
 
     except Exception as e:
@@ -491,12 +494,14 @@ def check_health():
     Example Response:
         ```json
         {
-            "status": "healthy"
+            "status": "healthy",
+            "version": "0.9.0"
         }
         ```
     """
     return {
-        "status": "healthy"
+        "status": "healthy",
+        "version": __version__
     }
 
 @app.get('/metrics', response_model=MetricsResponse)
@@ -562,7 +567,8 @@ def get_metrics():
     system_info = SystemInfo(
         model_name=metrics["model_name"],
         model_dimension=metrics["model_dimension"],
-        uptime_seconds=metrics["uptime_seconds"]
+        uptime_seconds=metrics["uptime_seconds"],
+        version=metrics["version"]
     )
 
     return MetricsResponse(
