@@ -494,7 +494,7 @@ def check_health():
     }
 
 @app.get('/metrics', response_model=MetricsResponse)
-def get_performance_metrics():
+def get_metrics():
     """
     Get comprehensive system metrics
     
