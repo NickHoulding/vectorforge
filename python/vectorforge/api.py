@@ -2,7 +2,14 @@ from fastapi import FastAPI, UploadFile, HTTPException, status
 import uvicorn
 
 from doc_processor import extract_file_content, chunk_text 
-from models import *
+from models import (
+    DocumentInput, DocumentResponse, DocumentDetail,
+    FileUploadResponse, FileDeleteResponse, FileListResponse,
+    SearchQuery, SearchResult, SearchResponse,
+    IndexStatsResponse, IndexSaveResponse, IndexLoadResponse,
+    IndexMetrics, PerformanceMetrics, UsageMetrics,
+    MemoryMetrics, TimestampMetrics, SystemInfo, MetricsResponse
+)
 from vector_engine import VectorEngine
 
 
@@ -11,7 +18,6 @@ app = FastAPI(title="VectorForge API")
 engine = VectorEngine()
 
 # TODO:
-# 1. better organize models in project
 # 2. implement a VERSION variable and populate around metrics methods, api endpoints, etc.
 
 
