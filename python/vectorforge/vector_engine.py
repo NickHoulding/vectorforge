@@ -9,8 +9,8 @@ import time
 import json
 import os
 
-from __init__ import __version__
-from models import SearchResult
+from vectorforge import __version__
+from vectorforge.models import SearchResult
 
 
 @dataclass

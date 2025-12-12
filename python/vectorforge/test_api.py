@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from api import app, engine
-
+from vectorforge.api import app, engine
+import vectorforge
 
 # =============================================================================
 # Fixtures 

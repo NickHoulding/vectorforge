@@ -1,9 +1,9 @@
 from fastapi import FastAPI, UploadFile, HTTPException, status
 import uvicorn
 
-from __init__ import __version__
-from doc_processor import extract_file_content, chunk_text 
-from models import (
+from vectorforge import __version__
+from vectorforge.doc_processor import extract_file_content, chunk_text, chunk_text 
+from vectorforge.models import (
     DocumentInput, DocumentResponse, DocumentDetail,
     FileUploadResponse, FileDeleteResponse, FileListResponse,
     SearchQuery, SearchResult, SearchResponse,
@@ -11,7 +11,7 @@ from models import (
     IndexMetrics, PerformanceMetrics, UsageMetrics,
     MemoryMetrics, TimestampMetrics, SystemInfo, MetricsResponse
 )
-from vector_engine import VectorEngine
+from vectorforge.vector_engine import VectorEngine
 
 
 API_PORT = 3001
