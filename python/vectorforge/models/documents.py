@@ -2,6 +2,16 @@ from pydantic import BaseModel, Field
 
 
 class DocumentInput(BaseModel):
+    """Input model for adding a new document to the vector index.
+    
+    Represents a document to be indexed with its text content and optional
+    metadata. This is used when adding individual documents directly via the
+    API rather than uploading files.
+    
+    Attributes:
+        content: The text content to be indexed and searched.
+        metadata: Optional key-value pairs for filtering and identification.
+    """
     content: str = Field(..., min_length=1, description="Document text content")
     metadata: dict | None = Field(default=None, description="Optional metadata")
 
@@ -14,6 +24,15 @@ class DocumentInput(BaseModel):
         }
 
 class DocumentResponse(BaseModel):
+    """Response model for document operations.
+    
+    Returned after successfully adding or deleting a document, providing
+    confirmation with the document ID and operation status.
+    
+    Attributes:
+        id: Unique identifier (UUID) of the document.
+        status: Operation result (e.g., 'indexed', 'deleted').
+    """
     id: str = Field(..., description="Unique document identifier")
     status: str = Field(..., description="Operation status")
 
@@ -26,6 +45,17 @@ class DocumentResponse(BaseModel):
         }
 
 class DocumentDetail(BaseModel):
+    """Detailed document information including content and metadata.
+    
+    Complete representation of a document in the vector database, including
+    its unique identifier, full text content, and associated metadata.
+    Returned when retrieving a specific document by ID.
+    
+    Attributes:
+        id: Unique identifier (UUID) of the document.
+        content: The full text content of the document.
+        metadata: Associated metadata including source file and chunk information.
+    """
     id: str = Field(..., description="Unique document identifier")
     content: str = Field(..., description="Document text content")
     metadata: dict | None = Field(default=None, description="Document metadata")

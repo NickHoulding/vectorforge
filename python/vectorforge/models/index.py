@@ -2,7 +2,20 @@ from pydantic import BaseModel, Field
 
 
 class IndexStatsResponse(BaseModel):
-    """Lightweight index statistics"""
+    """Lightweight index health and statistics.
+    
+    Provides essential metrics about the current state of the vector index,
+    including document counts, deletion ratios, and compaction status. This is
+    a lightweight endpoint compared to the full metrics endpoint.
+    
+    Attributes:
+        total_documents: Number of documents in storage (active + deleted).
+        total_embeddings: Total number of embedding vectors in the index.
+        deleted_documents: Count of documents marked for deletion.
+        deleted_ratio: Ratio of deleted to total embeddings (0-1).
+        needs_compaction: Whether index cleanup is recommended.
+        embedding_dimension: Dimensionality of the embedding vectors.
+    """
     total_documents: int = Field(..., description="Active documents")
     total_embeddings: int = Field(..., description="Total embeddings")
     deleted_documents: int = Field(..., description="Deleted count")
@@ -23,7 +36,22 @@ class IndexStatsResponse(BaseModel):
         }
 
 class IndexSaveResponse(BaseModel):
-    """Response from saving index to disk"""
+    """Response from persisting the index to disk.
+    
+    Provides confirmation and detailed statistics after saving the vector
+    database to persistent storage. Includes file sizes and document counts
+    for monitoring storage usage.
+    
+    Attributes:
+        status: Operation result (typically 'saved').
+        directory: File system path where data was written.
+        metadata_size_mb: Size of the metadata JSON file in megabytes.
+        embeddings_size_mb: Size of the embeddings NPZ file in megabytes.
+        total_size_mb: Combined size of all saved files in megabytes.
+        documents_saved: Number of document records persisted.
+        embeddings_saved: Number of embedding vectors persisted.
+        version: VectorForge version used to save the index.
+    """
     status: str = Field(..., description="Operation status")
     directory: str = Field(..., description="Save directory path")
     metadata_size_mb: float = Field(..., ge=0, description="Metadata file size")
@@ -47,7 +75,20 @@ class IndexSaveResponse(BaseModel):
         }
 
 class IndexLoadResponse(BaseModel):
-    """Response from loading index from disk"""
+    """Response from loading a persisted index from disk.
+    
+    Provides confirmation and statistics after restoring the vector database
+    from persistent storage. Includes counts of loaded documents and information
+    about the index format version for compatibility checking.
+    
+    Attributes:
+        status: Operation result (typically 'loaded').
+        directory: File system path where data was read from.
+        documents_loaded: Number of document records restored.
+        embeddings_loaded: Number of embedding vectors restored.
+        deleted_docs: Count of documents marked as deleted in the loaded index.
+        version: VectorForge version that created the saved index.
+    """
     status: str = Field(..., description="Operation status")
     directory: str = Field(..., description="Load directory path")
     documents_loaded: int = Field(..., ge=0, description="Number of documents loaded")

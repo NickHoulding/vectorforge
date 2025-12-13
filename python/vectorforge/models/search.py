@@ -2,6 +2,17 @@ from pydantic import BaseModel, Field
 
 
 class SearchQuery(BaseModel):
+    """Input model for semantic search queries.
+    
+    Defines the parameters for performing a semantic similarity search across
+    the vector database. Supports filtering by metadata and controlling the
+    number of results returned.
+    
+    Attributes:
+        query: The search text to find semantically similar documents.
+        top_k: Maximum number of results to return (1-100, default: 10).
+        filters: Optional metadata filters as key-value pairs for narrowing results.
+    """
     query: str = Field(..., min_length=1, description="Search query text")
     top_k: int = Field(10, ge=1, le=100, description="Number of results to return")
     filters: dict | None = Field(default=None, description="Optional metadata filters")
@@ -16,6 +27,18 @@ class SearchQuery(BaseModel):
         }
 
 class SearchResult(BaseModel):
+    """Individual search result with similarity scoring.
+    
+    Represents a single document match from a semantic search query, including
+    the document's content, metadata, and cosine similarity score indicating
+    how closely it matches the search query.
+    
+    Attributes:
+        id: Unique identifier of the matched document.
+        content: Full text content of the document chunk.
+        metadata: Document metadata including source file and chunk information.
+        score: Cosine similarity score (0-1), where 1 is perfect match.
+    """
     id: str = Field(..., description="Document identifier")
     content: str = Field(..., description="Document text content")
     metadata: dict | None = Field(default=None, description="Document metadata")
@@ -32,6 +55,17 @@ class SearchResult(BaseModel):
         }
 
 class SearchResponse(BaseModel):
+    """Complete search results response.
+    
+    Contains all matching documents from a semantic search query, ranked by
+    similarity score in descending order. Includes the original query for
+    reference and the total count of results returned.
+    
+    Attributes:
+        query: The original search query text that was submitted.
+        results: List of matching documents ranked by similarity score.
+        count: Total number of results returned (may be less than top_k if fewer matches exist).
+    """
     query: str = Field(..., description="Original search query")
     results: list[SearchResult] = Field(..., description="List of search results")
     count: int = Field(..., description="Number of results returned")
