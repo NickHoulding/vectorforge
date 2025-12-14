@@ -1,6 +1,9 @@
+from typing import List, cast
+
 import fitz
+
 from fastapi import HTTPException, UploadFile
-from typing import cast, List 
+
 
 def extract_pdf(content: bytes) -> str:
     """Extract text content from a PDF file.
