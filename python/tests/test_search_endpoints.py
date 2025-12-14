@@ -4,7 +4,7 @@ import pytest
 
 
 def test_search_basic(client, added_doc):
-    """Test searching for the added sample doc"""
+    """Test basic semantic search functionality."""
     search_query = {
         "query": "test document"
     }
@@ -18,17 +18,17 @@ def test_search_basic(client, added_doc):
     assert response_data["count"] >= 0
 
 def test_search_small_top_k(client):
-    """Handle top_k value less than the default (10)"""
+    """Test search with top_k value less than default."""
     raise NotImplementedError
 
 def test_search_large_top_k(client):
-    """Handle top_k value greater than the default (10)"""
+    """Test search with top_k value greater than default."""
     raise NotImplementedError
 
 def test_search_negative_top_k(client):
-    """Make sure negative top_k values are disallowed"""
+    """Test that negative top_k values are rejected."""
     raise NotImplementedError
 
 def test_search_with_filters(client):
-    """Make sure filtered searching works properly"""
+    """Test search with metadata filters applied."""
     raise NotImplementedError
