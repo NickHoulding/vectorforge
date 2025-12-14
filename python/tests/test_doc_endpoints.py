@@ -15,7 +15,7 @@ def sample_doc():
     }
 
 
-def test_doc_get(client, sample_doc):
+def test_doc_get_returns_matching_content(client, sample_doc):
     """Test retrieving a document by ID.
     
     Adds a document, retrieves it by ID, and verifies that the returned
@@ -43,12 +43,12 @@ def test_doc_get(client, sample_doc):
     assert get_response_data["metadata"]["source_file"] == "test.txt"
     assert get_response_data["metadata"]["author"] == "test_user"
 
-def test_doc_get_not_found(client):
+def test_doc_get_returns_404_when_not_found(client):
     """Test 404 response when retrieving a non-existent document."""
     response = client.get("/doc/nonexistent-id")
     assert response.status_code == 404
 
-def test_doc_add(client, sample_doc):
+def test_doc_add_creates_document_with_id(client, sample_doc):
     """Test adding a new document via POST /doc/add."""
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
@@ -57,7 +57,7 @@ def test_doc_add(client, sample_doc):
     assert "id" in response_data
     assert response_data["status"] == "indexed"
 
-def test_doc_delete(client, added_doc):
+def test_doc_delete_removes_from_index(client, added_doc):
     """Test deleting a document and verifying it's no longer retrievable."""
     doc_id = added_doc["id"]
 
@@ -71,7 +71,7 @@ def test_doc_delete(client, added_doc):
     get_response = client.get(f"/doc/{doc_id}")
     assert get_response.status_code == 404
 
-def test_doc_delete_not_found(client):
+def test_doc_delete_returns_404_when_not_found(client):
     """Test 404 response when deleting a non-existent document."""
     response = client.delete("/doc/nonexistent-id")
     assert response.status_code == 404

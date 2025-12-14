@@ -3,7 +3,7 @@
 import pytest
 
 
-def test_file_upload(client):
+def test_file_list_returns_filenames(client):
     """Test retrieving list of indexed files."""
     response = client.get("/file/list")
     assert response.status_code == 200
@@ -12,10 +12,10 @@ def test_file_upload(client):
     filenames = response_data["filenames"]
     assert isinstance(filenames, list)
 
-def test_file_delete():
+def test_file_delete_removes_all_chunks():
     """Test deleting all chunks associated with a file."""
     raise NotImplementedError
 
-def test_file_list():
-    """Test listing all indexed source files."""
+def test_file_upload_creates_multiple_docs():
+    """Test uploading a file and creating document chunks."""
     raise NotImplementedError

@@ -3,7 +3,7 @@
 import pytest
 
 
-def test_health(client):
+def test_health_returns_healthy_status(client):
     """Test health check endpoint returns healthy status."""
     response = client.get("/health")
     assert response.status_code == 200
@@ -11,6 +11,6 @@ def test_health(client):
     response_data = response.json()
     assert response_data["status"] == "healthy"
 
-def test_metrics(client):
+def test_metrics_returns_comprehensive_data(client):
     """Test retrieving comprehensive system metrics."""
     raise NotImplementedError
