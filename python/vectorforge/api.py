@@ -27,6 +27,8 @@ engine = VectorEngine()
 # File Management Endpoints 
 # =============================================================================
 
+# --- List Files ---
+
 @app.get('/file/list', response_model=FileListResponse)
 def list_files():
     """
@@ -52,6 +54,8 @@ def list_files():
             status_code=500,
             detail="Internal server error"
         )
+
+# --- Upload File ---
 
 @app.post('/file/upload', status_code=status.HTTP_201_CREATED, response_model=FileUploadResponse)
 async def upload_file(file: UploadFile):
@@ -102,6 +106,8 @@ async def upload_file(file: UploadFile):
             detail="Internal server error"
         )
 
+# --- Delete File ---
+
 @app.delete('/file/delete/{filename}', response_model=FileDeleteResponse)
 def delete_file(filename: str):
     """
@@ -150,6 +156,8 @@ def delete_file(filename: str):
 # Document Management Endpoints 
 # =============================================================================
 
+# --- Get Document ---
+
 @app.get('/doc/{doc_id}', status_code=status.HTTP_200_OK, response_model=DocumentDetail)
 def get_doc(doc_id: str):
     """
@@ -192,6 +200,8 @@ def get_doc(doc_id: str):
             detail="Internal server error"
         )
 
+# --- Add Document ---
+
 @app.post('/doc/add', status_code=status.HTTP_201_CREATED, response_model=DocumentResponse)
 def add_doc(doc: DocumentInput):
     """
@@ -231,6 +241,8 @@ def add_doc(doc: DocumentInput):
             status_code=500,
             detail="Internal server error"
         )
+
+# --- Delete Document ---
 
 @app.delete('/doc/{doc_id}', response_model=DocumentResponse)
 def delete_doc(doc_id: str):
@@ -326,6 +338,8 @@ def search(search_params: SearchQuery):
 # Index Management Endpoints
 # =============================================================================
 
+# --- Get Index Stats ---
+
 @app.get('/index/stats')
 def get_index_stats():
     """
@@ -359,6 +373,8 @@ def get_index_stats():
             status_code=500,
             detail="Internal server error"
         )
+
+# --- Build Index ---
 
 @app.post('/index/build')
 def build_index():
@@ -394,6 +410,8 @@ def build_index():
             status_code=500,
             detail="Internal server error"
         )
+
+# --- Save Index ---
 
 @app.post('/index/save', response_model=IndexSaveResponse)
 def save_index(directory: str = "./data"):
@@ -435,6 +453,8 @@ def save_index(directory: str = "./data"):
             status_code=500,
             detail="Internal server error"
         )
+
+# --- Load Index ---
 
 @app.post('/index/load', response_model=IndexLoadResponse)
 def load_index():
@@ -480,6 +500,8 @@ def load_index():
 # Health and Metrics Endpoints
 # =============================================================================
 
+# --- Health Check ---
+
 @app.get('/health')
 def check_health():
     """
@@ -503,6 +525,8 @@ def check_health():
         "status": "healthy",
         "version": __version__
     }
+
+# --- Metrics ---
 
 @app.get('/metrics', response_model=MetricsResponse)
 def get_metrics():
