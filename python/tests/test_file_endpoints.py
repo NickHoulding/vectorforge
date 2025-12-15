@@ -2,8 +2,6 @@
 
 from io import BytesIO
 
-import pytest
-
 
 # =============================================================================
 # File Endpoint Tests

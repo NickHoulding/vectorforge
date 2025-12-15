@@ -1,7 +1,5 @@
 """Tests for document management endpoints"""
 
-import pytest
-
 
 # =============================================================================
 # Document Endpoint Tests

@@ -1,7 +1,5 @@
 """Tests for the VectorEngine class"""
 
-import pytest
-
 from vectorforge.vector_engine import VectorEngine
 
 

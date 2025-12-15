@@ -1,7 +1,5 @@
 """Tests for system monitoring endpoints"""
 
-import pytest
-
 
 # =============================================================================
 # Health Endpoint Tests

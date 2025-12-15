@@ -1,7 +1,5 @@
 """Tests for index management endpoints"""
 
-import pytest
-
 
 # =============================================================================
 # Index Stats Tests

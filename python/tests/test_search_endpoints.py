@@ -1,7 +1,5 @@
 """Tests for search endpoints"""
 
-import pytest
-
 
 # =============================================================================
 # Search Endpoint Tests
