@@ -262,13 +262,13 @@ if has_source != has_chunk_index:
 <!-- Should show: File uploaded, chunks created, document IDs returned -->
 
 ---
-2
+
 ## Getting Started
 
 ### **Prerequisites**
 
 - **Python 3.11 or higher**
-- **pip** or **uv** package manager (uv recommended)
+- **uv** package manager
 - **Git** (for cloning repository)
 
 ### **Installation**
@@ -281,7 +281,6 @@ cd vectorforge
 
 2. **Install dependencies**
 
-Using uv (recommended):
 ```bash
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -291,14 +290,6 @@ cd python
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv sync
-```
-
-Using pip:
-```bash
-cd python
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .
 ```
 
 3. **Verify installation**
@@ -312,7 +303,7 @@ python -c "import vectorforge; print(vectorforge.__version__)"
 #### **Start the API Server**
 ```bash
 cd python
-uvicorn vectorforge.api:app --host 0.0.0.0 --port 3001 --reload
+uv run vectorforge/api.py
 ```
 
 The API will be available at:
