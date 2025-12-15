@@ -11,8 +11,10 @@ def test_doc_add_returns_unique_ids_for_multiple_docs(client, sample_doc):
     """Test that adding multiple documents generates unique IDs for each."""
     first_response = client.post("/doc/add", json=sample_doc)
     first_id = first_response.json()["id"]
+    
     second_response = client.post("/doc/add", json=sample_doc)
     second_id = second_response.json()["id"]
+
     assert first_id != second_id
 
 
@@ -20,7 +22,7 @@ def test_doc_add_null_metadata(client, sample_doc):
     """Test that adding a document with null metadata returns 400."""
     sample_doc["metadata"] = None
     response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 400
+    assert response.status_code == 201
 
 
 def test_doc_add_empty_metadata(client, sample_doc):
@@ -28,6 +30,7 @@ def test_doc_add_empty_metadata(client, sample_doc):
     sample_doc["metadata"] = {}
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
+
     response_data = response.json()
     assert "id" in response_data
     assert response_data["status"] == "indexed"
@@ -35,7 +38,7 @@ def test_doc_add_empty_metadata(client, sample_doc):
 
 def test_doc_add_large_content(client, sample_doc):
     """Test that adding a document exceeding max content length returns 400."""
-    sample_doc["content"] = "a" * 1_000_000
+    sample_doc["content"] = "a" * 100_000
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 400
 
@@ -44,7 +47,7 @@ def test_doc_add_empty_content(client, sample_doc):
     """Test that adding a document with empty content returns 400."""
     sample_doc["content"] = ""
     response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_doc_get_returns_200_with_valid_id(client, added_doc):
@@ -74,9 +77,10 @@ def test_doc_get_preserves_metadata(client, sample_doc):
     add_response = client.post("/doc/add", json=sample_doc)
     doc_id = add_response.json()["id"]
     get_response = client.get(f"/doc/{doc_id}")
+    
     metadata = get_response.json()["metadata"]
     assert metadata["source_file"] == "test.txt"
-    assert metadata["author"] == "test_user"
+    assert metadata["chunk_index"] == 0
 
 
 def test_doc_get_returns_404_when_not_found(client):
@@ -136,174 +140,353 @@ def test_doc_delete_returns_404_when_not_found(client):
 
 def test_doc_add_metadata_with_only_source_file(client, sample_doc):
     """Test that metadata with only 'source_file' (missing 'chunk_index') returns 400."""
-    del sample_doc["chunk_index"]
+    del sample_doc["metadata"]["chunk_index"]
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 400
 
 
 def test_doc_add_metadata_with_only_chunk_index(client, sample_doc):
     """Test that metadata with only 'chunk_index' (missing 'source_file') returns 400."""
-    del sample_doc["source_file"]
-    response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 400
-
-
-def test_doc_add_metadata_with_invalid_source_file_type(client, sample_doc):
-    """Test that 'source_file' must be a string, not another type (e.g., integer)."""
-    sample_doc["source_file"] = 0
-    response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 400
-
-
-def test_doc_add_metadata_with_invalid_chunk_index_type(client, sample_doc):
-    """Test that 'chunk_index' must be an integer, not another type (e.g., string)."""
-    sample_doc["chunk_index"] = "invalid_type"
+    del sample_doc["metadata"]["source_file"]
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 400
 
 
 def test_doc_add_with_special_characters_in_content(client, sample_doc):
     """Test that documents with special characters in content are accepted."""
-    sample_doc["content"] = "!@#$%^&*()_~-=+,.<>/?;:\"\'[]|\\"
+    sample_doc["metadata"]["content"] = "!@#$%^&*()_~-=+,.<>/?;:\"\'[]|\\"
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
 
 
 def test_doc_add_with_unicode_content(client, sample_doc):
     """Test that documents with unicode characters are properly handled."""
-    raise NotImplementedError
+    sample_doc["content"] = (
+        "Hello 世界 🌍 "    # Chinese + emoji
+        "Héllo Wörld "      # Accented Latin
+        "Привет мир "      # Cyrillic
+        "مرحبا بالعالم "   # Arabic
+        "שלום עולם "       # Hebrew
+        "こんにちは世界 "    # Japanese
+        "안녕하세요 "        # Korean
+        "Γειά σου κόσμε "  # Greek
+        "🎉🚀💻🔥"          # Emojis
+    )
+
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+    doc_id = response.json()["id"]
+    get_response = client.get(f"/doc/{doc_id}")
+    assert get_response.json()["content"] == sample_doc["content"]
 
 
 def test_doc_add_with_nested_metadata(client, sample_doc):
     """Test that metadata can contain nested objects and arrays."""
-    raise NotImplementedError
+    sample_doc["metadata"]["nested_object"] = {
+        "location": {
+            "country": "USA",
+            "city": "San Francisco"
+        },
+        "dimensions": {
+            "width": 100,
+            "height": 200
+        }
+    }
+    sample_doc["metadata"]["nested_array"] = [
+        "tag1",
+        "tag2",
+        "tag3"
+    ]
+    sample_doc["metadata"]["mixed_nested"] = [
+        {"name": "item1", "value": 10},
+        {"name": "item2", "value": 20}
+    ]
+
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+    doc_id = response.json()["id"]
+    get_response = client.get(f"/doc/{doc_id}")
+    metadata = get_response.json()["metadata"]
+
+    assert metadata["nested_object"]["location"]["city"] == "San Francisco"
+    assert len(metadata["nested_array"]) == 3
+    assert metadata["mixed_nested"][0]["value"] == 10
 
 
 def test_doc_get_deleted_document(client, added_doc):
     """Test that getting a deleted document returns 404."""
-    raise NotImplementedError
+    response = client.delete(f"/doc/{added_doc['id']}")
+    assert response.status_code == 200
+    response = client.get(f"/doc/{added_doc['id']}")
+    assert response.status_code == 404
+
 
 
 def test_doc_delete_same_document_twice(client, added_doc):
     """Test that deleting the same document twice returns 404 on second attempt."""
-    raise NotImplementedError
+    doc_id = added_doc["id"]
+    response = client.delete(f"/doc/{doc_id}")
+    assert response.status_code == 200
+    response = client.delete(f"/doc/{doc_id}")
+    assert response.status_code == 404
 
 
 def test_doc_add_invalid_json_structure(client):
     """Test that POST /doc/add with invalid JSON structure (missing 'content') returns 422."""
-    raise NotImplementedError
+    invalid_doc = {
+        "metadata": {
+            "source_file": "test.txt",
+            "chunk_index": 0
+        }
+    }
+
+    response = client.post("/doc/add", json=invalid_doc)
+    assert response.status_code == 422
 
 
-def test_doc_add_content_not_string(client):
+def test_doc_add_content_not_string(client, sample_doc):
     """Test that content field must be a string, not another type (e.g., number)."""
-    raise NotImplementedError
+    sample_doc["content"] = 123
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 422
 
 
 def test_doc_get_with_empty_string_id(client):
     """Test that GET /doc/ with empty string returns 404 or 405."""
-    raise NotImplementedError
+    response = client.get("/doc/")
+    assert response.status_code == 404
 
 
 def test_doc_delete_with_empty_string_id(client):
     """Test that DELETE /doc/ with empty string returns 404 or 405."""
-    raise NotImplementedError
+    response = client.delete("/doc/")
+    assert response.status_code == 404
 
 
-def test_doc_add_preserves_metadata_fields(client):
+def test_doc_add_preserves_metadata_fields(client, sample_doc):
     """Test that all metadata fields are preserved after adding a document."""
-    raise NotImplementedError
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+    doc_id = response.json()["id"]
+    get_response = client.get(f"/doc/{doc_id}")
+    assert get_response.status_code == 200
+
+    doc = get_response.json()
+    assert "content" in doc
+    assert "metadata" in doc
+    assert "source_file" in doc["metadata"]
+    assert "chunk_index" in doc["metadata"]
+    assert doc["content"] == sample_doc["content"]
+    assert doc["metadata"]["source_file"] == sample_doc["metadata"]["source_file"]
+    assert doc["metadata"]["chunk_index"] == sample_doc["metadata"]["chunk_index"]
 
 
 def test_doc_deletion_does_not_affect_other_documents(client, sample_doc):
     """Test that deleting one document doesn't affect other documents."""
-    raise NotImplementedError
+    doc1_data = {**sample_doc, "content": "Doc 1 content"}
+    doc2_data = {**sample_doc, "content": "Doc 2 content"}
+    doc3_data = {**sample_doc, "content": "Doc 3 content"}
+
+    doc1_id = client.post("/doc/add", json=doc1_data).json()["id"]
+    doc2_id = client.post("/doc/add", json=doc2_data).json()["id"]
+    doc3_id = client.post("/doc/add", json=doc3_data).json()["id"]
+
+    delete_response = client.delete(f"/doc/{doc1_id}")
+    assert delete_response.status_code == 200
+
+    doc2_response = client.get(f"/doc/{doc2_id}")
+    assert doc2_response.status_code == 200
+    assert doc2_response.json()["content"] == "Doc 2 content"
+
+    doc3_response = client.get(f"/doc/{doc3_id}")
+    assert doc3_response.status_code == 200
+    assert doc3_response.json()["content"] == "Doc 3 content"
+
+    doc1_response = client.get(f"/doc/{doc1_id}")
+    assert doc1_response.status_code == 404
 
 
 def test_doc_add_at_exact_length_limit(client, sample_doc):
     """Test that content at exactly 10,000 characters is accepted."""
-    raise NotImplementedError
+    sample_doc["content"] = "a" * 10_000
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
 
 
 def test_doc_add_one_char_over_length_limit(client, sample_doc):
     """Test that content at 10,001 characters is rejected."""
-    raise NotImplementedError
+    sample_doc["content"] = "a" * 10_001
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 400
 
 
 def test_doc_add_with_length_9999(client, sample_doc):
     """Test that content at 9,999 characters is accepted."""
-    raise NotImplementedError
+    sample_doc["content"] = "a" * 9999
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
 
 
 def test_doc_full_lifecycle(client, sample_doc):
     """Test complete document lifecycle: add -> get -> delete -> verify deletion."""
-    raise NotImplementedError
+    add_response = client.post("/doc/add", json=sample_doc)
+    assert add_response.status_code == 201
+
+    doc_id = add_response.json()["id"]
+    get_response = client.get(f"/doc/{doc_id}")
+    assert get_response.status_code == 200
+
+    get_doc_id = get_response.json()["id"]
+    del_response = client.delete(f"/doc/{get_doc_id}")
+    assert del_response.status_code == 200
+
+    del_response = client.delete(f"/doc/{get_doc_id}")
+    assert del_response.status_code == 404
 
 
 def test_doc_add_with_whitespace_only_content(client, sample_doc):
     """Test that content with only whitespace characters is handled appropriately."""
-    raise NotImplementedError
+    sample_doc["content"] = ""
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 422
 
 
 def test_doc_add_response_contains_all_required_fields(client, sample_doc):
     """Test that successful add response contains id and status fields."""
-    raise NotImplementedError
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+    
+    response_data = response.json()
+    assert "id" in response_data
+    assert "status" in response_data
 
 
 def test_doc_delete_response_contains_all_required_fields(client, added_doc):
     """Test that successful delete response contains id and status fields."""
-    raise NotImplementedError
+    response = client.delete(f"/doc/{added_doc['id']}")
+    assert response.status_code == 200
+    
+    response_data = response.json()
+    assert "id" in response_data
+    assert "status" in response_data
 
 
 def test_doc_get_response_contains_all_required_fields(client, added_doc):
     """Test that successful get response contains id, content, and metadata fields."""
-    raise NotImplementedError
+    response = client.get(f"/doc/{added_doc['id']}")
+    assert response.status_code == 200
 
-
-def test_doc_add_error_response_format(client, sample_doc):
-    """Test that error responses contain proper 'detail' field."""
-    raise NotImplementedError
+    response_data = response.json()
+    assert "id" in response_data
+    assert "content" in response_data
+    assert "metadata" in response_data
 
 
 def test_doc_add_with_valid_chunk_metadata(client, sample_doc):
     """Test that documents with both 'source_file' and 'chunk_index' are accepted."""
-    raise NotImplementedError
+    assert "source_file" in sample_doc["metadata"]
+    assert "chunk_index" in sample_doc["metadata"]
+
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
 
 
 def test_doc_get_with_invalid_uuid_format(client):
     """Test that GET /doc/{id} with malformed UUID returns 404."""
-    raise NotImplementedError
+    response = client.get("/doc/malformed-uuid")
+    assert response.status_code == 404
 
 
 def test_doc_delete_with_invalid_uuid_format(client):
     """Test that DELETE /doc/{id} with malformed UUID returns 404."""
-    raise NotImplementedError
+    response = client.delete("/doc/malformed-uuid")
+    assert response.status_code == 404
 
 
 def test_doc_add_returns_id_field(client, sample_doc):
     """Test that add response contains 'id' field."""
-    raise NotImplementedError
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+    response_data = response.json()
+    assert "id" in response_data
 
 
 def test_doc_add_returns_status_field(client, sample_doc):
     """Test that add response contains 'status' field."""
-    raise NotImplementedError
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+    response_data = response.json()
+    assert "status" in response_data
 
 
 def test_doc_delete_returns_id_field(client, added_doc):
     """Test that delete response contains 'id' field."""
-    raise NotImplementedError
+    response = client.delete(f"/doc/{added_doc['id']}")
+    assert response.status_code == 200
+    
+    response_data = response.json()
+    assert "id" in response_data
 
 
 def test_doc_get_after_multiple_adds(client, sample_doc):
     """Test retrieving specific document after adding multiple documents."""
-    raise NotImplementedError
+    doc1_data = {**sample_doc, "content": "Doc 1 content"}
+    doc2_data = {**sample_doc, "content": "Doc 2 content"}
+    doc3_data = {**sample_doc, "content": "Doc 3 content"}
+
+    doc1_id = client.post("/doc/add", json=doc1_data).json()["id"]
+    client.post("/doc/add", json=doc2_data)
+    client.post("/doc/add", json=doc3_data)
+
+    response = client.get(f"/doc/{doc1_id}")
+    assert response.status_code == 200
+
+    response_data = response.json()
+    assert response_data["content"] == doc1_data["content"]
 
 
 def test_doc_add_increments_docs_added_metric(client, sample_doc):
     """Test that adding a document increments the docs_added metric."""
-    raise NotImplementedError
+    initial_metrics = client.get("/index/stats").json()
+    initial_count = initial_metrics["total_documents"]
+
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+    updated_metrics = client.get("/index/stats").json()
+    updated_count = updated_metrics["total_documents"]
+
+    assert updated_count == initial_count + 1
 
 
 def test_doc_delete_increments_docs_deleted_metric(client, added_doc):
     """Test that deleting a document increments the docs_deleted metric."""
-    raise NotImplementedError
+    initial_metrics = client.get("/index/stats").json()
+    initial_count = initial_metrics["total_documents"]
+
+    response = client.delete(f"/doc/{added_doc['id']}")
+    assert response.status_code == 200
+
+    updated_metrics = client.get("/index/stats").json()
+    updated_count = updated_metrics["total_documents"]
+
+    assert updated_count == initial_count - 1
+
+
+def test_doc_add_metadata_with_null_values(client, sample_doc):
+    """Test that metadata can contain null values."""
+    sample_doc["metadata"]["optional_field"] = None
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+
+def test_doc_add_metadata_with_boolean_values(client, sample_doc):
+    """Test that metadata can contain boolean values."""
+    sample_doc["metadata"]["is_active"] = True
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201

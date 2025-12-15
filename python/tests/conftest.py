@@ -57,7 +57,9 @@ def added_doc(client):
     """
     response = client.post("/doc/add", json={
         "content": "Machine learning is fascinating",
-        "metadata": {"topic": "AI"}
+        "metadata": {
+            "topic": "AI"
+        }
     })
     
     return response.json()

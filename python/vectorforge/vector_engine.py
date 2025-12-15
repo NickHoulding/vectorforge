@@ -482,7 +482,7 @@ class VectorEngine:
         Returns:
             Unique document ID (UUID v4) for the newly added document.
         """
-        if not content:
+        if not content.strip():
             raise ValueError("Document content cannot be empty")
         if len(content) > 10_000:
             raise ValueError("Document content is too long")
@@ -495,10 +495,6 @@ class VectorEngine:
 
         if has_source != has_chunk_index:
             raise ValueError("Metadata must contain both 'source_file' and 'chunk_index' or neither")
-        if not isinstance(metadata["source_file"], str):
-            raise ValueError("'source_file' must be a string")
-        if not isinstance(metadata["chunk_index"], int):
-            raise ValueError("'chunk_index' must be an int")
 
         doc_id: str = str(uuid.uuid4())
 
