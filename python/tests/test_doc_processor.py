@@ -91,6 +91,26 @@ def test_chunk_text_with_newlines():
     raise NotImplementedError
 
 
+def test_chunk_text_boundary_conditions():
+    """Test chunking at exact boundary conditions."""
+    raise NotImplementedError
+
+
+def test_chunk_text_overlap_larger_than_chunk_size():
+    """Test behavior when overlap is larger than chunk_size."""
+    raise NotImplementedError
+
+
+def test_chunk_text_single_character():
+    """Test chunking a single character string."""
+    raise NotImplementedError
+
+
+def test_chunk_text_returns_list():
+    """Test that chunk_text returns a list."""
+    raise NotImplementedError
+
+
 # =============================================================================
 # extract_pdf() Tests
 # =============================================================================
@@ -127,6 +147,26 @@ def test_extract_pdf_with_unicode_content():
 
 def test_extract_pdf_with_invalid_pdf_bytes():
     """Test that invalid PDF bytes raise appropriate error."""
+    raise NotImplementedError
+
+
+def test_extract_pdf_returns_string():
+    """Test that extract_pdf returns a string."""
+    raise NotImplementedError
+
+
+def test_extract_pdf_single_page():
+    """Test extracting from a single-page PDF."""
+    raise NotImplementedError
+
+
+def test_extract_pdf_with_images_only():
+    """Test extracting from a PDF with only images (no text)."""
+    raise NotImplementedError
+
+
+def test_extract_pdf_with_corrupted_bytes():
+    """Test that corrupted PDF bytes raise an error."""
     raise NotImplementedError
 
 
@@ -186,4 +226,29 @@ async def test_extract_file_content_with_markdown():
 
 async def test_extract_file_content_case_insensitive_extension():
     """Test file extension matching is case-sensitive or insensitive."""
+    raise NotImplementedError
+
+
+async def test_extract_file_content_pdf_returns_string():
+    """Test that extract_file_content returns a string for PDF."""
+    raise NotImplementedError
+
+
+async def test_extract_file_content_txt_returns_string():
+    """Test that extract_file_content returns a string for TXT."""
+    raise NotImplementedError
+
+
+async def test_extract_file_content_with_null_file():
+    """Test that None file raises appropriate error."""
+    raise NotImplementedError
+
+
+async def test_extract_file_content_filename_none_raises_400():
+    """Test that file.filename=None raises HTTPException with status 400."""
+    raise NotImplementedError
+
+
+async def test_extract_file_content_unsupported_extension_raises_400():
+    """Test that unsupported extension raises HTTPException with status 400."""
     raise NotImplementedError

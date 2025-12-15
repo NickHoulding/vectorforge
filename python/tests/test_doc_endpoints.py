@@ -235,6 +235,11 @@ def test_doc_add_one_char_over_length_limit(client, sample_doc):
     raise NotImplementedError
 
 
+def test_doc_add_with_length_9999(client, sample_doc):
+    """Test that content at 9,999 characters is accepted."""
+    raise NotImplementedError
+
+
 def test_doc_full_lifecycle(client, sample_doc):
     """Test complete document lifecycle: add -> get -> delete -> verify deletion."""
     raise NotImplementedError
@@ -277,4 +282,34 @@ def test_doc_get_with_invalid_uuid_format(client):
 
 def test_doc_delete_with_invalid_uuid_format(client):
     """Test that DELETE /doc/{id} with malformed UUID returns 404."""
+    raise NotImplementedError
+
+
+def test_doc_add_returns_id_field(client, sample_doc):
+    """Test that add response contains 'id' field."""
+    raise NotImplementedError
+
+
+def test_doc_add_returns_status_field(client, sample_doc):
+    """Test that add response contains 'status' field."""
+    raise NotImplementedError
+
+
+def test_doc_delete_returns_id_field(client, added_doc):
+    """Test that delete response contains 'id' field."""
+    raise NotImplementedError
+
+
+def test_doc_get_after_multiple_adds(client, sample_doc):
+    """Test retrieving specific document after adding multiple documents."""
+    raise NotImplementedError
+
+
+def test_doc_add_increments_docs_added_metric(client, sample_doc):
+    """Test that adding a document increments the docs_added metric."""
+    raise NotImplementedError
+
+
+def test_doc_delete_increments_docs_deleted_metric(client, added_doc):
+    """Test that deleting a document increments the docs_deleted metric."""
     raise NotImplementedError

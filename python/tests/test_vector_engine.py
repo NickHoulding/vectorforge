@@ -128,6 +128,21 @@ def test_add_doc_updates_chunk_metrics():
     raise NotImplementedError
 
 
+def test_add_doc_with_metadata_none_creates_empty_dict():
+    """Test that None metadata is converted to empty dict."""
+    raise NotImplementedError
+
+
+def test_add_doc_updates_doc_size_metric():
+    """Test that add_doc updates total_doc_size_bytes metric."""
+    raise NotImplementedError
+
+
+def test_add_doc_updates_last_doc_added_timestamp():
+    """Test that add_doc updates last_doc_added_at timestamp."""
+    raise NotImplementedError
+
+
 # =============================================================================
 # get_doc() Tests
 # =============================================================================
@@ -519,4 +534,81 @@ def test_get_index_stats_includes_compaction_status():
 
 def test_get_index_stats_includes_embedding_dimension():
     """Test that index stats include embedding dimension."""
+    raise NotImplementedError
+
+
+# =============================================================================
+# cosine_similarity() Tests
+# =============================================================================
+
+def test_cosine_similarity_identical_vectors():
+    """Test that cosine similarity of identical normalized vectors is 1.0."""
+    raise NotImplementedError
+
+
+def test_cosine_similarity_orthogonal_vectors():
+    """Test that cosine similarity of orthogonal vectors is close to 0."""
+    raise NotImplementedError
+
+
+def test_cosine_similarity_opposite_vectors():
+    """Test that cosine similarity of opposite vectors is -1.0."""
+    raise NotImplementedError
+
+
+def test_cosine_similarity_normalized_embeddings():
+    """Test that cosine_similarity works with pre-normalized embeddings."""
+    raise NotImplementedError
+
+
+# =============================================================================
+# EngineMetrics Tests
+# =============================================================================
+
+def test_engine_metrics_initialization():
+    """Test that EngineMetrics initializes with correct default values."""
+    raise NotImplementedError
+
+
+def test_engine_metrics_to_dict():
+    """Test that EngineMetrics.to_dict() returns proper dictionary."""
+    raise NotImplementedError
+
+
+def test_engine_metrics_query_times_max_history():
+    """Test that query_times respects max_query_history limit."""
+    raise NotImplementedError
+
+
+def test_engine_metrics_created_at_is_iso_format():
+    """Test that created_at timestamp is in ISO format."""
+    raise NotImplementedError
+
+
+# =============================================================================
+# Integration Tests
+# =============================================================================
+
+def test_add_search_delete_workflow():
+    """Test complete workflow: add documents, search, delete, verify."""
+    raise NotImplementedError
+
+
+def test_multiple_operations_metrics_accuracy():
+    """Test that metrics remain accurate after multiple operations."""
+    raise NotImplementedError
+
+
+def test_compaction_triggered_automatically():
+    """Test that compaction triggers automatically when threshold exceeded."""
+    raise NotImplementedError
+
+
+def test_search_after_compaction():
+    """Test that search works correctly after compaction."""
+    raise NotImplementedError
+
+
+def test_save_load_with_deleted_documents():
+    """Test that save/load preserves deleted documents state."""
     raise NotImplementedError

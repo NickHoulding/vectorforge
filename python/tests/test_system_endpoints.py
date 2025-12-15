@@ -190,3 +190,33 @@ def test_metrics_updates_after_operations(client):
 def test_metrics_response_format(client):
     """Test that metrics response has proper structure and types."""
     raise NotImplementedError
+
+
+def test_metrics_after_add_delete_cycle(client, sample_doc):
+    """Test metrics accuracy after adding and deleting documents."""
+    raise NotImplementedError
+
+
+def test_metrics_after_search_operation(client, added_doc):
+    """Test that metrics update after search operations."""
+    raise NotImplementedError
+
+
+def test_metrics_performance_percentiles_calculation(client):
+    """Test that p50, p95, p99 percentiles are calculated correctly."""
+    raise NotImplementedError
+
+
+def test_metrics_memory_calculation_accuracy(client):
+    """Test that memory metrics accurately reflect storage usage."""
+    raise NotImplementedError
+
+
+def test_metrics_index_deleted_ratio_calculation(client):
+    """Test that deleted_ratio is calculated correctly."""
+    raise NotImplementedError
+
+
+def test_metrics_uptime_increases(client):
+    """Test that uptime_seconds increases over time."""
+    raise NotImplementedError

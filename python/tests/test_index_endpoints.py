@@ -192,3 +192,53 @@ def test_index_save_and_load_roundtrip(client):
 def test_index_load_restores_deleted_docs(client):
     """Test that loading restores deleted_docs set correctly."""
     raise NotImplementedError
+
+
+def test_index_save_creates_directory_if_not_exists(client):
+    """Test that save creates the target directory if it doesn't exist."""
+    raise NotImplementedError
+
+
+def test_index_load_restores_metrics(client):
+    """Test that loading restores metrics from saved state."""
+    raise NotImplementedError
+
+
+def test_index_save_includes_embeddings_count(client):
+    """Test that save response includes embeddings_saved count."""
+    raise NotImplementedError
+
+
+def test_index_load_with_missing_metadata_file(client):
+    """Test that load returns 404 when metadata.json is missing."""
+    raise NotImplementedError
+
+
+def test_index_load_with_missing_embeddings_file(client):
+    """Test that load returns 404 when embeddings.npz is missing."""
+    raise NotImplementedError
+
+
+def test_index_save_with_deleted_documents(client):
+    """Test saving index that contains deleted documents."""
+    raise NotImplementedError
+
+
+def test_index_load_preserves_compaction_threshold(client):
+    """Test that loading preserves the compaction_threshold setting."""
+    raise NotImplementedError
+
+
+def test_index_build_removes_deleted_docs(client):
+    """Test that building index removes deleted documents."""
+    raise NotImplementedError
+
+
+def test_index_build_increments_compactions_metric(client):
+    """Test that building index increments compactions_performed metric."""
+    raise NotImplementedError
+
+
+def test_index_stats_with_empty_index(client):
+    """Test index stats when index is empty."""
+    raise NotImplementedError

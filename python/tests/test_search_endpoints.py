@@ -139,3 +139,38 @@ def test_search_default_top_k_value(client, added_doc):
 def test_search_performance_with_large_index(client):
     """Test search performance with a large number of indexed documents."""
     raise NotImplementedError
+
+
+def test_search_increments_total_queries_metric(client, added_doc):
+    """Test that search increments total_queries metric."""
+    raise NotImplementedError
+
+
+def test_search_updates_total_query_time_metric(client, added_doc):
+    """Test that search updates total_query_time_ms metric."""
+    raise NotImplementedError
+
+
+def test_search_updates_last_query_timestamp(client, added_doc):
+    """Test that search updates last_query_at timestamp."""
+    raise NotImplementedError
+
+
+def test_search_result_score_format(client, added_doc):
+    """Test that search result scores are floats."""
+    raise NotImplementedError
+
+
+def test_search_query_with_only_whitespace(client, added_doc):
+    """Test search with query containing only whitespace."""
+    raise NotImplementedError
+
+
+def test_search_with_missing_query_field(client):
+    """Test that search request without 'query' field returns 422."""
+    raise NotImplementedError
+
+
+def test_search_with_top_k_exceeding_index_size(client, added_doc):
+    """Test search with top_k larger than number of documents in index."""
+    raise NotImplementedError

@@ -141,3 +141,48 @@ def test_file_upload_pdf_with_special_characters_in_filename(client):
 def test_file_delete_with_special_characters_in_filename(client):
     """Test deleting a file with special characters in filename."""
     raise NotImplementedError
+
+
+def test_file_upload_pdf_extracts_text(client):
+    """Test that PDF upload correctly extracts text content."""
+    raise NotImplementedError
+
+
+def test_file_upload_txt_decodes_utf8(client):
+    """Test that TXT upload correctly decodes UTF-8 content."""
+    raise NotImplementedError
+
+
+def test_file_upload_increments_files_uploaded_metric(client):
+    """Test that file upload increments files_uploaded metric."""
+    raise NotImplementedError
+
+
+def test_file_upload_increments_chunks_created_metric(client):
+    """Test that file upload increments chunks_created metric."""
+    raise NotImplementedError
+
+
+def test_file_delete_updates_deleted_docs_metric(client):
+    """Test that file deletion updates docs_deleted metric."""
+    raise NotImplementedError
+
+
+def test_file_upload_response_contains_status(client):
+    """Test that upload response contains 'status' field."""
+    raise NotImplementedError
+
+
+def test_file_upload_response_contains_filename(client):
+    """Test that upload response contains filename."""
+    raise NotImplementedError
+
+
+def test_file_delete_response_contains_status(client):
+    """Test that delete response contains 'status' field."""
+    raise NotImplementedError
+
+
+def test_file_upload_with_case_variant_extension(client):
+    """Test uploading files with .PDF or .TXT (uppercase) extension."""
+    raise NotImplementedError
