@@ -238,23 +238,31 @@ if has_source != has_chunk_index:
 ## Screenshots
 
 ### **API Documentation (Swagger UI)**
+
+**TODO**
 <!-- Screenshot: http://localhost:3001/docs -->
 <!-- Should show: All endpoints organized by category with request/response schemas -->
 
 ### **Search Results**
+
+**TODO**
 <!-- Screenshot: POST /search response -->
 <!-- Should show: JSON response with query, results array, similarity scores, metadata -->
 
 ### **Metrics Dashboard**
+
+**TODO**
 <!-- Screenshot: GET /metrics response -->
 <!-- Should show: Comprehensive metrics including performance, usage, memory, timestamps -->
 
 ### **File Upload Flow**
+
+**TODO**
 <!-- Screenshot: POST /file/upload response -->
 <!-- Should show: File uploaded, chunks created, document IDs returned -->
 
 ---
-
+2
 ## Getting Started
 
 ### **Prerequisites**
@@ -273,7 +281,7 @@ cd vectorforge
 
 2. **Install dependencies**
 
-**Using uv (recommended):**
+Using uv (recommended):
 ```bash
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -285,7 +293,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv sync
 ```
 
-**Using pip:**
+Using pip:
 ```bash
 cd python
 python -m venv .venv
@@ -513,6 +521,7 @@ for result in results:
 
 ## Development Process
 
+**TODO: Fill in with dev challenges, learnings, interesting bugs/edge cases discovered, performance optimization insights, etc.**
 <!-- 
 Fill in with your experience:
 - What challenges did you face during development?
@@ -522,12 +531,11 @@ Fill in with your experience:
 - Performance optimization insights?
 -->
 
-**TODO**
-
 ---
 
 ## Known Limitations & Future Improvements
 
+**TODO: Fill in with current limitations, performance improvements, and scalability considerations**
 <!-- 
 Fill in with:
 - Current limitations you're aware of
@@ -535,8 +543,6 @@ Fill in with:
 - Performance improvements on the roadmap
 - Scalability considerations
 -->
-
-**TODO**
 
 ### Potential Enhancements:
 - [ ] Support for more file formats (DOCX, HTML, Markdown)
@@ -583,5 +589,5 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ---
 
 <div align="center">
-  <strong>Built using Python and FastAPI</strong>
+  <strong>VectorForge - Built using Python and FastAPI</strong>
 </div>
