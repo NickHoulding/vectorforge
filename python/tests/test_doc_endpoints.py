@@ -67,6 +67,7 @@ def test_doc_get_returns_matching_content(client, sample_doc):
     """Test that retrieved document content matches original."""
     add_response = client.post("/doc/add", json=sample_doc)
     doc_id = add_response.json()["id"]
+    
     get_response = client.get(f"/doc/{doc_id}")
     data = get_response.json()
     assert data["content"] == sample_doc["content"]
@@ -128,6 +129,7 @@ def test_doc_delete_removes_from_index(client, added_doc):
     """Test that deleted document is no longer retrievable."""
     doc_id = added_doc["id"]
     client.delete(f"/doc/{doc_id}")
+
     get_response = client.get(f"/doc/{doc_id}")
     assert get_response.status_code == 404
 
@@ -219,6 +221,7 @@ def test_doc_get_deleted_document(client, added_doc):
     """Test that getting a deleted document returns 404."""
     response = client.delete(f"/doc/{added_doc['id']}")
     assert response.status_code == 200
+
     response = client.get(f"/doc/{added_doc['id']}")
     assert response.status_code == 404
 
@@ -226,10 +229,10 @@ def test_doc_get_deleted_document(client, added_doc):
 
 def test_doc_delete_same_document_twice(client, added_doc):
     """Test that deleting the same document twice returns 404 on second attempt."""
-    doc_id = added_doc["id"]
-    response = client.delete(f"/doc/{doc_id}")
+    response = client.delete(f"/doc/{added_doc['id']}")
     assert response.status_code == 200
-    response = client.delete(f"/doc/{doc_id}")
+
+    response = client.delete(f"/doc/{added_doc['id']}")
     assert response.status_code == 404
 
 
@@ -490,3 +493,161 @@ def test_doc_add_metadata_with_boolean_values(client, sample_doc):
     sample_doc["metadata"]["is_active"] = True
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
+
+
+def test_doc_add_with_very_large_metadata(client, sample_doc):
+    """Test document with extremely large metadata object."""
+    sample_doc["metadata"]["large_field"] = "x" * 100_000
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+
+def test_doc_add_with_deeply_nested_metadata(client, sample_doc):
+    """Test metadata with deep nesting (10+ levels)."""
+    nested = {"level": {}}
+    current = nested["level"]
+
+    for i in range(10):
+        current[f"level{i}"] = {}
+        current = current[f"level{i}"]
+    
+    sample_doc["metadata"]["nested"] = nested
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+
+def test_doc_add_with_newlines_and_tabs(client, sample_doc):
+    """Test content with newlines, tabs, and other whitespace."""
+    sample_doc["content"] = "Line 1\nLine 2\tTabbed\r\nWindows newline"
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+    doc_id = response.json()["id"]
+    get_response = client.get(f"/doc/{doc_id}")
+    assert get_response.json()["content"] == sample_doc["content"]
+
+
+def test_doc_add_with_only_spaces(client, sample_doc):
+    """Test content with only space characters (not empty string)."""
+    sample_doc["content"] = "     "
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 400
+
+
+def test_doc_add_with_control_characters(client, sample_doc):
+    """Test content with control characters."""
+    sample_doc["content"] = "Hello\x00World\x01Test"
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+
+def test_doc_get_with_special_characters_in_id(client):
+    """Test GET with special characters that might break routing."""
+    special_ids = [
+        "../../../etc/passwd",
+        "id%20with%20spaces",
+        "id/with/slashes",
+        "id?with=query",
+    ]
+    for special_id in special_ids:
+        response = client.get(f"/doc/{special_id}")
+        assert response.status_code == 404
+
+
+def test_doc_get_with_very_long_id(client):
+    """Test GET with extremely long ID string."""
+    long_id = "a" * 10_000
+    response = client.get(f"/doc/{long_id}")
+    assert response.status_code == 404
+
+
+def test_doc_add_preserves_order_of_metadata_keys(client, sample_doc):
+    """Test that metadata key order is preserved (if using Python 3.7+)."""
+    sample_doc["metadata"] = {
+        "z_field": "last",
+        "a_field": "first",
+        "m_field": "middle"
+    }
+    response = client.post("/doc/add", json=sample_doc)
+    doc_id = response.json()["id"]
+    
+    get_response = client.get(f"/doc/{doc_id}")
+    metadata_keys = list(get_response.json()["metadata"].keys())
+    expected_keys = list(sample_doc["metadata"].keys())
+    assert metadata_keys == expected_keys
+
+
+def test_doc_add_with_missing_metadata_field(client):
+    """Test that request without 'metadata' field entirely is handled."""
+    doc_without_metadata = {"content": "Test content"}
+    response = client.post("/doc/add", json=doc_without_metadata)
+    assert response.status_code == 201
+
+
+def test_doc_add_with_extra_unknown_fields(client, sample_doc):
+    """Test that extra fields in request are ignored or rejected."""
+    sample_doc["unknown_field"] = "should be ignored"
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+
+def test_doc_get_after_index_compaction(client, sample_doc):
+    """Test document retrieval after index compaction."""
+    doc_ids = []
+    for i in range(10):
+        resp = client.post("/doc/add", json={**sample_doc, "content": f"Doc {i}"})
+        doc_ids.append(resp.json()["id"])
+    
+    for doc_id in doc_ids[:3]:
+        client.delete(f"/doc/{doc_id}")
+    
+    for doc_id in doc_ids[3:]:
+        response = client.get(f"/doc/{doc_id}")
+        assert response.status_code == 200
+
+
+def test_doc_operations_update_all_relevant_metrics(client, sample_doc):
+    """Test that doc operations update metrics comprehensively."""
+    initial_metrics = client.get("/metrics").json()
+    add_resp = client.post("/doc/add", json=sample_doc)
+    doc_id = add_resp.json()["id"]
+    
+    after_add = client.get("/metrics").json()
+    assert after_add["usage"]["documents_added"] == initial_metrics["usage"]["documents_added"] + 1
+    assert after_add["index"]["total_documents"] > initial_metrics["index"]["total_documents"]
+    
+    client.delete(f"/doc/{doc_id}")
+    after_delete = client.get("/metrics").json()
+    assert after_delete["usage"]["documents_deleted"] == initial_metrics["usage"]["documents_deleted"] + 1
+
+
+def test_doc_add_metadata_with_array_values(client, sample_doc):
+    """Test that metadata can contain array values."""
+    sample_doc["metadata"]["tags"] = ["python", "api", "testing"]
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+
+def test_doc_add_metadata_with_numeric_values(client, sample_doc):
+    """Test that metadata can contain integers and floats."""
+    sample_doc["metadata"]["count"] = 42
+    sample_doc["metadata"]["score"] = 3.14
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+
+def test_doc_delete_increments_deleted_count(client, added_doc):
+    """Test that delete increments deleted_documents metric."""
+    initial_metrics = client.get("/metrics").json()
+    initial_deleted = initial_metrics["usage"]["documents_deleted"]
+    
+    client.delete(f"/doc/{added_doc['id']}")
+    
+    updated_metrics = client.get("/metrics").json()
+    assert updated_metrics["usage"]["documents_deleted"] == initial_deleted + 1
+
+
+def test_doc_get_with_numeric_id(client):
+    """Test GET with pure numeric ID."""
+    response = client.get("/doc/12345")
+    assert response.status_code == 404
