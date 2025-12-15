@@ -7,6 +7,10 @@ from fastapi.testclient import TestClient
 from vectorforge.api import app, engine
 
 
+# =============================================================================
+# Fixtures
+# =============================================================================
+
 @pytest.fixture
 def client():
     """Create fresh TestClient for each test.
@@ -30,6 +34,18 @@ def reset_engine():
     engine.doc_id_to_index.clear()
     engine.deleted_docs.clear()
     yield
+
+
+@pytest.fixture
+def sample_doc():
+    """Reusable sample document data"""
+    return {
+        "content": "This is a test document content",
+        "metadata": {
+            "source_file": "test.txt",
+            "chunk_index": 0
+        }
+    }
 
 
 @pytest.fixture

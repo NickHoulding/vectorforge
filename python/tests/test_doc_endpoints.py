@@ -3,18 +3,6 @@
 import pytest
 
 
-@pytest.fixture
-def sample_doc():
-    """Reusable sample document data"""
-    return {
-        "content": "This is a test document content",
-        "metadata": {
-            "source_file": "test.txt",
-            "author": "test_user"
-        }
-    }
-
-
 # =============================================================================
 # Document Endpoint Tests
 # =============================================================================
@@ -40,7 +28,6 @@ def test_doc_add_empty_metadata(client, sample_doc):
     sample_doc["metadata"] = {}
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
-    
     response_data = response.json()
     assert "id" in response_data
     assert response_data["status"] == "indexed"
@@ -77,7 +64,6 @@ def test_doc_get_returns_matching_content(client, sample_doc):
     """Test that retrieved document content matches original."""
     add_response = client.post("/doc/add", json=sample_doc)
     doc_id = add_response.json()["id"]
-    
     get_response = client.get(f"/doc/{doc_id}")
     data = get_response.json()
     assert data["content"] == sample_doc["content"]
@@ -87,7 +73,6 @@ def test_doc_get_preserves_metadata(client, sample_doc):
     """Test that retrieved document preserves metadata."""
     add_response = client.post("/doc/add", json=sample_doc)
     doc_id = add_response.json()["id"]
-    
     get_response = client.get(f"/doc/{doc_id}")
     metadata = get_response.json()["metadata"]
     assert metadata["source_file"] == "test.txt"
@@ -139,7 +124,6 @@ def test_doc_delete_removes_from_index(client, added_doc):
     """Test that deleted document is no longer retrievable."""
     doc_id = added_doc["id"]
     client.delete(f"/doc/{doc_id}")
-    
     get_response = client.get(f"/doc/{doc_id}")
     assert get_response.status_code == 404
 
@@ -152,27 +136,37 @@ def test_doc_delete_returns_404_when_not_found(client):
 
 def test_doc_add_metadata_with_only_source_file(client, sample_doc):
     """Test that metadata with only 'source_file' (missing 'chunk_index') returns 400."""
-    raise NotImplementedError
+    del sample_doc["chunk_index"]
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 400
 
 
 def test_doc_add_metadata_with_only_chunk_index(client, sample_doc):
     """Test that metadata with only 'chunk_index' (missing 'source_file') returns 400."""
-    raise NotImplementedError
+    del sample_doc["source_file"]
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 400
 
 
 def test_doc_add_metadata_with_invalid_source_file_type(client, sample_doc):
     """Test that 'source_file' must be a string, not another type (e.g., integer)."""
-    raise NotImplementedError
+    sample_doc["source_file"] = 0
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 400
 
 
 def test_doc_add_metadata_with_invalid_chunk_index_type(client, sample_doc):
     """Test that 'chunk_index' must be an integer, not another type (e.g., string)."""
-    raise NotImplementedError
+    sample_doc["chunk_index"] = "invalid_type"
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 400
 
 
 def test_doc_add_with_special_characters_in_content(client, sample_doc):
     """Test that documents with special characters in content are accepted."""
-    raise NotImplementedError
+    sample_doc["content"] = "!@#$%^&*()_~-=+,.<>/?;:\"\'[]|\\"
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
 
 
 def test_doc_add_with_unicode_content(client, sample_doc):
