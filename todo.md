@@ -1,0 +1,6 @@
+- finish implementing comprehensive test suite
+- add parameter to /index/load endpoint to specify where to load from
+- add search filtering capability based on metadata, etc.
+- make sure all test cases pass
+- benchmark pure python implementation
+- optimize with C++/python hybrid + HNSW (Hierarchical Navigable Small World) search implementation
