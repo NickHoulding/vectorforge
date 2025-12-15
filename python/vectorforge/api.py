@@ -111,7 +111,7 @@ async def upload_file(file: UploadFile):
             status="indexed"
         )
     
-    except HTTPException as e:
+    except HTTPException:
         raise
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -156,7 +156,7 @@ def delete_file(filename: str):
             doc_ids=deletion_metrics["doc_ids"],
         )
     
-    except HTTPException as e:
+    except HTTPException:
         raise
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -205,7 +205,7 @@ def get_doc(doc_id: str):
             metadata=doc["metadata"]
         )
     
-    except HTTPException as e:
+    except HTTPException:
         raise
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -234,11 +234,6 @@ def add_doc(doc: DocumentInput):
         HTTPException: 500 if indexing fails
     """
     try:
-        if not doc.metadata:
-            doc.metadata = {
-                "chunk_index": 0
-            }
-
         doc_id = engine.add_doc(
             content=doc.content,
             metadata=doc.metadata
@@ -249,6 +244,11 @@ def add_doc(doc: DocumentInput):
             status="indexed"
         )
 
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Malformed data: {e}"
+        )
     except Exception as e:
         print(f"Unexpected error: {e}")
         raise HTTPException(
@@ -289,7 +289,7 @@ def delete_doc(doc_id: str):
             status="deleted"
         )
     
-    except HTTPException as e:
+    except HTTPException:
         raise
     except Exception as e:
         print(f"Unexpected error: {e}")

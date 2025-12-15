@@ -482,11 +482,29 @@ class VectorEngine:
         Returns:
             Unique document ID (UUID v4) for the newly added document.
         """
+        if not content:
+            raise ValueError("Document content cannot be empty")
+        if len(content) > 10_000:
+            raise ValueError("Document content is too long")
+        
+        if metadata is None:
+            metadata = {}
+
+        has_source = "source_file" in metadata
+        has_chunk_index = "chunk_index" in metadata
+
+        if has_source != has_chunk_index:
+            raise ValueError("Metadata must contain both 'source_file' and 'chunk_index' or neither")
+        if not isinstance(metadata["source_file"], str):
+            raise ValueError("'source_file' must be a string")
+        if not isinstance(metadata["chunk_index"], int):
+            raise ValueError("'chunk_index' must be an int")
+
         doc_id: str = str(uuid.uuid4())
 
         self.documents[doc_id] = {
             "content": content, 
-            "metadata": metadata or {}
+            "metadata": metadata
         }
 
         embedding: np.ndarray = self.model.encode(content, convert_to_numpy=True)
