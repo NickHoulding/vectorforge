@@ -11,19 +11,19 @@
 
 ## Table of Contents
 
-- [Problem Statement](#-problem-statement)
-- [What is VectorForge?](#-what-is-vectorforge)
-- [Demo](#-demo)
-- [Tech Stack](#-tech-stack)
-- [Key Features](#-key-features)
-- [Architecture](#-architecture)
-- [Screenshots](#-screenshots)
-- [Getting Started](#-getting-started)
-- [Usage](#-usage)
-- [Development Process](#-development-process)
-- [Known Limitations](#-known-limitations--future-improvements)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [Problem Statement](#problem-statement)
+- [What is VectorForge?](#what-is-vectorforge)
+- [Demo](#demo)
+- [Tech Stack](#tech-stack)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Screenshots](#screenshots)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Development Process](#development-process)
+- [Known Limitations](#known-limitations--future-improvements)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
