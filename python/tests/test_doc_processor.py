@@ -1,7 +1,9 @@
 """Tests for document processing utility functions"""
 
-import pytest
 from io import BytesIO
+
+import pytest
+
 from fastapi import UploadFile
 
 

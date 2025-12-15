@@ -1,13 +1,19 @@
 """Tests for file processing and management endpoints"""
 
-import pytest
 from io import BytesIO
 
+import pytest
+
+
+# =============================================================================
+# File Endpoint Tests
+# =============================================================================
 
 def test_file_list_returns_200(client):
     """Test that GET /file/list returns 200 status."""
     response = client.get("/file/list")
     assert response.status_code == 200
+
 
 def test_file_list_returns_filenames_list(client):
     """Test that file list response contains filenames list."""
@@ -16,10 +22,6 @@ def test_file_list_returns_filenames_list(client):
     assert "filenames" in data
     assert isinstance(data["filenames"], list)
 
-
-# =============================================================================
-# Additional File Endpoint Tests
-# =============================================================================
 
 def test_file_list_empty_when_no_files_uploaded(client):
     """Test that file list is empty when no files have been uploaded."""

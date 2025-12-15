@@ -16,6 +16,7 @@ def client():
     """
     return TestClient(app)
 
+
 @pytest.fixture(autouse=True)
 def reset_engine():
     """Clear the engine state before each test.
@@ -29,6 +30,7 @@ def reset_engine():
     engine.doc_id_to_index.clear()
     engine.deleted_docs.clear()
     yield
+
 
 @pytest.fixture
 def added_doc(client):

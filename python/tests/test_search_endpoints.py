@@ -3,16 +3,22 @@
 import pytest
 
 
+# =============================================================================
+# Search Endpoint Tests
+# =============================================================================
+
 def test_search_returns_200(client, added_doc):
     """Test that POST /search returns 200 status."""
     response = client.post("/search", json={"query": "test document"})
     assert response.status_code == 200
+
 
 def test_search_returns_query_echo(client, added_doc):
     """Test that search response includes original query."""
     response = client.post("/search", json={"query": "test document"})
     data = response.json()
     assert data["query"] == "test document"
+
 
 def test_search_returns_results_list(client, added_doc):
     """Test that search response contains results list."""
@@ -21,6 +27,7 @@ def test_search_returns_results_list(client, added_doc):
     assert "results" in data
     assert isinstance(data["results"], list)
 
+
 def test_search_returns_relevant_results(client, added_doc):
     """Test that search returns result count."""
     response = client.post("/search", json={"query": "test document"})
@@ -28,10 +35,6 @@ def test_search_returns_relevant_results(client, added_doc):
     assert "count" in data
     assert data["count"] >= 0
 
-
-# =============================================================================
-# Additional Search Endpoint Tests
-# =============================================================================
 
 def test_search_with_empty_index_returns_empty_results(client):
     """Test that searching an empty index returns empty results."""
