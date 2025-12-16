@@ -63,3 +63,51 @@ def added_doc(client):
     })
     
     return response.json()
+
+
+@pytest.fixture
+def multiple_added_docs(client):
+    """Add multiple documents with varied content for similarity testing.
+    
+    Creates 20 documents with diverse topics to ensure different similarity
+    scores when searching. Useful for testing score ordering, top_k, etc.
+    
+    Returns:
+        list[str]: List of document IDs
+    """
+    varied_content = [
+        "Python is a high-level programming language used for web development",
+        "Machine learning algorithms can predict patterns in data",
+        "The solar system contains eight planets orbiting the sun",
+        "Classical music compositions from the baroque period are timeless",
+        "Healthy eating habits include consuming fruits and vegetables daily",
+        "Climate change is affecting global weather patterns significantly",
+        "Ancient civilizations built impressive architectural structures",
+        "Quantum physics explores the behavior of subatomic particles",
+        "Professional sports require rigorous training and dedication",
+        "Modern art movements challenged traditional painting techniques",
+        "Database systems store and organize large amounts of information",
+        "Shakespeare wrote numerous plays during the Elizabethan era",
+        "Volcanic eruptions can dramatically alter landscapes and ecosystems",
+        "Economic theories attempt to explain market behavior and trends",
+        "Photography techniques have evolved with digital technology",
+        "Marine biology studies organisms living in ocean environments",
+        "Renaissance architecture featured symmetry and classical elements",
+        "Chemical reactions involve the transformation of molecular structures",
+        "Jazz music originated in African American communities",
+        "Cybersecurity protects computer systems from malicious attacks"
+    ]
+    
+    doc_ids = []
+    for i, content in enumerate(varied_content):
+        response = client.post("/doc/add", json={
+            "content": content,
+            "metadata": {
+                "topic_id": i,
+                "source_file": f"doc_{i}.txt",
+                "chunk_index": 0
+            }
+        })
+        doc_ids.append(response.json()["id"])
+    
+    return doc_ids

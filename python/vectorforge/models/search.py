@@ -13,7 +13,7 @@ class SearchQuery(BaseModel):
         top_k: Maximum number of results to return (1-100, default: 10).
         filters: Optional metadata filters as key-value pairs for narrowing results.
     """
-    query: str = Field(..., min_length=1, description="Search query text")
+    query: str = Field(..., min_length=1, max_length=2000, description="Search query text")
     top_k: int = Field(10, ge=1, le=100, description="Number of results to return")
     filters: dict | None = Field(default=None, description="Optional metadata filters")
 

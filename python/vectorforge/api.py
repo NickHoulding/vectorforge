@@ -245,6 +245,7 @@ def add_doc(doc: DocumentInput):
         )
 
     except ValueError as e:
+        print(f"ValueError: {e}")
         raise HTTPException(
             status_code=400,
             detail=f"Malformed data: {e}"

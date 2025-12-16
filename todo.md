@@ -1,4 +1,5 @@
 - finish implementing comprehensive test suite
+- Implement configuration class and use instead of preset constants
 - add parameter to /index/load endpoint to specify where to load from
 - add search filtering capability based on metadata, etc.
 - make sure all test cases pass
