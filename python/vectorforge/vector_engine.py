@@ -376,10 +376,21 @@ class VectorEngine:
         """
         if not query.strip():
             raise ValueError("Search query cannot be empty")
-        if not self.embeddings:
-            return []
 
         start_time = time.perf_counter()
+        self.metrics.total_queries += 1
+
+        if not self.embeddings:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            self.metrics.total_query_time_ms += elapsed_ms
+            self.metrics.last_query_at = datetime.now().isoformat()
+            self.metrics.query_times.append(elapsed_ms)
+
+            if len(self.metrics.query_times) > self.metrics.max_query_history:
+                self.metrics.query_times.popleft()
+
+            return []
+
         query_embedding: np.ndarray = self.model.encode(
             sentences=query, 
             convert_to_numpy=True
@@ -417,7 +428,6 @@ class VectorEngine:
             ))
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
-        self.metrics.total_queries += 1
         self.metrics.total_query_time_ms += elapsed_ms
         self.metrics.last_query_at = datetime.now().isoformat()
         
