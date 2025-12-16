@@ -341,6 +341,12 @@ def search(search_params: SearchQuery):
             count=len(results)
         )
     
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Malformed data: {e}"
+        )
     except Exception as e:
         print(f"Unexpected error: {e}")
         raise HTTPException(

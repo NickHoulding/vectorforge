@@ -374,11 +374,12 @@ class VectorEngine:
             List of SearchResult objects sorted by similarity score in
             descending order. Returns empty list if index is empty.
         """
-        start_time = time.perf_counter()
-        
+        if not query.strip():
+            raise ValueError("Search query cannot be empty")
         if not self.embeddings:
             return []
 
+        start_time = time.perf_counter()
         query_embedding: np.ndarray = self.model.encode(
             sentences=query, 
             convert_to_numpy=True

@@ -103,7 +103,6 @@ def multiple_added_docs(client):
         response = client.post("/doc/add", json={
             "content": content,
             "metadata": {
-                "topic_id": i,
                 "source_file": f"doc_{i}.txt",
                 "chunk_index": 0
             }

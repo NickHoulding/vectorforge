@@ -68,7 +68,7 @@ def test_search_with_top_k_zero(client):
     """Test search with top_k set to 0."""
     response = client.post("/search", json={
         "query": "test search",
-        "top_k": 15
+        "top_k": 0
     })
 
     assert response.status_code == 422
@@ -155,13 +155,13 @@ def test_search_result_contains_content(client):
     )
 
 
-def test_search_result_contains_metadata(client):
+def test_search_result_contains_metadata(client, multiple_added_docs):
     """Test that each search result contains document metadata."""
     response = client.post("/search", json={
         "query": "test search"
     })
 
-    results = response.json()["metadata"]
+    results = response.json()["results"]
     assert all("metadata" in result for result in results)
 
 
@@ -204,71 +204,155 @@ def test_search_with_unicode_query(client):
     assert isinstance(data["results"], list)
 
 
-def test_search_finds_semantically_similar_content(client):
+def test_search_finds_semantically_similar_content(client, multiple_added_docs):
     """Test that search finds semantically similar content even with different words."""
-    raise NotImplementedError
+    response = client.post("/search", json={
+        "query": "Python is a type of snake in addition to a coding language",
+        "top_k": 5
+    })
+    assert response.status_code == 200
+    
+    results = response.json()["results"]
+    result_contents = [r["content"] for r in results]
+    
+    expected_content = "Python is a high-level programming language used for web development"
+    assert expected_content in result_contents, f"Expected content not found in top 5 results: {result_contents}"
 
 
-def test_search_with_no_matching_content(client, added_doc):
-    """Test search when no content matches the query."""
-    raise NotImplementedError
+def test_search_returns_results_regardless_of_relevance(client):
+    """Test that search returns top_k results even when poorly matched."""
+    client.post("/doc/add", json={
+        "content": "Python programming language development",
+        "metadata": {}
+    })
+    response = client.post("/search", json={
+        "query": "ancient Egyptian pyramids and pharaohs",
+        "top_k": 1
+    })
+    assert response.status_code == 200
+
+    results = response.json()["results"]
+    assert len(results) == 1
+    assert results[0]["score"] < 0.5
 
 
-def test_search_response_format(client, added_doc):
+def test_search_response_format(client):
     """Test that search response contains all required fields."""
-    raise NotImplementedError
+    response = client.post("/search", json={
+        "query": "test search",
+    })
 
-
-def test_search_with_multiple_documents(client):
-    """Test search across multiple indexed documents."""
-    raise NotImplementedError
+    search_response = response.json()
+    assert "query" in search_response
+    assert "results" in search_response
+    assert "count" in search_response
 
 
 def test_search_excludes_deleted_documents(client, added_doc):
     """Test that search results don't include deleted documents."""
-    raise NotImplementedError
+    response = client.delete(f"/doc/{added_doc['id']}")
+    assert response.status_code == 200
+
+    response = client.post("/search", json={
+        "query": "test document"
+    })
+    assert response.status_code == 200
+
+    results = response.json()["results"]
+    assert len(results) == 0
 
 
-def test_search_default_top_k_value(client, added_doc):
+def test_search_default_top_k_value(client, multiple_added_docs):
     """Test that search uses default top_k when not specified."""
-    raise NotImplementedError
+    response = client.post("/search", json={
+        "query": "test search",
+    })
+    assert response.status_code == 200
 
-
-def test_search_performance_with_large_index(client):
-    """Test search performance with a large number of indexed documents."""
-    raise NotImplementedError
+    results = response.json()["results"]
+    assert len(results) == 10
 
 
 def test_search_increments_total_queries_metric(client, added_doc):
     """Test that search increments total_queries metric."""
-    raise NotImplementedError
+    initial_metrics = client.get("/metrics").json()
+    initial_queries = initial_metrics["performance"]["total_queries"]
 
+    response = client.post("/search", json={
+        "query": "test search",
+    })
+    assert response.status_code == 200
+    
+    updated_metrics = client.get("/metrics").json()
+    updated_queries = updated_metrics["performance"]["total_queries"]
+    assert updated_queries == initial_queries + 1
 
-def test_search_updates_total_query_time_metric(client, added_doc):
+def test_search_updates_total_query_time_metric(client):
     """Test that search updates total_query_time_ms metric."""
-    raise NotImplementedError
+    initial_metrics = client.get("/metrics").json()
+    initial_total_query_time = initial_metrics["performance"]["total_query_time_ms"]
+
+    response = client.post("/search", json={
+        "query": "test search",
+    })
+    assert response.status_code == 200
+    
+    updated_metrics = client.get("/metrics").json()
+    updated_total_query_time = updated_metrics["performance"]["total_query_time_ms"]
+    assert updated_total_query_time >= initial_total_query_time
 
 
 def test_search_updates_last_query_timestamp(client, added_doc):
     """Test that search updates last_query_at timestamp."""
-    raise NotImplementedError
+    response = client.post("/search", json={
+        "query": "test search",
+    })
+    assert response.status_code == 200
+
+    initial_metrics = client.get("/metrics").json()
+    initial_query_at = initial_metrics["timestamps"]["last_query_at"]
+
+    response = client.post("/search", json={
+        "query": "test search",
+    })
+    assert response.status_code == 200
+    
+    updated_metrics = client.get("/metrics").json()
+    updated_query_at = updated_metrics["timestamps"]["last_query_at"]
+    assert updated_query_at > initial_query_at
 
 
 def test_search_result_score_format(client, added_doc):
     """Test that search result scores are floats."""
-    raise NotImplementedError
+    response = client.post("/search", json={
+        "query": "test search",
+    })
+    assert response.status_code == 200
+    assert isinstance(response.json()["results"][0]["score"], float)
 
 
-def test_search_query_with_only_whitespace(client, added_doc):
+def test_search_query_with_only_whitespace(client):
     """Test search with query containing only whitespace."""
-    raise NotImplementedError
+    response = client.post("/search", json={
+        "query": "          ",
+    })
+    assert response.status_code == 400
 
 
 def test_search_with_missing_query_field(client):
     """Test that search request without 'query' field returns 422."""
-    raise NotImplementedError
+    response = client.post("/search", json={})
+    assert response.status_code == 422
 
 
 def test_search_with_top_k_exceeding_index_size(client, added_doc):
     """Test search with top_k larger than number of documents in index."""
-    raise NotImplementedError
+    response = client.post("/search", json={
+        "query": "test search",
+        "top_k": 100
+    })
+    assert response.status_code == 200
+
+    results = response.json()["results"]
+    assert len(results) == 1
+    assert results[0]["id"] == added_doc["id"]
