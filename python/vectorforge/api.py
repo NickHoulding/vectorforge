@@ -330,13 +330,14 @@ def search(search_params: SearchQuery):
         ```
     """
     try:
+        query = search_params.query.strip()
         results: list[SearchResult] = engine.search(
-            query=search_params.query, 
+            query=query, 
             top_k=search_params.top_k
         )
 
         return SearchResponse(
-            query=search_params.query,
+            query=query,
             results=results,
             count=len(results)
         )

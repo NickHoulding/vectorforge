@@ -49,7 +49,6 @@ def test_search_respects_small_top_k(client, multiple_added_docs):
         "query": "test search",
         "top_k": 5
     })
-    
     assert len(response.json()["results"]) == 5
 
 
@@ -59,7 +58,6 @@ def test_search_respects_large_top_k(client, multiple_added_docs):
         "query": "test search",
         "top_k": 15
     })
-    
     assert len(response.json()["results"]) == 15
 
 
@@ -70,7 +68,6 @@ def test_search_with_top_k_zero(client):
         "query": "test search",
         "top_k": 0
     })
-
     assert response.status_code == 422
 
 
@@ -80,7 +77,6 @@ def test_search_with_negative_top_k(client):
         "query": "test search",
         "top_k": -1
     })
-
     assert response.status_code == 422
 
 
@@ -89,7 +85,6 @@ def test_search_with_empty_query(client):
     response = client.post("/search", json={
         "query": ""
     })
-
     assert response.status_code == 422
 
 
@@ -98,7 +93,6 @@ def test_search_with_very_long_query(client):
     response = client.post("/search", json={
         "query": "a" * 2001
     })
-
     assert response.status_code == 422
 
 
@@ -107,7 +101,6 @@ def test_search_with_reasonable_long_query(client):
     response = client.post("/search", json={
         "query": "a" * 2000
     })
-
     assert response.status_code == 200
 
 
@@ -356,3 +349,102 @@ def test_search_with_top_k_exceeding_index_size(client, added_doc):
     results = response.json()["results"]
     assert len(results) == 1
     assert results[0]["id"] == added_doc["id"]
+
+
+def test_search_query_with_mixed_case(client, sample_doc):
+    """Test that search is case-insensitive (if applicable)."""
+    sample_doc["content"] = "python programming"
+    response = client.post("/doc/add", json=sample_doc)
+    assert response.status_code == 201
+
+    response = client.post("/search", json={
+        "query": "Python Programming"
+    })
+    assert response.status_code == 200
+
+    results = response.json()["results"]
+    assert results[0]["content"] == sample_doc["content"]
+
+
+def test_search_query_strips_leading_trailing_whitespace(client, added_doc):
+    """Test that queries with leading/trailing whitespace are handled."""
+    response1 = client.post("/search", json={"query": "test"})
+    assert response1.status_code == 200
+    
+    response2 = client.post("/search", json={"query": "  test  "})
+    assert response2.status_code == 200
+
+    response1_data = response1.json()
+    response2_data = response2.json()
+    assert response1_data["query"] == response2_data["query"]
+    assert response1_data["results"] == response2_data["results"]
+
+
+def test_search_scores_are_between_zero_and_one(client, multiple_added_docs):
+    """Test that all similarity scores are in valid range [0, 1]."""
+    response = client.post("/search", json={"query": "test"})
+    results = response.json()["results"]
+
+    for result in results:
+        assert 0.0 <= result["score"] <= 1.0
+
+
+def test_search_returns_consistent_results_on_repeat(client, added_doc):
+    """Test that repeated searches with same query return consistent results."""
+    response1 = client.post("/search", json={"query": "test", "top_k": 5})
+    response2 = client.post("/search", json={"query": "test", "top_k": 5})
+    assert response1.json()["results"] == response2.json()["results"]
+
+
+def test_search_with_top_k_one(client, multiple_added_docs):
+    """Test search with minimum valid top_k value."""
+    response = client.post("/search", json={"query": "test", "top_k": 1})
+    assert len(response.json()["results"]) == 1
+
+
+def test_search_with_too_large_top_k(client, added_doc):
+    """Test search with extremely large top_k value."""
+    response = client.post("/search", json={
+        "query": "test", 
+        "top_k": 101
+    })
+    assert response.status_code == 422
+
+
+def test_search_result_content_is_complete(client):
+    """Test that returned content matches original document content exactly."""
+    content = "This is a specific test document with unique content."
+    add_response = client.post("/doc/add", json={
+        "content": content, 
+        "metadata": {}
+    })
+    doc_id = add_response.json()["id"]
+    
+    search_response = client.post("/search", json={"query": content})
+    results = search_response.json()["results"]
+    
+    our_result = next(r for r in results if r["id"] == doc_id)
+    assert our_result["content"] == content
+
+
+def test_search_preserves_all_metadata_fields(client):
+    """Test that search results include all original metadata fields."""
+    metadata = {
+        "source_file": "test.txt",
+        "chunk_index": 0,
+        "custom_field": "custom_value",
+        "nested": {"key": "value"}
+    }
+    add_response = client.post("/doc/add", json={
+        "content": "test content",
+        "metadata": metadata
+    })
+    assert add_response.status_code == 201
+    
+    search_response = client.post("/search", json={
+        "query": "test content"
+    })
+    assert search_response.status_code == 200
+
+    result_metadata = search_response.json()["results"][0]["metadata"]
+    assert result_metadata == metadata
