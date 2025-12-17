@@ -4,7 +4,7 @@ import pytest
 
 
 # =============================================================================
-# Index Stats Tests
+# Index Test Fixtures
 # =============================================================================
 
 @pytest.fixture
@@ -22,6 +22,12 @@ def test_index_stats_returns_200(client):
     """Test that GET /index/stats returns 200 status."""
     resp = client.get("/index/stats")
     assert resp.status_code == 200
+
+
+def test_index_stats_returns_status(stats):
+    """Test that index stats includes status."""
+    assert "status" in stats
+    assert isinstance(stats["status"], str)
 
 
 def test_index_stats_returns_total_documents(stats):
@@ -188,24 +194,254 @@ def test_index_build_returns_200(client):
     assert resp.status_code == 200
 
 
-def test_index_build_reconstructs_index(client):
+def test_index_build_reconstructs_index(client, multiple_added_docs):
     """Test that building the index reconstructs it from documents."""
-    raise NotImplementedError
+    for i in range(4):
+        resp = client.delete(f"/doc/{multiple_added_docs[i]}")
+        assert resp.status_code == 200
+    
+    stats_before = client.get("/index/stats").json()
+    assert stats_before["deleted_documents"] == 4
+    assert stats_before["total_embeddings"] == 20
+    
+    resp = client.post("/index/build")
+    assert resp.status_code == 200
+    
+    stats_after = client.get("/index/stats").json()
+    assert stats_after["deleted_documents"] == 0
+    assert stats_after["total_embeddings"] == 16
+    assert stats_after["total_documents"] == 16
+    assert stats_after["deleted_ratio"] == 0.0
+    
+    search_resp = client.post("/search", json={
+        "query": "test",
+        "top_k": 20
+    })
+    results = search_resp.json()["results"]
+    
+    assert len(results) == 16
+    
+    result_ids = [r["id"] for r in results]
+    for i in range(4):
+        assert multiple_added_docs[i] not in result_ids
 
 
-def test_index_build_returns_updated_stats(client):
+def test_index_build_returns_stats_in_response(client, multiple_added_docs):
+    """Test that build response includes updated index stats."""
+    for i in range(2):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    response = client.post("/index/build")
+    data = response.json()
+    
+    assert "total_documents" in data
+    assert "total_embeddings" in data
+    assert "deleted_documents" in data
+    assert data["total_documents"] == 18
+    assert data["deleted_documents"] == 0
+
+
+def test_index_build_returns_updated_stats(client, multiple_added_docs):
     """Test that index build returns updated statistics."""
-    raise NotImplementedError
+    for i in range(2):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    resp = client.get("/index/stats")
+    assert resp.status_code == 200
+    
+    initial_stats = resp.json()
+
+    resp = client.post("/index/build")
+    assert resp.status_code == 200
+
+    resp = client.get("/index/stats")
+    assert resp.status_code == 200
+
+    updated_stats = resp.json()
+    
+    assert initial_stats["total_documents"] == updated_stats["total_documents"] + 2
+    assert initial_stats["total_embeddings"] == updated_stats["total_embeddings"] + 2
+    assert initial_stats["deleted_documents"] == 2
+    assert updated_stats["deleted_documents"] == 0
+    assert initial_stats["deleted_ratio"] == 0.1
+    assert updated_stats["deleted_ratio"] == 0.0
+    assert initial_stats["needs_compaction"] == False
+    assert updated_stats["needs_compaction"] == False
+    assert initial_stats["embedding_dimension"] == 384
+    assert updated_stats["embedding_dimension"] == 384
 
 
 def test_index_build_with_empty_index(client):
     """Test building an index when no documents exist."""
-    raise NotImplementedError
+    resp = client.post("/index/build")
+    assert resp.status_code == 200
 
 
-def test_index_build_after_deletions(client):
-    """Test building index after document deletions."""
-    raise NotImplementedError
+def test_index_build_returns_success_status(client):
+    """Test that build response contains 'success' status."""
+    response = client.post("/index/build")
+    data = response.json()
+    assert "status" in data
+    assert data["status"] == "success"
+
+
+def test_index_build_increments_compactions_metric(client, multiple_added_docs):
+    """Test that building index increments compactions_performed metric."""
+    initial_metrics = client.get("/metrics").json()
+    initial_compactions = initial_metrics["usage"]["compactions_performed"]
+    
+    client.delete(f"/doc/{multiple_added_docs[0]}")
+    client.post("/index/build")
+    
+    updated_metrics = client.get("/metrics").json()
+    updated_compactions = updated_metrics["usage"]["compactions_performed"]
+    
+    assert updated_compactions == initial_compactions + 1
+
+
+def test_index_build_twice_is_idempotent(client, multiple_added_docs):
+    """Test that building twice when no changes doesn't cause issues."""
+    response1 = client.post("/index/build")
+    assert response1.status_code == 200
+    stats1 = client.get("/index/stats").json()
+    
+    response2 = client.post("/index/build")
+    assert response2.status_code == 200
+    stats2 = client.get("/index/stats").json()
+    
+    assert stats1 == stats2
+
+
+def test_index_build_preserves_document_content(client, added_doc):
+    """Test that rebuild doesn't alter document content."""
+    doc_id = added_doc["id"]
+    before_response = client.get(f"/doc/{doc_id}")
+    before_content = before_response.json()["content"]
+    
+    client.post("/index/build")
+    
+    after_response = client.get(f"/doc/{doc_id}")
+    after_content = after_response.json()["content"]
+    
+    assert after_content == before_content
+
+
+def test_index_build_preserves_document_metadata(client, added_doc):
+    """Test that rebuild preserves document metadata."""
+    doc_id = added_doc["id"]
+    before_response = client.get(f"/doc/{doc_id}")
+    before_metadata = before_response.json()["metadata"]
+    
+    client.post("/index/build")
+    
+    after_response = client.get(f"/doc/{doc_id}")
+    after_metadata = after_response.json()["metadata"]
+    
+    assert after_metadata == before_metadata
+
+
+def test_index_build_after_deleting_all_documents(client, multiple_added_docs):
+    """Test rebuilding after all documents are deleted."""
+    for doc_id in multiple_added_docs:
+        client.delete(f"/doc/{doc_id}")
+    
+    response = client.post("/index/build")
+    assert response.status_code == 200
+    
+    stats = client.get("/index/stats").json()
+    assert stats["total_documents"] == 0
+    assert stats["total_embeddings"] == 0
+    assert stats["deleted_documents"] == 0
+
+
+def test_index_build_preserves_search_scores(client, multiple_added_docs):
+    """Test that rebuild doesn't significantly change search result scores."""
+    before_response = client.post("/search", json={
+        "query": "Python programming",
+        "top_k": 5
+    })
+    before_scores = [r["score"] for r in before_response.json()["results"]]
+    
+    client.post("/index/build")
+    
+    after_response = client.post("/search", json={
+        "query": "Python programming",
+        "top_k": 5
+    })
+    after_scores = [r["score"] for r in after_response.json()["results"]]
+    
+    for before, after in zip(before_scores, after_scores):
+        assert abs(before - after) < 0.0001
+
+
+def test_index_build_with_only_deleted_documents(client, multiple_added_docs):
+    """Test building when all documents are marked deleted but still in index."""
+    for doc_id in multiple_added_docs:
+        client.delete(f"/doc/{doc_id}")
+    
+    response = client.post("/index/build")
+    assert response.status_code == 200
+    
+    stats = client.get("/index/stats").json()
+    assert stats["total_documents"] == 0
+    assert stats["total_embeddings"] == 0
+    assert stats["deleted_documents"] == 0
+
+
+def test_index_build_response_structure(client, multiple_added_docs):
+    """Test that build response contains all expected fields."""
+    client.delete(f"/doc/{multiple_added_docs[0]}")
+    
+    response = client.post("/index/build")
+    data = response.json()
+    
+    required_fields = [
+        "status",
+        "total_documents", 
+        "total_embeddings",
+        "deleted_documents",
+        "deleted_ratio",
+        "needs_compaction",
+        "embedding_dimension"
+    ]
+    
+    for field in required_fields:
+        assert field in data
+
+
+def test_index_build_at_compaction_threshold(client, multiple_added_docs):
+    """Test building when deleted ratio is exactly at threshold."""
+    for i in range(5):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    stats_before = client.get("/index/stats").json()
+    assert stats_before["deleted_ratio"] == 0.25
+    
+    response = client.post("/index/build")
+    assert response.status_code == 200
+    
+    stats_after = client.get("/index/stats").json()
+    assert stats_after["total_documents"] == 15
+    assert stats_after["deleted_documents"] == 0
+
+
+def test_index_build_updates_index_mappings(client, multiple_added_docs):
+    """Test that build correctly updates internal index-to-doc-id mappings."""
+    deleted_ids = multiple_added_docs[:3]
+    for doc_id in deleted_ids:
+        client.delete(f"/doc/{doc_id}")
+    
+    client.post("/index/build")
+    
+    remaining_ids = multiple_added_docs[3:]
+    for doc_id in remaining_ids:
+        response = client.get(f"/doc/{doc_id}")
+        assert response.status_code == 200
+        assert response.json()["id"] == doc_id
+    
+    for doc_id in deleted_ids:
+        response = client.get(f"/doc/{doc_id}")
+        assert response.status_code == 404
 
 
 # =============================================================================
@@ -358,9 +594,4 @@ def test_index_load_preserves_compaction_threshold(client):
 
 def test_index_build_removes_deleted_docs(client):
     """Test that building index removes deleted documents."""
-    raise NotImplementedError
-
-
-def test_index_build_increments_compactions_metric(client):
-    """Test that building index increments compactions_performed metric."""
     raise NotImplementedError

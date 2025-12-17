@@ -381,6 +381,7 @@ def get_index_stats():
         stats = engine.get_index_stats()
 
         return IndexStatsResponse(
+            status="success",
             total_documents=stats["total_documents"],
             total_embeddings=stats["total_embeddings"],
             deleted_documents=stats["deleted_documents"],
@@ -418,6 +419,7 @@ def build_index():
         stats = engine.get_index_stats()
 
         return IndexStatsResponse(
+            status="success",
             total_documents=stats["total_documents"],
             total_embeddings=stats["total_embeddings"],
             deleted_documents=stats["deleted_documents"],

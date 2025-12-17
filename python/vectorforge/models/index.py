@@ -16,6 +16,7 @@ class IndexStatsResponse(BaseModel):
         needs_compaction: Whether index cleanup is recommended.
         embedding_dimension: Dimensionality of the embedding vectors.
     """
+    status: str = Field(..., description="Operation status")
     total_documents: int = Field(..., description="Active documents")
     total_embeddings: int = Field(..., description="Total embeddings")
     deleted_documents: int = Field(..., description="Deleted count")
@@ -26,6 +27,7 @@ class IndexStatsResponse(BaseModel):
     class ConfigDict:
         json_schema_extra = {
             "example": {
+                "status": "success",
                 "total_documents": 1250,
                 "total_embeddings": 1500,
                 "deleted_documents": 250,
