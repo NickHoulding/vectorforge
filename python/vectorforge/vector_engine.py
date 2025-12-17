@@ -314,6 +314,7 @@ class VectorEngine:
         
         self.metrics.compactions_performed += 1
         self.metrics.last_compaction_at = datetime.now().isoformat()
+        self.metrics.docs_deleted = 0
 
     def build(self) -> None:
         """Rebuild the entire index from scratch.

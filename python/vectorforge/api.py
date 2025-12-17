@@ -362,7 +362,7 @@ def search(search_params: SearchQuery):
 
 # --- Get Index Stats ---
 
-@app.get('/index/stats')
+@app.get('/index/stats', response_model=IndexStatsResponse)
 def get_index_stats():
     """
     Get quick index statistics
@@ -398,7 +398,7 @@ def get_index_stats():
 
 # --- Build Index ---
 
-@app.post('/index/build')
+@app.post('/index/build', response_model=IndexStatsResponse)
 def build_index():
     """
     Build or rebuild the vector index

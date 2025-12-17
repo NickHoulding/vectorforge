@@ -1,5 +1,18 @@
 """Tests for index management endpoints"""
 
+import pytest
+
+
+# =============================================================================
+# Index Stats Tests
+# =============================================================================
+
+@pytest.fixture
+def stats(client):
+    """Reusable sample index data fixture"""
+    resp = client.get("/index/stats")
+    return resp.json()
+
 
 # =============================================================================
 # Index Stats Tests
@@ -7,47 +20,162 @@
 
 def test_index_stats_returns_200(client):
     """Test that GET /index/stats returns 200 status."""
-    raise NotImplementedError
+    resp = client.get("/index/stats")
+    assert resp.status_code == 200
 
 
-def test_index_stats_returns_total_documents(client):
+def test_index_stats_returns_total_documents(stats):
     """Test that index stats includes total documents count."""
-    raise NotImplementedError
+    assert "total_documents" in stats
+    assert isinstance(stats["total_documents"], int)
 
 
-def test_index_stats_returns_total_embeddings(client):
+def test_index_stats_returns_total_embeddings(stats):
     """Test that index stats includes total embeddings count."""
-    raise NotImplementedError
+    assert "total_embeddings" in stats
+    assert isinstance(stats["total_embeddings"], int)
 
 
-def test_index_stats_returns_deleted_documents(client):
+def test_index_stats_returns_deleted_documents(stats):
     """Test that index stats includes deleted documents count."""
-    raise NotImplementedError
+    assert "deleted_documents" in stats
+    assert isinstance(stats["deleted_documents"], int)
 
 
-def test_index_stats_returns_deleted_ratio(client):
+def test_index_stats_returns_deleted_ratio(stats):
     """Test that index stats includes deleted ratio calculation."""
-    raise NotImplementedError
+    assert "deleted_ratio" in stats
+    assert isinstance(stats["deleted_ratio"], float)
 
 
-def test_index_stats_returns_needs_compaction(client):
+def test_index_stats_returns_needs_compaction(stats):
     """Test that index stats includes compaction status."""
-    raise NotImplementedError
+    assert "needs_compaction" in stats
+    assert isinstance(stats["needs_compaction"], bool)
 
 
-def test_index_stats_returns_embedding_dimension(client):
+def test_index_stats_returns_embedding_dimension(stats):
     """Test that index stats includes embedding dimension."""
-    raise NotImplementedError
+    assert "embedding_dimension" in stats
+    assert isinstance(stats["embedding_dimension"], int)
 
 
-def test_index_stats_reflects_document_additions(client):
-    """Test that index stats update correctly after adding documents."""
-    raise NotImplementedError
+def test_index_stats_with_empty_index(client):
+    """Test index stats when index is empty."""
+    stats = client.get("/index/stats").json()
+    
+    assert stats["total_documents"] == 0
+    assert stats["total_embeddings"] == 0
+    assert stats["deleted_documents"] == 0
+    assert stats["deleted_ratio"] == 0.0
+    assert stats["needs_compaction"] is False
+    assert stats["embedding_dimension"] == 384
 
 
-def test_index_stats_reflects_document_deletions(client):
-    """Test that index stats update correctly after deleting documents."""
-    raise NotImplementedError
+def test_index_stats_after_adding_documents(client):
+    """Test that stats update correctly after adding documents."""
+    client.post("/doc/add", json={"content": "test doc 1", "metadata": {}})
+    client.post("/doc/add", json={"content": "test doc 2", "metadata": {}})
+    
+    stats = client.get("/index/stats").json()
+    assert stats["total_documents"] == 2
+    assert stats["total_embeddings"] == 2
+    assert stats["deleted_documents"] == 0
+    assert stats["deleted_ratio"] == 0.0
+
+
+def test_index_stats_after_document_deletion(client, multiple_added_docs):
+    """Test that stats track deleted documents correctly."""
+    doc_id = multiple_added_docs[0]
+    client.delete(f"/doc/{doc_id}")
+    
+    stats = client.get("/index/stats").json()
+    assert stats["total_documents"] == 20
+    assert stats["total_embeddings"] == 20
+    assert stats["deleted_documents"] == 1
+    assert stats["deleted_ratio"] > 0.0
+
+
+def test_index_stats_deleted_ratio_calculation(client):
+    """Test that deleted_ratio is calculated correctly."""
+    doc_ids = []
+    for i in range(5):
+        resp = client.post("/doc/add", json={"content": f"doc {i}", "metadata": {}})
+        doc_ids.append(resp.json()["id"])
+    
+    client.delete(f"/doc/{doc_ids[0]}")
+
+    stats = client.get("/index/stats").json()
+    assert stats["total_embeddings"] == 5
+    assert stats["deleted_documents"] == 1
+    assert stats["deleted_ratio"] == 0.20
+
+
+def test_index_stats_needs_compaction_false(client):
+    """Test that needs_compaction is False when below threshold."""
+    for i in range(10):
+        client.post("/doc/add", json={"content": f"doc {i}", "metadata": {}})
+    
+    stats = client.get("/index/stats").json()
+    assert stats["needs_compaction"] is False
+
+def test_index_stats_needs_compaction_true(client, multiple_added_docs):
+    """Test that needs_compaction is True when above threshold (25%)."""
+    for i in range(5):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    stats = client.get("/index/stats").json()
+    assert stats["deleted_ratio"] == 0.25
+    assert stats["needs_compaction"] is False
+    
+    client.delete(f"/doc/{multiple_added_docs[5]}")
+    
+    stats = client.get("/index/stats").json()
+    assert stats["deleted_documents"] == 0
+    assert stats["deleted_ratio"] == 0.0
+    assert stats["needs_compaction"] is False
+
+
+def test_index_stats_embedding_dimension_is_384(client):
+    """Test that embedding_dimension matches model (all-MiniLM-L6-v2 = 384)."""
+    stats = client.get("/index/stats").json()
+    assert stats["embedding_dimension"] == 384
+
+
+def test_index_stats_multiple_deletions_below_threshold(client, multiple_added_docs):
+    """Test stats with multiple deletions that stay below compaction threshold."""
+    for i in range(4):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    stats = client.get("/index/stats").json()
+    
+    assert stats["total_documents"] == 20
+    assert stats["total_embeddings"] == 20
+    assert stats["deleted_documents"] == 4
+    assert stats["deleted_ratio"] == 0.20
+    assert stats["needs_compaction"] is False
+
+
+def test_index_stats_after_manual_build(client, multiple_added_docs):
+    """Test that stats update correctly after manual index build."""
+    client.delete(f"/doc/{multiple_added_docs[0]}")
+    client.delete(f"/doc/{multiple_added_docs[1]}")
+    
+    client.post("/index/build")
+    
+    stats = client.get("/index/stats").json()
+    assert stats["deleted_documents"] == 0
+    assert stats["deleted_ratio"] == 0.0
+    assert stats["total_documents"] == 18
+    assert stats["total_embeddings"] == 18
+    assert stats["needs_compaction"] is False
+
+
+def test_index_stats_deleted_ratio_with_zero_embeddings(client):
+    """Test that deleted_ratio is 0.0 when no embeddings exist."""
+    stats = client.get("/index/stats").json()
+    assert stats["total_embeddings"] == 0
+    assert stats["deleted_ratio"] == 0.0
 
 
 # =============================================================================
@@ -56,7 +184,8 @@ def test_index_stats_reflects_document_deletions(client):
 
 def test_index_build_returns_200(client):
     """Test that POST /index/build returns 200 status."""
-    raise NotImplementedError
+    resp = client.post("/index/build")
+    assert resp.status_code == 200
 
 
 def test_index_build_reconstructs_index(client):
@@ -234,9 +363,4 @@ def test_index_build_removes_deleted_docs(client):
 
 def test_index_build_increments_compactions_metric(client):
     """Test that building index increments compactions_performed metric."""
-    raise NotImplementedError
-
-
-def test_index_stats_with_empty_index(client):
-    """Test index stats when index is empty."""
     raise NotImplementedError
