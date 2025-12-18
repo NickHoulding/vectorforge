@@ -2,6 +2,8 @@
 
 import pytest
 
+from vectorforge.config import Config
+
 
 # =============================================================================
 # Index Test Fixtures
@@ -75,7 +77,7 @@ def test_index_stats_with_empty_index(client):
     assert stats["deleted_documents"] == 0
     assert stats["deleted_ratio"] == 0.0
     assert stats["needs_compaction"] is False
-    assert stats["embedding_dimension"] == 384
+    assert stats["embedding_dimension"] == Config.EMBEDDING_DIMENSION
 
 
 def test_index_stats_after_adding_documents(client):
@@ -126,12 +128,12 @@ def test_index_stats_needs_compaction_false(client):
     assert stats["needs_compaction"] is False
 
 def test_index_stats_needs_compaction_true(client, multiple_added_docs):
-    """Test that needs_compaction is True when above threshold (25%)."""
+    """Test that needs_compaction is True when above threshold."""
     for i in range(5):
         client.delete(f"/doc/{multiple_added_docs[i]}")
     
     stats = client.get("/index/stats").json()
-    assert stats["deleted_ratio"] == 0.25
+    assert stats["deleted_ratio"] == Config.COMPACTION_THRESHOLD
     assert stats["needs_compaction"] is False
     
     client.delete(f"/doc/{multiple_added_docs[5]}")
@@ -143,9 +145,9 @@ def test_index_stats_needs_compaction_true(client, multiple_added_docs):
 
 
 def test_index_stats_embedding_dimension_is_384(client):
-    """Test that embedding_dimension matches model (all-MiniLM-L6-v2 = 384)."""
+    """Test that embedding_dimension matches configured model dimension."""
     stats = client.get("/index/stats").json()
-    assert stats["embedding_dimension"] == 384
+    assert stats["embedding_dimension"] == Config.EMBEDDING_DIMENSION
 
 
 def test_index_stats_multiple_deletions_below_threshold(client, multiple_added_docs):
@@ -267,8 +269,8 @@ def test_index_build_returns_updated_stats(client, multiple_added_docs):
     assert updated_stats["deleted_ratio"] == 0.0
     assert initial_stats["needs_compaction"] == False
     assert updated_stats["needs_compaction"] == False
-    assert initial_stats["embedding_dimension"] == 384
-    assert updated_stats["embedding_dimension"] == 384
+    assert initial_stats["embedding_dimension"] == Config.EMBEDDING_DIMENSION
+    assert updated_stats["embedding_dimension"] == Config.EMBEDDING_DIMENSION
 
 
 def test_index_build_with_empty_index(client):
@@ -415,7 +417,7 @@ def test_index_build_at_compaction_threshold(client, multiple_added_docs):
         client.delete(f"/doc/{multiple_added_docs[i]}")
     
     stats_before = client.get("/index/stats").json()
-    assert stats_before["deleted_ratio"] == 0.25
+    assert stats_before["deleted_ratio"] == Config.COMPACTION_THRESHOLD
     
     response = client.post("/index/build")
     assert response.status_code == 200

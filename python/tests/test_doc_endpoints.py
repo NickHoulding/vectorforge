@@ -1,5 +1,7 @@
 """Tests for document management endpoints"""
 
+from vectorforge.config import Config
+
 
 # =============================================================================
 # Document Endpoint Tests
@@ -35,10 +37,10 @@ def test_doc_add_empty_metadata(client, sample_doc):
 
 
 def test_doc_add_large_content(client, sample_doc):
-    """Test that adding a document exceeding max content length returns 400."""
-    sample_doc["content"] = "a" * 100_000
+    """Test that adding a document exceeding max content length returns 422."""
+    sample_doc["content"] = "a" * (Config.MAX_CONTENT_LENGTH + 1)
     response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_doc_add_empty_content(client, sample_doc):
@@ -311,22 +313,22 @@ def test_doc_deletion_does_not_affect_other_documents(client, sample_doc):
 
 
 def test_doc_add_at_exact_length_limit(client, sample_doc):
-    """Test that content at exactly 10,000 characters is accepted."""
-    sample_doc["content"] = "a" * 10_000
+    """Test that content at exactly MAX_CONTENT_LENGTH characters is accepted."""
+    sample_doc["content"] = "a" * Config.MAX_CONTENT_LENGTH
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
 
 
 def test_doc_add_one_char_over_length_limit(client, sample_doc):
-    """Test that content at 10,001 characters is rejected."""
-    sample_doc["content"] = "a" * 10_001
+    """Test that content at MAX_CONTENT_LENGTH + 1 characters is rejected."""
+    sample_doc["content"] = "a" * (Config.MAX_CONTENT_LENGTH + 1)
     response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_doc_add_with_length_9999(client, sample_doc):
-    """Test that content at 9,999 characters is accepted."""
-    sample_doc["content"] = "a" * 9999
+    """Test that content at MAX_CONTENT_LENGTH - 1 characters is accepted."""
+    sample_doc["content"] = "a" * (Config.MAX_CONTENT_LENGTH - 1)
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
 
@@ -554,7 +556,7 @@ def test_doc_get_with_special_characters_in_id(client):
 
 def test_doc_get_with_very_long_id(client):
     """Test GET with extremely long ID string."""
-    long_id = "a" * 10_000
+    long_id = "a" * Config.MAX_CONTENT_LENGTH
     response = client.get(f"/doc/{long_id}")
     assert response.status_code == 404
 

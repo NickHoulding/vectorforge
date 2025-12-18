@@ -1,5 +1,7 @@
 """Tests for search endpoints"""
 
+from vectorforge.config import Config
+
 
 # =============================================================================
 # Search Endpoint Tests
@@ -91,7 +93,7 @@ def test_search_with_empty_query(client):
 def test_search_with_very_long_query(client):
     """Test search with a very long query string."""
     response = client.post("/search", json={
-        "query": "a" * 2001
+        "query": "a" * (Config.MAX_QUERY_LENGTH + 1)
     })
     assert response.status_code == 422
 
@@ -99,7 +101,7 @@ def test_search_with_very_long_query(client):
 def test_search_with_reasonable_long_query(client):
     """Test that queries within limit are accepted."""
     response = client.post("/search", json={
-        "query": "a" * 2000
+        "query": "a" * Config.MAX_QUERY_LENGTH
     })
     assert response.status_code == 200
 
@@ -107,7 +109,7 @@ def test_search_with_reasonable_long_query(client):
 def test_search_returns_similarity_scores(client, added_doc):
     """Test that search results include similarity scores."""
     response = client.post("/search", json={
-        "query": "a" * 2000
+        "query": "a" * Config.MAX_QUERY_LENGTH
     })
 
     results = response.json()["results"]

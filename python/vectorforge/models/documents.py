@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from vectorforge.config import Config
+
 
 class DocumentInput(BaseModel):
     """Input model for adding a new document to the vector index.
@@ -12,7 +14,12 @@ class DocumentInput(BaseModel):
         content: The text content to be indexed and searched.
         metadata: Optional key-value pairs for filtering and identification.
     """
-    content: str = Field(..., min_length=1, description="Document text content")
+    content: str = Field(
+        ..., 
+        min_length=Config.MIN_CONTENT_LENGTH, 
+        max_length=Config.MAX_CONTENT_LENGTH, 
+        description="Document text content"
+    )
     metadata: dict | None = Field(default=None, description="Optional metadata")
 
     class ConfigDict:

@@ -4,6 +4,8 @@ import fitz
 
 from fastapi import HTTPException, UploadFile
 
+from vectorforge.config import Config
+
 
 def extract_pdf(content: bytes) -> str:
     """Extract text content from a PDF file.
@@ -69,12 +71,16 @@ async def extract_file_content(file: UploadFile) -> str:
     else:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: {file.filename}"
+            detail=f"Unsupported file type: {file.filename}. Supported types: {Config.SUPPORTED_FILE_EXTENSIONS}"
         )
     
     return text
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+def chunk_text(
+    text: str, 
+    chunk_size: int = Config.DEFAULT_CHUNK_SIZE, 
+    overlap: int = Config.DEFAULT_CHUNK_OVERLAP
+) -> List[str]:
     """Split text into overlapping chunks for semantic processing.
     
     Divides a long text document into smaller chunks with configurable size and

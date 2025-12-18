@@ -13,6 +13,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from vectorforge import __version__
+from vectorforge.config import Config
 from vectorforge.models import SearchResult
 
 
@@ -64,7 +65,7 @@ class EngineMetrics:
 
     # Query performance history
     query_times: deque[float] = field(default_factory=deque)
-    max_query_history: int = 1000
+    max_query_history: int = Config.MAX_QUERY_HISTORY
 
     def to_dict(self) -> dict:
         """Convert metrics to a dictionary for serialization.
@@ -79,6 +80,7 @@ class EngineMetrics:
         data = asdict(self)
         data["query_times"] = list(data["query_times"])
         return data
+
 
 class VectorEngine:
     """High-performance in-memory vector database for semantic search.
@@ -109,8 +111,6 @@ class VectorEngine:
         >>> results = engine.search("greeting", top_k=5)
         >>> engine.save()
     """
-    DEFAULT_DATA_DIR = "./data"
-
     def __init__(self) -> None:
         """Initialize the VectorEngine with an empty index and default settings.
         
@@ -124,16 +124,16 @@ class VectorEngine:
         self.doc_id_to_index = {}
         self.deleted_docs = set()
         
-        self.model_name = 'all-MiniLM-L6-v2'
+        self.model_name = Config.MODEL_NAME
         self.model = SentenceTransformer(self.model_name)
 
         self.metrics = EngineMetrics()
-        self.compaction_threshold = 0.25
+        self.compaction_threshold = Config.COMPACTION_THRESHOLD
 
         if self.should_compact():
             self.compact()
 
-    def save(self, directory: str = DEFAULT_DATA_DIR) -> dict:
+    def save(self, directory: str = Config.DEFAULT_DATA_DIR) -> dict:
         """Save the vector engine state to disk.
         
         Persists the complete engine state including documents, embeddings,
@@ -166,11 +166,11 @@ class VectorEngine:
             "version": __version__
         }
 
-        metadata_path = os.path.join(directory, "metadata.json")
+        metadata_path = os.path.join(directory, Config.METADATA_FILENAME)
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
 
-        embeddings_path = os.path.join(directory, "embeddings.npz")
+        embeddings_path = os.path.join(directory, Config.EMBEDDINGS_FILENAME)
         np.savez_compressed(
             embeddings_path,
             embeddings=np.array(self.embeddings)
@@ -191,7 +191,7 @@ class VectorEngine:
             "embeddings_saved": len(self.embeddings)
         }
     
-    def load(self, directory: str = DEFAULT_DATA_DIR) -> dict:
+    def load(self, directory: str = Config.DEFAULT_DATA_DIR) -> dict:
         """Load the vector engine state from disk.
         
         Restores the complete engine state including documents, embeddings,
@@ -214,8 +214,8 @@ class VectorEngine:
             FileNotFoundError: If metadata.json or embeddings.npz files
                 are not found in the specified directory.
         """
-        metadata_path = os.path.join(directory, "metadata.json")
-        embeddings_path = os.path.join(directory, "embeddings.npz")
+        metadata_path = os.path.join(directory, Config.METADATA_FILENAME)
+        embeddings_path = os.path.join(directory, Config.EMBEDDINGS_FILENAME)
 
         if not os.path.exists(metadata_path):
             raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
@@ -314,7 +314,6 @@ class VectorEngine:
         
         self.metrics.compactions_performed += 1
         self.metrics.last_compaction_at = datetime.now().isoformat()
-        self.metrics.docs_deleted = 0
 
     def build(self) -> None:
         """Rebuild the entire index from scratch.
@@ -360,7 +359,7 @@ class VectorEngine:
         """
         return np.dot(emb_a, emb_b)
 
-    def search(self, query: str, top_k: int = 10) -> list[SearchResult]:
+    def search(self, query: str, top_k: int = Config.DEFAULT_TOP_K) -> list[SearchResult]:
         """Search the vector index for documents similar to the query.
         
         Encodes the query text, computes similarity scores against all active
@@ -496,9 +495,6 @@ class VectorEngine:
         """
         if not content.strip():
             raise ValueError("Document content cannot be empty")
-        if len(content) > 10_000:
-            raise ValueError("Document content is too long")
-        
         if metadata is None:
             metadata = {}
 

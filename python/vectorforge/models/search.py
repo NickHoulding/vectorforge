@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from vectorforge.config import Config
+
 
 class SearchQuery(BaseModel):
     """Input model for semantic search queries.
@@ -13,8 +15,18 @@ class SearchQuery(BaseModel):
         top_k: Maximum number of results to return (1-100, default: 10).
         filters: Optional metadata filters as key-value pairs for narrowing results.
     """
-    query: str = Field(..., min_length=1, max_length=2000, description="Search query text")
-    top_k: int = Field(10, ge=1, le=100, description="Number of results to return")
+    query: str = Field(
+        ..., 
+        min_length=Config.MIN_QUERY_LENGTH, 
+        max_length=Config.MAX_QUERY_LENGTH, 
+        description="Search query text"
+    )
+    top_k: int = Field(
+        Config.DEFAULT_TOP_K, 
+        ge=Config.MIN_TOP_K, 
+        le=Config.MAX_TOP_K, 
+        description="Number of results to return"
+    )
     filters: dict | None = Field(default=None, description="Optional metadata filters")
 
     class ConfigDict:

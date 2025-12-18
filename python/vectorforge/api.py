@@ -3,6 +3,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, UploadFile, status
 
 from vectorforge import __version__
+from vectorforge.config import Config
 from vectorforge.doc_processor import chunk_text, extract_file_content
 from vectorforge.models import (
     DocumentDetail,
@@ -28,7 +29,6 @@ from vectorforge.models import (
 from vectorforge.vector_engine import VectorEngine
 
 
-API_PORT = 3001
 app = FastAPI(
     title="VectorForge API",
     version=__version__,
@@ -438,7 +438,7 @@ def build_index():
 # --- Save Index ---
 
 @app.post('/index/save', response_model=IndexSaveResponse)
-def save_index(directory: str = "./data"):
+def save_index(directory: str = Config.DEFAULT_DATA_DIR):
     """
     Persist index to disk
     
@@ -446,7 +446,7 @@ def save_index(directory: str = "./data"):
     directory. Creates persistent storage for index recovery and reduces startup time.
     
     Args:
-        directory (str, optional): Directory path for saving. Defaults to "./data"
+        directory (str, optional): Directory path for saving. Defaults to EngineConfig.DEFAULT_DATA_DIR
         
     Returns:
         IndexSaveResponse: Save confirmation with file sizes and document counts
@@ -630,4 +630,8 @@ def get_metrics():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app=app, host='0.0.0.0', port=API_PORT)
+    uvicorn.run(
+        app=app, 
+        host=Config.API_HOST, 
+        port=Config.API_PORT
+    )
