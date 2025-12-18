@@ -1,3 +1,4 @@
+- ensure tests that are testing the same endpoints are grouped together (e.g. /doc/add, /doc/delete, /doc/get, etc.)
 - finish implementing comprehensive test suite
 - make sure all test cases pass
 - add search filtering capability based on metadata, etc.
