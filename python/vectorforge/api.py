@@ -481,7 +481,7 @@ def save_index(directory: str = Config.DEFAULT_DATA_DIR):
 # --- Load Index ---
 
 @app.post('/index/load', response_model=IndexLoadResponse)
-def load_index():
+def load_index(directory: str = Config.DEFAULT_DATA_DIR):
     """
     Load index from disk
     
@@ -496,7 +496,7 @@ def load_index():
         HTTPException: 500 if load operation fails
     """
     try:
-        load_metrics = engine.load()
+        load_metrics = engine.load(directory=directory)
 
         return IndexLoadResponse(
             status=load_metrics["status"],
