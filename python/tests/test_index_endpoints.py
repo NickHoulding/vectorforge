@@ -1,8 +1,16 @@
 """Tests for index management endpoints"""
 
+import os
+
 import pytest
 
 from vectorforge.config import Config
+
+
+TEST_DATA_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "data"
+)
 
 
 # =============================================================================
@@ -11,8 +19,19 @@ from vectorforge.config import Config
 
 @pytest.fixture
 def stats(client):
-    """Reusable sample index data fixture"""
+    """Reusable stats index data fixture"""
     resp = client.get("/index/stats")
+    assert resp.status_code == 200
+    return resp.json()
+
+
+@pytest.fixture
+def save_data(client):
+    """Reusable index save data fixture"""
+    resp = client.post(f"/index/save", params={
+        "directory": TEST_DATA_PATH
+    })
+    assert resp.status_code == 200
     return resp.json()
 
 
@@ -452,52 +471,57 @@ def test_index_build_updates_index_mappings(client, multiple_added_docs):
 
 def test_index_save_returns_200(client):
     """Test that POST /index/save returns 200 status."""
-    raise NotImplementedError
+    resp = client.post("/index/save", params={
+        "directory": TEST_DATA_PATH
+    })
+    assert resp.status_code == 200
 
 
-def test_index_save_persists_to_disk(client):
+def test_index_save_persists_to_disk(save_data):
     """Test that saving index creates files on disk."""
-    raise NotImplementedError
+    files = os.listdir(save_data["directory"])
+    assert Config.METADATA_FILENAME in files
+    assert Config.EMBEDDINGS_FILENAME in files
 
 
-def test_index_save_returns_save_metrics(client):
+def test_index_save_returns_save_metrics(save_data):
     """Test that save response includes metrics like file sizes."""
-    raise NotImplementedError
+    assert "metadata_size_mb" in save_data
+    assert "embeddings_size_mb" in save_data
+    assert "total_size_mb" in save_data
+    assert isinstance(save_data["metadata_size_mb"], float)
+    assert isinstance(save_data["embeddings_size_mb"], float)
+    assert isinstance(save_data["total_size_mb"], float)
 
 
-def test_index_save_includes_status(client):
+def test_index_save_includes_status(save_data):
     """Test that save response includes status field."""
-    raise NotImplementedError
+    assert "status" in save_data
+    assert isinstance(save_data["status"], str)
 
 
-def test_index_save_includes_directory(client):
+def test_index_save_includes_directory(save_data):
     """Test that save response includes directory path."""
-    raise NotImplementedError
+    assert "directory" in save_data
+    assert isinstance(save_data["directory"], str)
 
 
-def test_index_save_includes_file_sizes(client):
-    """Test that save response includes metadata and embeddings sizes."""
-    raise NotImplementedError
-
-
-def test_index_save_includes_document_count(client):
+def test_index_save_includes_document_count(save_data):
     """Test that save response includes number of documents saved."""
-    raise NotImplementedError
+    assert "documents_saved" in save_data
+    assert isinstance(save_data["documents_saved"], int)
 
 
-def test_index_save_includes_version(client):
+def test_index_save_includes_embeddings_count(save_data):
+    """Test that save response includes embeddings_saved count."""
+    assert "embeddings_saved" in save_data
+    assert isinstance(save_data["embeddings_saved"], int)
+
+
+def test_index_save_includes_version(save_data):
     """Test that save response includes version information."""
-    raise NotImplementedError
-
-
-def test_index_save_with_custom_directory(client):
-    """Test saving index to a custom directory path."""
-    raise NotImplementedError
-
-
-def test_index_save_with_empty_index(client):
-    """Test saving an empty index."""
-    raise NotImplementedError
+    assert "version" in save_data
+    assert isinstance(save_data["version"], str)
 
 
 # =============================================================================
@@ -566,11 +590,6 @@ def test_index_save_creates_directory_if_not_exists(client):
 
 def test_index_load_restores_metrics(client):
     """Test that loading restores metrics from saved state."""
-    raise NotImplementedError
-
-
-def test_index_save_includes_embeddings_count(client):
-    """Test that save response includes embeddings_saved count."""
     raise NotImplementedError
 
 

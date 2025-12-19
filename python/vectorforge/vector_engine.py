@@ -188,7 +188,8 @@ class VectorEngine:
             "embeddings_size_mb": embeddings_size_mb,
             "total_size_mb": metadata_size_mb + embeddings_size_mb,
             "documents_saved": len(self.documents),
-            "embeddings_saved": len(self.embeddings)
+            "embeddings_saved": len(self.embeddings),
+            "version": __version__
         }
     
     def load(self, directory: str = Config.DEFAULT_DATA_DIR) -> dict:
