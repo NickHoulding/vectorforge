@@ -524,6 +524,146 @@ def test_index_save_includes_version(save_data):
     assert isinstance(save_data["version"], str)
 
 
+def test_index_save_with_documents(client, multiple_added_docs):
+    """Test saving index with actual documents."""
+    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    data = response.json()
+    
+    assert data["documents_saved"] == 20
+    assert data["embeddings_saved"] == 20
+    assert data["metadata_size_mb"] > 0
+    assert data["embeddings_size_mb"] > 0
+
+
+def test_index_save_empty_index(client):
+    """Test saving an empty index."""
+    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    data = response.json()
+    
+    assert data["documents_saved"] == 0
+    assert data["embeddings_saved"] == 0
+    assert os.path.exists(os.path.join(
+        TEST_DATA_PATH,
+        Config.METADATA_FILENAME
+    ))
+
+
+def test_index_save_excludes_deleted_documents(client, multiple_added_docs):
+    """Test that save only persists active documents, not deleted ones."""
+    for i in range(5):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    stats_before = client.get("/index/stats").json()
+    assert stats_before["deleted_documents"] == 5
+    
+    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    data = response.json()
+    
+    assert data["documents_saved"] == 15
+    assert data["embeddings_saved"] == 15
+    
+    stats_after = client.get("/index/stats").json()
+    assert stats_after["deleted_documents"] == 5
+
+
+def test_index_save_after_compaction(client, multiple_added_docs):
+    """Test saving after compaction removes deleted documents from saved data."""
+    for i in range(6):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    stats = client.get("/index/stats").json()
+    assert stats["deleted_documents"] == 0
+    
+    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    data = response.json()
+    
+    assert data["documents_saved"] == 14
+    assert data["embeddings_saved"] == 14
+
+
+def test_index_save_file_sizes_are_positive(client, multiple_added_docs):
+    """Test that file sizes are positive numbers when data exists."""
+    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    data = response.json()
+    
+    assert data["metadata_size_mb"] > 0
+    assert data["embeddings_size_mb"] > 0
+    assert data["total_size_mb"] > 0
+    assert data["total_size_mb"] == data["metadata_size_mb"] + data["embeddings_size_mb"]
+
+
+def test_index_save_total_size_equals_sum(client, multiple_added_docs):
+    """Test that total_size_mb equals sum of metadata and embeddings sizes."""
+    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    data = response.json()
+    
+    expected_total = data["metadata_size_mb"] + data["embeddings_size_mb"]
+    assert abs(data["total_size_mb"] - expected_total) < 0.001
+
+
+def test_index_save_overwrites_existing_files(client, multiple_added_docs):
+    """Test that saving twice overwrites previous save."""
+    response1 = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    size1 = response1.json()["total_size_mb"]
+    
+    for i in range(10):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    response2 = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    data2 = response2.json()
+    
+    assert data2["documents_saved"] == 10
+    assert data2["total_size_mb"] < size1
+
+
+def test_index_save_version_matches_app_version(client):
+    """Test that saved version matches application version."""
+    from vectorforge import __version__
+    
+    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    data = response.json()
+    
+    assert data["version"] == __version__
+
+
+def test_index_save_with_default_directory(client):
+    """Test saving without specifying directory uses default."""
+    response = client.post("/index/save")
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert "directory" in data
+    assert data["directory"] == Config.DEFAULT_DATA_DIR
+
+
+def test_index_save_creates_valid_json_metadata(client, added_doc):
+    """Test that saved metadata.json is valid JSON."""
+    import json
+
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    
+    metadata_path = os.path.join(TEST_DATA_PATH, Config.METADATA_FILENAME)
+    with open(metadata_path, 'r') as f:
+        metadata = json.load(f)
+    
+    assert "documents" in metadata
+    assert "metrics" in metadata
+    assert "version" in metadata
+
+
+def test_index_save_creates_valid_embeddings_file(client, added_doc):
+    """Test that saved embeddings.npz is valid numpy format."""
+    import numpy as np
+    
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    
+    embeddings_path = os.path.join(TEST_DATA_PATH, Config.EMBEDDINGS_FILENAME)
+    data = np.load(embeddings_path)
+    
+    assert "embeddings" in data
+    assert len(data["embeddings"]) > 0
+
+
 # =============================================================================
 # Index Load Tests
 # =============================================================================

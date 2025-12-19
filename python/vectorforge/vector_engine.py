@@ -136,8 +136,8 @@ class VectorEngine:
     def save(self, directory: str = Config.DEFAULT_DATA_DIR) -> dict:
         """Save the vector engine state to disk.
         
-        Persists the complete engine state including documents, embeddings,
-        metadata, and metrics to the specified directory.
+        Persists the complete engine state including active documents, 
+        embeddings, metadata, and metrics to the specified directory.
         
         Args:
             directory: Path to the directory where data will be saved.
@@ -155,11 +155,27 @@ class VectorEngine:
         """
         os.makedirs(directory, exist_ok=True)
 
+        active_documents = {
+            doc_id: doc for doc_id, doc in self.documents.items()
+            if doc_id not in self.deleted_docs
+        }
+
+        active_embeddings = []
+        active_index_to_doc_id = []
+        active_doc_id_to_index = {}
+
+        for old_pos, doc_id in enumerate(self.index_to_doc_id):
+            if doc_id not in self.deleted_docs:
+                new_pos = len(active_embeddings)
+                active_embeddings.append(self.embeddings[old_pos])
+                active_index_to_doc_id.append(doc_id)
+                active_doc_id_to_index[doc_id] = new_pos
+
         metadata = {
-            "documents": self.documents,
-            "index_to_doc_id": self.index_to_doc_id,
-            "doc_id_to_index": self.doc_id_to_index,
-            "deleted_docs": list(self.deleted_docs),
+            "documents": active_documents,
+            "index_to_doc_id": active_index_to_doc_id,
+            "doc_id_to_index": active_doc_id_to_index,
+            "deleted_docs": [],
             "model_name": self.model_name,
             "compaction_threshold": self.compaction_threshold,
             "metrics": self.metrics.to_dict(),
@@ -173,7 +189,7 @@ class VectorEngine:
         embeddings_path = os.path.join(directory, Config.EMBEDDINGS_FILENAME)
         np.savez_compressed(
             embeddings_path,
-            embeddings=np.array(self.embeddings)
+            embeddings=np.array(active_embeddings)
         )
 
         metadata_size = os.path.getsize(metadata_path)
@@ -187,8 +203,8 @@ class VectorEngine:
             "metadata_size_mb": metadata_size_mb,
             "embeddings_size_mb": embeddings_size_mb,
             "total_size_mb": metadata_size_mb + embeddings_size_mb,
-            "documents_saved": len(self.documents),
-            "embeddings_saved": len(self.embeddings),
+            "documents_saved": len(active_documents),
+            "embeddings_saved": len(active_embeddings),
             "version": __version__
         }
     
