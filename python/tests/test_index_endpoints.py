@@ -35,6 +35,16 @@ def save_data(client):
     return resp.json()
 
 
+@pytest.fixture
+def load_data(client):
+    """Reusable index load data fixture"""
+    resp = client.post(f"/index/load", params={
+        "directory": TEST_DATA_PATH
+    })
+    assert resp.status_code == 200
+    return resp.json()
+
+
 # =============================================================================
 # Index Stats Tests
 # =============================================================================
@@ -477,6 +487,11 @@ def test_index_save_returns_200(client):
     assert resp.status_code == 200
 
 
+def test_index_save_creates_directory_if_not_exists(client):
+    """Test that save creates the target directory if it doesn't exist."""
+    raise NotImplementedError
+
+
 def test_index_save_persists_to_disk(save_data):
     """Test that saving index creates files on disk."""
     files = os.listdir(save_data["directory"])
@@ -670,66 +685,65 @@ def test_index_save_creates_valid_embeddings_file(client, added_doc):
 
 def test_index_load_returns_200(client):
     """Test that POST /index/load returns 200 status."""
-    raise NotImplementedError
+    resp = client.post("/index/load")
+    assert resp.status_code == 200
 
 
-def test_index_load_restores_documents(client):
+def test_index_load_restores_documents(client, multiple_added_docs):
     """Test that loading index restores previously saved documents."""
-    raise NotImplementedError
+    resp = client.post("/index/save", params={
+        "directory": TEST_DATA_PATH
+    })
+    assert resp.status_code == 200
+
+    resp = client.post("/index/load", params={
+        "directory": TEST_DATA_PATH
+    })
+    assert resp.status_code == 200
+
+    for doc_id in multiple_added_docs:
+        resp = client.get(f"/doc/{doc_id}")
+        assert resp.status_code == 200
 
 
-def test_index_load_returns_load_metrics(client):
-    """Test that load response includes metrics about loaded data."""
-    raise NotImplementedError
-
-
-def test_index_load_includes_status(client):
+def test_index_load_includes_status(load_data):
     """Test that load response includes status field."""
-    raise NotImplementedError
+    assert "status" in load_data
+    assert isinstance(load_data["status"], str)
 
 
-def test_index_load_includes_directory(client):
+def test_index_load_includes_directory(load_data):
     """Test that load response includes directory path."""
-    raise NotImplementedError
+    assert "directory" in load_data
+    assert isinstance(load_data["directory"], str)
 
 
-def test_index_load_includes_document_count(client):
+def test_index_load_includes_document_count(load_data):
     """Test that load response includes number of documents loaded."""
-    raise NotImplementedError
+    assert "documents_loaded" in load_data
+    assert isinstance(load_data["documents_loaded"], int)
 
 
-def test_index_load_includes_embeddings_count(client):
+def test_index_load_includes_embeddings_count(load_data):
     """Test that load response includes number of embeddings loaded."""
-    raise NotImplementedError
+    assert "embeddings_loaded" in load_data
+    assert isinstance(load_data["embeddings_loaded"], int)
 
 
-def test_index_load_includes_version(client):
+def test_index_load_includes_deleted_docs(load_data):
+    """Test that load response includes number of deleted docs."""
+    assert "deleted_docs" in load_data
+    assert isinstance(load_data["deleted_docs"], int)
+
+
+def test_index_load_includes_version(load_data):
     """Test that load response includes version information."""
-    raise NotImplementedError
+    assert "version" in load_data
+    assert isinstance(load_data["version"], str)
 
 
 def test_index_load_when_no_saved_index_exists(client):
     """Test that loading returns 404 when no saved index exists."""
-    raise NotImplementedError
-
-
-def test_index_save_and_load_roundtrip(client):
-    """Test that saving and loading preserves all data correctly."""
-    raise NotImplementedError
-
-
-def test_index_load_restores_deleted_docs(client):
-    """Test that loading restores deleted_docs set correctly."""
-    raise NotImplementedError
-
-
-def test_index_save_creates_directory_if_not_exists(client):
-    """Test that save creates the target directory if it doesn't exist."""
-    raise NotImplementedError
-
-
-def test_index_load_restores_metrics(client):
-    """Test that loading restores metrics from saved state."""
     raise NotImplementedError
 
 
@@ -743,16 +757,11 @@ def test_index_load_with_missing_embeddings_file(client):
     raise NotImplementedError
 
 
-def test_index_save_with_deleted_documents(client):
-    """Test saving index that contains deleted documents."""
+def test_index_save_and_load_roundtrip(client):
+    """Test that saving and loading preserves all data correctly."""
     raise NotImplementedError
 
 
-def test_index_load_preserves_compaction_threshold(client):
-    """Test that loading preserves the compaction_threshold setting."""
-    raise NotImplementedError
-
-
-def test_index_build_removes_deleted_docs(client):
-    """Test that building index removes deleted documents."""
+def test_index_load_restores_metrics(client):
+    """Test that loading restores metrics from saved state."""
     raise NotImplementedError
