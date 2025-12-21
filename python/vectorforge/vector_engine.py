@@ -153,6 +153,9 @@ class VectorEngine:
                 - documents_saved: Number of documents persisted
                 - embeddings_saved: Number of embeddings persisted
         """
+        if len(directory) > Config.MAX_PATH_LEN:
+            raise ValueError(f"Save path length is too long: {directory}")
+
         os.makedirs(directory, exist_ok=True)
 
         active_documents = {
@@ -231,6 +234,11 @@ class VectorEngine:
             FileNotFoundError: If metadata.json or embeddings.npz files
                 are not found in the specified directory.
         """
+        if len(directory) > Config.MAX_PATH_LEN:
+            raise ValueError(f"Load path length is too long: {directory}")
+        if not os.path.exists(directory):
+            raise FileNotFoundError(f"Directory not found: {directory}")
+
         metadata_path = os.path.join(directory, Config.METADATA_FILENAME)
         embeddings_path = os.path.join(directory, Config.EMBEDDINGS_FILENAME)
 

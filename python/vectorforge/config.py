@@ -30,6 +30,9 @@ class Config:
     
     EMBEDDINGS_FILENAME: str = "embeddings.npz"
     """Filename for embeddings storage."""
+
+    MAX_PATH_LEN: int = 4096
+    """Maximum valid path length for save/load functionality"""
     
     # =============================================================================
     # Index Management

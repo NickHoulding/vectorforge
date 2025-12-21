@@ -471,6 +471,12 @@ def save_index(directory: str = Config.DEFAULT_DATA_DIR):
             version=save_metrics["version"]
         )
 
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Malformed data: {e}"
+        )
     except Exception as e:
         print(f"Unexpected error: {e}")
         raise HTTPException(
@@ -511,6 +517,12 @@ def load_index(directory: str = Config.DEFAULT_DATA_DIR):
         raise HTTPException(
             status_code=404,
             detail=f"Index files not found: {str(e)}"
+        )
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Malformed data: {e}"
         )
     except Exception as e:
         print(f"Unexpected error: {e}")

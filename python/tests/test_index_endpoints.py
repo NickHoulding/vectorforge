@@ -489,7 +489,16 @@ def test_index_save_returns_200(client):
 
 def test_index_save_creates_directory_if_not_exists(client):
     """Test that save creates the target directory if it doesn't exist."""
-    raise NotImplementedError
+    import shutil
+    shutil.rmtree(TEST_DATA_PATH, ignore_errors=True)
+    assert not os.path.exists(TEST_DATA_PATH)
+
+    resp = client.post("/index/save", params={
+        "directory": TEST_DATA_PATH
+    })
+    assert resp.status_code == 200
+
+    assert os.path.exists(TEST_DATA_PATH)
 
 
 def test_index_save_persists_to_disk(save_data):
@@ -679,6 +688,14 @@ def test_index_save_creates_valid_embeddings_file(client, added_doc):
     assert len(data["embeddings"]) > 0
 
 
+def test_index_save_with_very_long_directory_path(client):
+    """Test save with directory path over the maximum length."""
+    long_dir = "a" * (Config.MAX_PATH_LEN + 1)
+
+    resp = client.post("/index/save", params={"directory": long_dir})
+    assert resp.status_code == 400
+
+
 # =============================================================================
 # Index Load Tests
 # =============================================================================
@@ -742,26 +759,251 @@ def test_index_load_includes_version(load_data):
     assert isinstance(load_data["version"], str)
 
 
-def test_index_load_when_no_saved_index_exists(client):
-    """Test that loading returns 404 when no saved index exists."""
-    raise NotImplementedError
-
+def test_index_load_from_nonexistent_directory(client):
+    """Test that loading from nonexistent directory returns 404."""
+    resp = client.post("/index/load", params={
+        "directory": "/path/that/does/not/exist"
+    })
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
 
 def test_index_load_with_missing_metadata_file(client):
-    """Test that load returns 404 when metadata.json is missing."""
-    raise NotImplementedError
+    """Test that load returns 404 when only metadata.json is missing."""
+    resp = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    os.remove(os.path.join(TEST_DATA_PATH, "metadata.json"))
+    resp = client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    
+    assert resp.status_code == 404
 
 
 def test_index_load_with_missing_embeddings_file(client):
-    """Test that load returns 404 when embeddings.npz is missing."""
-    raise NotImplementedError
+    """Test that load returns 404 when only embeddings.npz is missing."""
+    resp = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    os.remove(os.path.join(TEST_DATA_PATH, "embeddings.npz"))
+    resp = client.post("/index/load", params={"directory": TEST_DATA_PATH})
+
+    assert resp.status_code == 404
 
 
-def test_index_save_and_load_roundtrip(client):
+def test_index_save_and_load_roundtrip(client, multiple_added_docs):
     """Test that saving and loading preserves all data correctly."""
-    raise NotImplementedError
+    resp = client.get("/metrics")
+    assert resp.status_code == 200
+    initial_metrics = resp.json()
+    
+    resp = client.post("/index/save", params={
+        "directory": TEST_DATA_PATH
+    })
+    assert resp.status_code == 200
+
+    resp = client.post("/index/load", params={
+        "directory": TEST_DATA_PATH
+    })
+    assert resp.status_code == 200
+
+    resp = client.get("/metrics")
+    assert resp.status_code == 200
+    loaded_metrics = resp.json()
+
+    assert loaded_metrics["index"]["total_documents"] == initial_metrics["index"]["total_documents"]
+    assert loaded_metrics["index"]["total_embeddings"] == initial_metrics["index"]["total_embeddings"]
+    assert loaded_metrics["index"]["deleted_documents"] == initial_metrics["index"]["deleted_documents"]
+    assert loaded_metrics["index"]["deleted_ratio"] == initial_metrics["index"]["deleted_ratio"]
+    assert loaded_metrics["index"]["needs_compaction"] == initial_metrics["index"]["needs_compaction"]
+    assert loaded_metrics["index"]["compact_threshold"] == initial_metrics["index"]["compact_threshold"]
+    
+    assert loaded_metrics["usage"]["documents_added"] == initial_metrics["usage"]["documents_added"]
+    assert loaded_metrics["usage"]["documents_deleted"] == initial_metrics["usage"]["documents_deleted"]
+    assert loaded_metrics["usage"]["chunks_created"] == initial_metrics["usage"]["chunks_created"]
+    assert loaded_metrics["usage"]["files_uploaded"] == initial_metrics["usage"]["files_uploaded"]
+    
+    assert loaded_metrics["system"]["model_name"] == initial_metrics["system"]["model_name"]
+    assert loaded_metrics["system"]["model_dimension"] == initial_metrics["system"]["model_dimension"]
+    assert loaded_metrics["system"]["version"] == initial_metrics["system"]["version"]
+    
+    for doc_id in multiple_added_docs:
+        resp = client.get(f"/doc/{doc_id}")
+        assert resp.status_code == 200
+        
+    search_resp = client.post("/search", json={
+        "query": "test",
+        "top_k": 5
+    })
+    assert search_resp.status_code == 200
+    assert len(search_resp.json()["results"]) > 0
 
 
-def test_index_load_restores_metrics(client):
-    """Test that loading restores metrics from saved state."""
-    raise NotImplementedError
+def test_index_load_excludes_deleted_documents(client, multiple_added_docs):
+    """Test that load doesn't restore documents deleted before save."""
+    deleted_ids = multiple_added_docs[:3]
+    for doc_id in deleted_ids:
+        client.delete(f"/doc/{doc_id}")
+    
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    
+    for doc_id in deleted_ids:
+        resp = client.get(f"/doc/{doc_id}")
+        assert resp.status_code == 404
+    
+    for doc_id in multiple_added_docs[3:]:
+        resp = client.get(f"/doc/{doc_id}")
+        assert resp.status_code == 200
+
+
+def test_index_load_replaces_current_state(client, multiple_added_docs):
+    """Test that load completely replaces the current index."""
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    
+    new_doc = client.post("/doc/add", json={
+        "content": "new document after save",
+        "metadata": {}
+    }).json()
+    
+    stats_before = client.get("/index/stats").json()
+    assert stats_before["total_documents"] == 21
+    
+    client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    
+    stats_after = client.get("/index/stats").json()
+    assert stats_after["total_documents"] == 20
+    
+    resp = client.get(f"/doc/{new_doc['id']}")
+    assert resp.status_code == 404
+
+
+def test_index_load_preserves_metadata(client):
+    """Test that load preserves document metadata."""
+    original_metadata = {"source": "test.txt", "author": "test_user"}
+    doc = client.post("/doc/add", json={
+        "content": "test content",
+        "metadata": original_metadata
+    }).json()
+    
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    
+    loaded_doc = client.get(f"/doc/{doc['id']}").json()
+    assert loaded_doc["metadata"] == original_metadata
+
+
+def test_index_load_preserves_content(client):
+    """Test that load preserves exact document content."""
+    original_content = "This is the exact content that should be preserved"
+    doc = client.post("/doc/add", json={
+        "content": original_content,
+        "metadata": {}
+    }).json()
+    
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    
+    loaded_doc = client.get(f"/doc/{doc['id']}").json()
+    assert loaded_doc["content"] == original_content
+
+
+def test_index_load_preserves_search_results(client, multiple_added_docs):
+    """Test that search results are consistent after load."""
+    search_before = client.post("/search", json={
+        "query": "Python programming",
+        "top_k": 5
+    }).json()
+    
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    
+    search_after = client.post("/search", json={
+        "query": "Python programming",
+        "top_k": 5
+    }).json()
+    
+    ids_before = [r["id"] for r in search_before["results"]]
+    ids_after = [r["id"] for r in search_after["results"]]
+    assert ids_before == ids_after
+    
+    for r_before, r_after in zip(search_before["results"], search_after["results"]):
+        assert abs(r_before["score"] - r_after["score"]) < 0.0001
+
+
+def test_index_load_empty_index(client):
+    """Test loading an index that was saved when empty."""
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    
+    resp = client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    data = resp.json()
+    
+    assert data["documents_loaded"] == 0
+    assert data["embeddings_loaded"] == 0
+    assert data["deleted_docs"] == 0
+    
+    stats = client.get("/index/stats").json()
+    assert stats["total_documents"] == 0
+    assert stats["total_embeddings"] == 0
+
+
+def test_index_load_counts_match_save(client, multiple_added_docs):
+    """Test that load counts match what was saved."""
+    save_resp = client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    save_data = save_resp.json()
+    
+    load_resp = client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    load_data = load_resp.json()
+    
+    assert load_data["documents_loaded"] == save_data["documents_saved"]
+    assert load_data["embeddings_loaded"] == save_data["embeddings_saved"]
+
+
+def test_index_load_multiple_times_idempotent(client, multiple_added_docs):
+    """Test that loading the same data multiple times produces same result."""
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    
+    load1 = client.post("/index/load", params={"directory": TEST_DATA_PATH}).json()
+    stats1 = client.get("/index/stats").json()
+    
+    load2 = client.post("/index/load", params={"directory": TEST_DATA_PATH}).json()
+    stats2 = client.get("/index/stats").json()
+    
+    assert load1["documents_loaded"] == load2["documents_loaded"]
+    assert stats1 == stats2
+
+
+def test_index_load_version_information(client):
+    """Test that load response includes version of loaded data."""
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    
+    load_data = client.post("/index/load", params={"directory": TEST_DATA_PATH}).json()
+    
+    from vectorforge import __version__
+    assert load_data["version"] == __version__
+
+
+def test_index_load_with_custom_directory(client, multiple_added_docs):
+    """Test loading from a custom directory path."""
+    custom_dir = os.path.join(TEST_DATA_PATH, "custom_load")
+    
+    client.post("/index/save", params={"directory": custom_dir})
+    
+    resp = client.post("/index/load", params={"directory": custom_dir})
+    assert resp.status_code == 200
+    
+    data = resp.json()
+    assert data["directory"] == custom_dir
+    assert data["documents_loaded"] == 20
+
+
+def test_index_load_with_very_long_directory_path(client):
+    """Test load with directory path over the maximum length."""
+    long_dir = "a" * (Config.MAX_PATH_LEN + 1)
+
+    resp = client.post("/index/load", params={"directory": long_dir})
+    assert resp.status_code == 400
+
+def test_index_load_preserves_document_ids(client, multiple_added_docs):
+    """Test that document IDs remain unchanged after load."""
+    client.post("/index/save", params={"directory": TEST_DATA_PATH})
+    client.post("/index/load", params={"directory": TEST_DATA_PATH})
+    
+    for doc_id in multiple_added_docs:
+        resp = client.get(f"/doc/{doc_id}")
+        assert resp.status_code == 200
+        assert resp.json()["id"] == doc_id
