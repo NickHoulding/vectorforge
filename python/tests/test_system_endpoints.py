@@ -1,6 +1,12 @@
 """Tests for system monitoring endpoints"""
 
 
+import re
+import time
+
+from vectorforge import __version__
+
+
 # =============================================================================
 # Health Endpoint Tests
 # =============================================================================
@@ -28,12 +34,108 @@ def test_health_returns_version(client):
 
 def test_health_response_format(client):
     """Test that health response contains all required fields."""
-    raise NotImplementedError
+    resp = client.get("/health")
+    assert resp.status_code == 200
+
+    data = resp.json()
+    assert "status" in data
+    assert isinstance(data["status"], str)
+    assert "version" in data
+    assert isinstance(data["version"], str)
 
 
 def test_health_version_is_valid_semver(client):
     """Test that version string follows semantic versioning format."""
-    raise NotImplementedError
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    
+    version = resp.json()["version"]
+    semver_pattern = r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$'
+    assert re.match(semver_pattern, version)
+    
+    parts = version.split('-')[0].split('+')[0].split('.')
+    assert len(parts) == 3
+    assert all(part.isdigit() for part in parts)
+
+
+def test_health_only_accepts_get_method(client):
+    """Test that health endpoint only accepts GET requests."""
+    resp = client.post("/health")
+    assert resp.status_code == 405
+    
+    resp = client.put("/health")
+    assert resp.status_code == 405
+    
+    resp = client.delete("/health")
+    assert resp.status_code == 405
+
+
+def test_health_endpoint_is_idempotent(client):
+    """Test that multiple health checks return consistent results."""
+    resp1 = client.get("/health")
+    resp2 = client.get("/health")
+    resp3 = client.get("/health")
+    
+    assert resp1.json() == resp2.json() == resp3.json()
+    assert all(r.status_code == 200 for r in [resp1, resp2, resp3])
+
+
+def test_health_version_matches_package_version(client):
+    """Test that health version matches the actual package version."""
+    
+    resp = client.get("/health")
+    data = resp.json()
+    
+    assert data["version"] == __version__
+
+
+def test_health_response_has_no_extra_fields(client):
+    """Test that health response only contains expected fields."""
+    resp = client.get("/health")
+    data = resp.json()
+    
+    expected_fields = {"status", "version"}
+    actual_fields = set(data.keys())
+    
+    assert actual_fields == expected_fields
+
+
+def test_health_ignores_query_parameters(client):
+    """Test that health endpoint ignores any query parameters."""
+    resp1 = client.get("/health")
+    resp2 = client.get("/health", params={
+        "foo": "bar",
+        "baz": "qux"
+    })
+    
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert resp1.json() == resp2.json()
+
+
+def test_health_status_value_is_healthy(client):
+    """Test that status field has exact value 'healthy'."""
+    resp = client.get("/health")
+    data = resp.json()
+    assert data["status"] == "healthy"
+
+
+def test_health_endpoint_exact_path(client):
+    """Test that health endpoint requires exact path."""
+    assert client.get("/health").status_code == 200
+    
+    resp = client.get("/health/")
+    assert resp.status_code in [200, 307, 308]
+
+
+def test_health_endpoint_responds_quickly(client):
+    """Test that health check responds in under 100ms."""
+    start = time.time()
+    resp = client.get("/health")
+    duration = (time.time() - start) * 1000
+    
+    assert resp.status_code == 200
+    assert duration < 100
 
 
 # =============================================================================

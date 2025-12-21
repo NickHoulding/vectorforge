@@ -1,9 +1,13 @@
 """Tests for index management endpoints"""
 
+import json
 import os
+import shutil
 
+import numpy as np
 import pytest
 
+from vectorforge import __version__
 from vectorforge.config import Config
 
 
@@ -489,7 +493,6 @@ def test_index_save_returns_200(client):
 
 def test_index_save_creates_directory_if_not_exists(client):
     """Test that save creates the target directory if it doesn't exist."""
-    import shutil
     shutil.rmtree(TEST_DATA_PATH, ignore_errors=True)
     assert not os.path.exists(TEST_DATA_PATH)
 
@@ -642,11 +645,8 @@ def test_index_save_overwrites_existing_files(client, multiple_added_docs):
 
 def test_index_save_version_matches_app_version(client):
     """Test that saved version matches application version."""
-    from vectorforge import __version__
-    
     response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     data = response.json()
-    
     assert data["version"] == __version__
 
 
@@ -662,8 +662,6 @@ def test_index_save_with_default_directory(client):
 
 def test_index_save_creates_valid_json_metadata(client, added_doc):
     """Test that saved metadata.json is valid JSON."""
-    import json
-
     client.post("/index/save", params={"directory": TEST_DATA_PATH})
     
     metadata_path = os.path.join(TEST_DATA_PATH, Config.METADATA_FILENAME)
@@ -677,8 +675,6 @@ def test_index_save_creates_valid_json_metadata(client, added_doc):
 
 def test_index_save_creates_valid_embeddings_file(client, added_doc):
     """Test that saved embeddings.npz is valid numpy format."""
-    import numpy as np
-    
     client.post("/index/save", params={"directory": TEST_DATA_PATH})
     
     embeddings_path = os.path.join(TEST_DATA_PATH, Config.EMBEDDINGS_FILENAME)
@@ -970,10 +966,7 @@ def test_index_load_multiple_times_idempotent(client, multiple_added_docs):
 def test_index_load_version_information(client):
     """Test that load response includes version of loaded data."""
     client.post("/index/save", params={"directory": TEST_DATA_PATH})
-    
     load_data = client.post("/index/load", params={"directory": TEST_DATA_PATH}).json()
-    
-    from vectorforge import __version__
     assert load_data["version"] == __version__
 
 
