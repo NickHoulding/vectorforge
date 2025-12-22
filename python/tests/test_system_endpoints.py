@@ -1,11 +1,15 @@
 """Tests for system monitoring endpoints"""
 
+import io
 import re
 import time
+
+from datetime import datetime
 
 import pytest
 
 from vectorforge import __version__
+from vectorforge.config import Config
 
 
 # =============================================================================
@@ -375,3 +379,175 @@ def test_metrics_uptime_increases(client):
     
     assert uptime2 > uptime1
     assert uptime2 - uptime1 >= 0.1
+
+
+def test_metrics_only_accepts_get_method(client):
+    """Test that metrics endpoint only accepts GET requests."""
+    resp = client.post("/metrics")
+    assert resp.status_code == 405
+    
+    resp = client.put("/metrics")
+    assert resp.status_code == 405
+    
+    resp = client.delete("/metrics")
+    assert resp.status_code == 405
+
+
+def test_metrics_endpoint_is_idempotent(client):
+    """Test that multiple metrics calls return consistent structure."""
+    resp1 = client.get("/metrics")
+    resp2 = client.get("/metrics")
+    resp3 = client.get("/metrics")
+    
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert resp3.status_code == 200
+    
+    assert set(resp1.json().keys()) == set(resp2.json().keys()) == set(resp3.json().keys())
+
+
+def test_metrics_response_has_no_extra_fields(client):
+    """Test that metrics response only contains expected top-level fields."""
+    resp = client.get("/metrics")
+    data = resp.json()
+    
+    expected_fields = {"index", "performance", "usage", "memory", "timestamps", "system"}
+    actual_fields = set(data.keys())
+    
+    assert actual_fields == expected_fields
+
+
+def test_metrics_version_matches_package_version(client):
+    """Test that metrics system version matches package version."""
+    resp = client.get("/metrics")
+    data = resp.json()
+    
+    assert data["system"]["version"] == __version__
+
+
+def test_metrics_ignores_query_parameters(client):
+    """Test that metrics endpoint ignores query parameters."""
+    resp1 = client.get("/metrics")
+    resp2 = client.get("/metrics", params={"foo": "bar", "baz": "qux"})
+    
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    
+    assert set(resp1.json().keys()) == set(resp2.json().keys())
+
+
+def test_metrics_after_file_upload(client):
+    """Test that file upload updates chunks_created and files_uploaded."""
+    initial_metrics = client.get("/metrics").json()
+    initial_chunks = initial_metrics["usage"]["chunks_created"]
+    initial_files = initial_metrics["usage"]["files_uploaded"]
+    
+    file_content = b"Test file content for upload testing. " * 100
+    files = {"file": ("test.txt", io.BytesIO(file_content), "text/plain")}
+    
+    resp = client.post("/file/upload", files=files)
+    assert resp.status_code == 201
+    
+    after_metrics = client.get("/metrics").json()
+    assert after_metrics["usage"]["chunks_created"] > initial_chunks
+    assert after_metrics["usage"]["files_uploaded"] == initial_files + 1
+    assert after_metrics["timestamps"]["last_file_uploaded_at"] is not None
+
+
+def test_metrics_after_compaction(client, multiple_added_docs):
+    """Test that compaction increments compactions_performed."""
+    initial_metrics = client.get("/metrics").json()
+    initial_compactions = initial_metrics["usage"]["compactions_performed"]
+    
+    for i in range(6):
+        client.delete(f"/doc/{multiple_added_docs[i]}")
+    
+    after_metrics = client.get("/metrics").json()
+    assert after_metrics["usage"]["compactions_performed"] > initial_compactions
+    assert after_metrics["timestamps"]["last_compaction_at"] is not None
+
+
+def test_metrics_memory_values_are_non_negative(client):
+    """Test that all memory metrics are non-negative."""
+    metrics = client.get("/metrics").json()
+    assert metrics["memory"]["embeddings_mb"] >= 0
+    assert metrics["memory"]["documents_mb"] >= 0
+    assert metrics["memory"]["total_mb"] >= 0
+
+
+def test_metrics_performance_percentiles_none_when_no_queries(client):
+    """Test that percentiles are None when no queries have been executed."""
+    metrics = client.get("/metrics").json()
+    
+    if metrics["performance"]["total_queries"] == 0:
+        assert metrics["performance"]["min_query_time_ms"] is None
+        assert metrics["performance"]["max_query_time_ms"] is None
+        assert metrics["performance"]["p50_query_time_ms"] is None
+        assert metrics["performance"]["p95_query_time_ms"] is None
+        assert metrics["performance"]["p99_query_time_ms"] is None
+
+
+def test_metrics_timestamps_are_iso_format(client, added_doc):
+    """Test that timestamp fields follow ISO 8601 format."""
+    client.post("/search", json={"query": "test", "top_k": 5})
+    metrics = client.get("/metrics").json()
+    
+    created_at = metrics["timestamps"]["engine_created_at"]
+    assert isinstance(created_at, str)
+    datetime.fromisoformat(created_at)
+    
+    if metrics["timestamps"]["last_query_at"]:
+        datetime.fromisoformat(metrics["timestamps"]["last_query_at"])
+    if metrics["timestamps"]["last_document_added_at"]:
+        datetime.fromisoformat(metrics["timestamps"]["last_document_added_at"])
+
+
+def test_metrics_average_query_time_calculation(client, multiple_added_docs):
+    """Test that average query time is calculated correctly."""
+    for i in range(5):
+        client.post("/search", json={"query": f"test {i}", "top_k": 5})
+    
+    metrics = client.get("/metrics").json()
+    
+    total_time = metrics["performance"]["total_query_time_ms"]
+    total_queries = metrics["performance"]["total_queries"]
+    avg_time = metrics["performance"]["avg_query_time_ms"]
+    
+    if total_queries > 0:
+        expected_avg = total_time / total_queries
+        assert abs(avg_time - expected_avg) < 0.001
+
+
+def test_metrics_total_memory_equals_sum(client, added_doc):
+    """Test that total_mb equals sum of embeddings_mb and documents_mb."""
+    metrics = client.get("/metrics").json()
+    
+    embeddings_mb = metrics["memory"]["embeddings_mb"]
+    documents_mb = metrics["memory"]["documents_mb"]
+    total_mb = metrics["memory"]["total_mb"]
+    
+    expected_total = embeddings_mb + documents_mb
+    assert abs(total_mb - expected_total) < 0.001
+
+
+def test_metrics_usage_counters_are_cumulative(client):
+    """Test that usage metrics are cumulative and never decrease."""
+    metrics1 = client.get("/metrics").json()
+    client.post("/doc/add", json={"content": "test", "metadata": {}})
+    metrics2 = client.get("/metrics").json()
+    
+    assert metrics2["usage"]["documents_added"] >= metrics1["usage"]["documents_added"]
+    assert metrics2["usage"]["documents_deleted"] >= metrics1["usage"]["documents_deleted"]
+    assert metrics2["usage"]["compactions_performed"] >= metrics1["usage"]["compactions_performed"]
+
+
+def test_metrics_model_name_is_correct(client):
+    """Test that model_name matches the configured model."""
+    metrics = client.get("/metrics").json()
+    assert metrics["system"]["model_name"] == Config.MODEL_NAME
+
+
+def test_metrics_model_dimension_is_correct(client):
+    """Test that model_dimension matches the configured dimension."""
+    metrics = client.get("/metrics").json()
+    assert metrics["system"]["model_dimension"] == Config.EMBEDDING_DIMENSION
