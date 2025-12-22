@@ -1,10 +1,23 @@
 """Tests for system monitoring endpoints"""
 
-
 import re
 import time
 
+import pytest
+
 from vectorforge import __version__
+
+
+# =============================================================================
+# Fixtures
+# =============================================================================
+
+@pytest.fixture
+def metrics(client):
+    """Reusable fixture returning index metrics."""
+    resp = client.get("/metrics")
+    assert resp.status_code == 200
+    return resp.json()
 
 
 # =============================================================================
@@ -144,179 +157,221 @@ def test_health_endpoint_responds_quickly(client):
 
 def test_metrics_returns_200(client):
     """Test that GET /metrics returns 200 status."""
-    raise NotImplementedError
+    resp = client.get("/metrics")
+    assert resp.status_code == 200
 
 
-def test_metrics_returns_comprehensive_data(client):
+def test_metrics_returns_comprehensive_data(metrics):
     """Test that metrics response includes all metric categories."""
-    raise NotImplementedError
+    assert "index" in metrics
+    assert "performance" in metrics
+    assert "usage" in metrics
+    assert "memory" in metrics
+    assert "timestamps" in metrics
+    assert "system" in metrics
 
 
-def test_metrics_includes_index_metrics(client):
+def test_metrics_includes_index_metrics(metrics):
     """Test that metrics response includes index statistics."""
-    raise NotImplementedError
+    assert "total_documents" in metrics["index"]
+    assert isinstance(metrics["index"]["total_documents"], int)
+    assert "total_embeddings" in metrics["index"]
+    assert isinstance(metrics["index"]["total_embeddings"], int)
+    assert "deleted_documents" in metrics["index"]
+    assert isinstance(metrics["index"]["deleted_documents"], int)
+    assert "deleted_ratio" in metrics["index"]
+    assert isinstance(metrics["index"]["deleted_ratio"], float)
+    assert "needs_compaction" in metrics["index"]
+    assert isinstance(metrics["index"]["needs_compaction"], bool)
+    assert "compact_threshold" in metrics["index"]
+    assert isinstance(metrics["index"]["compact_threshold"], float)
 
 
-def test_metrics_includes_performance_metrics(client):
+def test_metrics_includes_performance_metrics(metrics):
     """Test that metrics response includes performance statistics."""
-    raise NotImplementedError
+    assert "total_queries" in metrics["performance"]
+    assert isinstance(metrics["performance"]["total_queries"], int)
+    assert "avg_query_time_ms" in metrics["performance"]
+    assert isinstance(metrics["performance"]["avg_query_time_ms"], float)
+    assert "total_query_time_ms" in metrics["performance"]
+    assert isinstance(metrics["performance"]["total_query_time_ms"], float)
+    assert "min_query_time_ms" in metrics["performance"]
+    assert isinstance(metrics["performance"]["min_query_time_ms"], (float | None))
+    assert "max_query_time_ms" in metrics["performance"]
+    assert isinstance(metrics["performance"]["max_query_time_ms"], (float | None))
+    assert "p50_query_time_ms" in metrics["performance"]
+    assert isinstance(metrics["performance"]["p50_query_time_ms"], (float | None))
+    assert "p95_query_time_ms" in metrics["performance"]
+    assert isinstance(metrics["performance"]["p95_query_time_ms"], (float | None))
+    assert "p99_query_time_ms" in metrics["performance"]
+    assert isinstance(metrics["performance"]["p99_query_time_ms"], (float | None))
 
 
-def test_metrics_includes_usage_metrics(client):
+def test_metrics_includes_usage_metrics(metrics):
     """Test that metrics response includes usage statistics."""
-    raise NotImplementedError
+    assert "documents_added" in metrics["usage"]
+    assert isinstance(metrics["usage"]["documents_added"], int)
+    assert "documents_deleted" in metrics["usage"]
+    assert isinstance(metrics["usage"]["documents_deleted"], int)
+    assert "compactions_performed" in metrics["usage"]
+    assert isinstance(metrics["usage"]["compactions_performed"], int)
+    assert "chunks_created" in metrics["usage"]
+    assert isinstance(metrics["usage"]["chunks_created"], int)
+    assert "files_uploaded" in metrics["usage"]
+    assert isinstance(metrics["usage"]["files_uploaded"], int)
 
 
-def test_metrics_includes_memory_metrics(client):
+def test_metrics_includes_memory_metrics(metrics):
     """Test that metrics response includes memory statistics."""
-    raise NotImplementedError
+    assert "embeddings_mb" in metrics["memory"]
+    assert isinstance(metrics["memory"]["embeddings_mb"], float)
+    assert "documents_mb" in metrics["memory"]
+    assert isinstance(metrics["memory"]["documents_mb"], float)
+    assert "total_mb" in metrics["memory"]
+    assert isinstance(metrics["memory"]["total_mb"], float)
 
 
-def test_metrics_includes_timestamp_metrics(client):
+def test_metrics_includes_timestamp_metrics(metrics):
     """Test that metrics response includes timestamp information."""
-    raise NotImplementedError
+    assert "engine_created_at" in metrics["timestamps"]
+    assert isinstance(metrics["timestamps"]["engine_created_at"], str)
+    assert "last_query_at" in metrics["timestamps"]
+    assert isinstance(metrics["timestamps"]["last_query_at"], (str | None))
+    assert "last_document_added_at" in metrics["timestamps"]
+    assert isinstance(metrics["timestamps"]["last_document_added_at"], (str | None))
+    assert "last_compaction_at" in metrics["timestamps"]
+    assert isinstance(metrics["timestamps"]["last_compaction_at"], (str | None))
+    assert "last_file_uploaded_at" in metrics["timestamps"]
+    assert isinstance(metrics["timestamps"]["last_file_uploaded_at"], (str | None))
 
 
-def test_metrics_includes_system_info(client):
+def test_metrics_includes_system_info(metrics):
     """Test that metrics response includes system information."""
-    raise NotImplementedError
-
-
-def test_metrics_index_total_documents(client):
-    """Test that index metrics include total documents count."""
-    raise NotImplementedError
-
-
-def test_metrics_index_deleted_documents(client):
-    """Test that index metrics include deleted documents count."""
-    raise NotImplementedError
-
-
-def test_metrics_index_compaction_status(client):
-    """Test that index metrics include compaction status."""
-    raise NotImplementedError
-
-
-def test_metrics_performance_total_queries(client):
-    """Test that performance metrics include total queries count."""
-    raise NotImplementedError
-
-
-def test_metrics_performance_query_times(client):
-    """Test that performance metrics include query time statistics."""
-    raise NotImplementedError
-
-
-def test_metrics_performance_percentiles(client):
-    """Test that performance metrics include p50, p95, p99 percentiles."""
-    raise NotImplementedError
-
-
-def test_metrics_usage_documents_added(client):
-    """Test that usage metrics include documents added count."""
-    raise NotImplementedError
-
-
-def test_metrics_usage_documents_deleted(client):
-    """Test that usage metrics include documents deleted count."""
-    raise NotImplementedError
-
-
-def test_metrics_usage_files_uploaded(client):
-    """Test that usage metrics include files uploaded count."""
-    raise NotImplementedError
-
-
-def test_metrics_usage_chunks_created(client):
-    """Test that usage metrics include chunks created count."""
-    raise NotImplementedError
-
-
-def test_metrics_memory_embeddings_size(client):
-    """Test that memory metrics include embeddings memory size."""
-    raise NotImplementedError
-
-
-def test_metrics_memory_documents_size(client):
-    """Test that memory metrics include documents memory size."""
-    raise NotImplementedError
-
-
-def test_metrics_memory_total_size(client):
-    """Test that memory metrics include total memory size."""
-    raise NotImplementedError
-
-
-def test_metrics_timestamps_engine_created(client):
-    """Test that timestamp metrics include engine creation time."""
-    raise NotImplementedError
-
-
-def test_metrics_timestamps_last_query(client):
-    """Test that timestamp metrics include last query time."""
-    raise NotImplementedError
-
-
-def test_metrics_timestamps_last_document_added(client):
-    """Test that timestamp metrics include last document added time."""
-    raise NotImplementedError
-
-
-def test_metrics_system_model_name(client):
-    """Test that system info includes model name."""
-    raise NotImplementedError
-
-
-def test_metrics_system_model_dimension(client):
-    """Test that system info includes model dimension."""
-    raise NotImplementedError
-
-
-def test_metrics_system_uptime(client):
-    """Test that system info includes uptime in seconds."""
-    raise NotImplementedError
-
-
-def test_metrics_system_version(client):
-    """Test that system info includes version."""
-    raise NotImplementedError
+    assert "model_name" in metrics["system"]
+    assert isinstance(metrics["system"]["model_name"], str)
+    assert "model_dimension" in metrics["system"]
+    assert isinstance(metrics["system"]["model_dimension"], int)
+    assert "uptime_seconds" in metrics["system"]
+    assert isinstance(metrics["system"]["uptime_seconds"], float)
+    assert "version" in metrics["system"]
+    assert isinstance(metrics["system"]["version"], str)
 
 
 def test_metrics_updates_after_operations(client):
     """Test that metrics update correctly after performing operations."""
-    raise NotImplementedError
+    initial_metrics = client.get("/metrics").json()
+    
+    client.post("/doc/add", json={"content": "test document", "metadata": {}})
+    
+    after_add = client.get("/metrics").json()
+    assert after_add["usage"]["documents_added"] == initial_metrics["usage"]["documents_added"] + 1
+    assert after_add["index"]["total_documents"] == initial_metrics["index"]["total_documents"] + 1
+    assert after_add["timestamps"]["last_document_added_at"] is not None
 
 
-def test_metrics_response_format(client):
-    """Test that metrics response has proper structure and types."""
-    raise NotImplementedError
-
-
-def test_metrics_after_add_delete_cycle(client, sample_doc):
+def test_metrics_after_add_delete_cycle(client, sample_doc, multiple_added_docs):
     """Test metrics accuracy after adding and deleting documents."""
-    raise NotImplementedError
+    initial_metrics = client.get("/metrics").json()
+    
+    add_resp = client.post("/doc/add", json=sample_doc)
+    doc_id = add_resp.json()["id"]
+    
+    after_add = client.get("/metrics").json()
+    assert after_add["usage"]["documents_added"] == initial_metrics["usage"]["documents_added"] + 1
+    
+    client.delete(f"/doc/{doc_id}")
+    
+    after_delete = client.get("/metrics").json()
+    assert after_delete["usage"]["documents_deleted"] == initial_metrics["usage"]["documents_deleted"] + 1
+    assert after_delete["index"]["deleted_documents"] == initial_metrics["index"]["deleted_documents"] + 1
+    
+    assert after_delete["index"]["total_embeddings"] == after_add["index"]["total_embeddings"]
 
 
 def test_metrics_after_search_operation(client, added_doc):
     """Test that metrics update after search operations."""
-    raise NotImplementedError
+    initial_metrics = client.get("/metrics").json()
+    initial_queries = initial_metrics["performance"]["total_queries"]
+    initial_query_time = initial_metrics["performance"]["total_query_time_ms"]
+    
+    client.post("/search", json={
+        "query": "test", 
+        "top_k": 5
+    })
+    
+    after_search = client.get("/metrics").json()
+    assert after_search["performance"]["total_queries"] == initial_queries + 1
+    assert after_search["performance"]["total_query_time_ms"] > initial_query_time
+    assert after_search["timestamps"]["last_query_at"] is not None
+    assert after_search["performance"]["avg_query_time_ms"] > 0
 
 
-def test_metrics_performance_percentiles_calculation(client):
+def test_metrics_performance_percentiles_calculation(client, multiple_added_docs):
     """Test that p50, p95, p99 percentiles are calculated correctly."""
-    raise NotImplementedError
+    for i in range(20):
+        client.post("/search", json={"query": f"query {i}", "top_k": 5})
+    
+    metrics = client.get("/metrics").json()
+    assert metrics["performance"]["p50_query_time_ms"] is not None
+    assert metrics["performance"]["p95_query_time_ms"] is not None
+    assert metrics["performance"]["p99_query_time_ms"] is not None
+    
+    assert metrics["performance"]["p50_query_time_ms"] >= 0
+    assert metrics["performance"]["p95_query_time_ms"] >= metrics["performance"]["p50_query_time_ms"]
+    assert metrics["performance"]["p99_query_time_ms"] >= metrics["performance"]["p95_query_time_ms"]
+    
+    assert metrics["performance"]["min_query_time_ms"] is not None
+    assert metrics["performance"]["max_query_time_ms"] is not None
+    assert metrics["performance"]["min_query_time_ms"] <= metrics["performance"]["p50_query_time_ms"]
+    assert metrics["performance"]["max_query_time_ms"] >= metrics["performance"]["p99_query_time_ms"]
 
 
 def test_metrics_memory_calculation_accuracy(client):
     """Test that memory metrics accurately reflect storage usage."""
-    raise NotImplementedError
+    initial_metrics = client.get("/metrics").json()
+    initial_memory = initial_metrics["memory"]["total_mb"]
+    
+    large_content = "x" * 10000  # 10KB of content
+    for i in range(10):
+        client.post("/doc/add", json={"content": large_content, "metadata": {}})
+    
+    after_metrics = client.get("/metrics").json()
+    assert after_metrics["memory"]["total_mb"] > initial_memory
+    assert after_metrics["memory"]["documents_mb"] > 0
+    assert after_metrics["memory"]["embeddings_mb"] > 0
+    
+    expected_total = after_metrics["memory"]["embeddings_mb"] + after_metrics["memory"]["documents_mb"]
+    assert abs(after_metrics["memory"]["total_mb"] - expected_total) < 0.001
 
 
-def test_metrics_index_deleted_ratio_calculation(client):
+def test_metrics_index_deleted_ratio_calculation(client, multiple_added_docs):
     """Test that deleted_ratio is calculated correctly."""
-    raise NotImplementedError
+    metrics_before = client.get("/metrics").json()
+    initial_deleted = metrics_before["index"]["deleted_documents"]
+    initial_ratio = metrics_before["index"]["deleted_ratio"]
+    
+    client.delete(f"/doc/{multiple_added_docs[0]}")
+    client.delete(f"/doc/{multiple_added_docs[1]}")
+    
+    metrics_after = client.get("/metrics").json()
+    assert metrics_after["index"]["deleted_documents"] == initial_deleted + 2
+    assert metrics_after["index"]["deleted_ratio"] > initial_ratio
+    
+    if metrics_after["index"]["deleted_ratio"] > metrics_after["index"]["compact_threshold"]:
+        assert metrics_after["index"]["needs_compaction"] is True
+    else:
+        assert metrics_after["index"]["needs_compaction"] is False
 
 
 def test_metrics_uptime_increases(client):
     """Test that uptime_seconds increases over time."""
-    raise NotImplementedError
+    metrics1 = client.get("/metrics").json()
+    uptime1 = metrics1["system"]["uptime_seconds"]
+    
+    time.sleep(0.1)
+    
+    metrics2 = client.get("/metrics").json()
+    uptime2 = metrics2["system"]["uptime_seconds"]
+    
+    assert uptime2 > uptime1
+    assert uptime2 - uptime1 >= 0.1

@@ -186,7 +186,8 @@ class MetricsResponse(BaseModel):
                 "system": {
                     "model_name": "all-MiniLM-L6-v2",
                     "model_dimension": 384,
-                    "uptime_seconds": 22523.45
+                    "uptime_seconds": 22523.45,
+                    "version": "0.9.0"
                 }
             }
         }
