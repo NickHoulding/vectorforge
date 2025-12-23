@@ -13,6 +13,7 @@ dependencies = [
     "sentence-transformers>=5.1.2",
     "python-multipart>=0.0.20",
     "isort>=7.0.0",
+    "fastmcp>=2.14.1",
 ]
 
 [tool.isort]
