@@ -4,6 +4,8 @@ import io
 
 import pytest
 
+from vectorforge.config import Config
+
 
 # =============================================================================
 # File Test Fixtures
@@ -55,28 +57,28 @@ def test_file_list_empty_when_no_files_uploaded(client):
     assert len(filenames) == 0
 
 
-def test_file_upload_pdf_returns_201(uploaded_file):
+def test_file_upload_pdf_returns_201(client):
     """Test that uploading a PDF file returns 201 status."""
-    assert uploaded_file.status_code == 201
+    filename = "test_document.pdf"
+    file_content = b"This is a test document with some content for testing file uploads."
+    files = {"file": (filename, io.BytesIO(file_content), "text/pdf")}
 
-
-def test_file_upload_txt_returns_201(client):
-    """Test that uploading a TXT file returns 201 status."""
-
-
-
-
-    resp = client.post("/file/upload", params={})
+    resp = client.post("/file/upload", params=files)
     assert resp.status_code == 201
+
+
+def test_file_upload_txt_returns_201(uploaded_file):
+    """Test that uploading a TXT file returns 201 status."""
+    assert uploaded_file.status_code == 201
 
 
 def test_file_upload_creates_multiple_chunks(client):
     """Test that uploading a file creates multiple document chunks."""
+    filename = "test_document.md"
+    file_content = b"a" * (Config.DEFAULT_CHUNK_SIZE * 2)
+    files = {"file": (filename, io.BytesIO(file_content), "text/plain")}
 
-
-
-
-    resp = client.post("/file/upload", params={})
+    resp = client.post("/file/upload", params=files)
     assert resp.status_code == 201
     
     data = resp.json()
@@ -109,38 +111,36 @@ def test_file_upload_chunks_have_metadata(client, uploaded_file):
         
         doc_data = resp.json()
         assert "source_file" in doc_data
-        assert isinstance(doc_data["source_file"], str)
+        assert isinstance(doc_data["metadata"]["source_file"], str)
         assert "chunk_index" in doc_data
-        assert isinstance(doc_data["chunk_index"], str)
+        assert isinstance(doc_data["metadata"]["chunk_index"], str)
 
 
 def test_file_upload_unsupported_format_returns_400(client):
     """Test that uploading an unsupported file format returns 400."""
+    filename = "test_document.md"
+    file_content = b"This is a test document with some content for testing file uploads."
+    files = {"file": (filename, io.BytesIO(file_content), "text/unsupported-filetype")}
 
-
-
-
-    resp = client.post("/file/upload", params={})
+    resp = client.post("/file/upload", files=files)
     assert resp.status_code == 400
 
 
 def test_file_upload_no_filename_returns_400(client):
     """Test that uploading without a filename returns 400."""
+    file_content = b"This is a test document with some content for testing file uploads."
+    files = {"file": (io.BytesIO(file_content), "text/plain")}
 
-
-
-
-    resp = client.post("/file/upload", params={})
+    resp = client.post("/file/upload", files=files)
     assert resp.status_code == 400
 
 
 def test_file_upload_empty_file(client):
     """Test uploading an empty file."""
+    filename = "test_document.txt"
+    files = {"file": (filename, io.BytesIO(b""), "text/plain")}
 
-
-
-
-    resp = client.post("/file/upload", params={})
+    resp = client.post("/file/upload", files=files)
     assert resp.status_code == 400
 
 
@@ -198,14 +198,27 @@ def test_file_delete_response_contains_doc_ids(client, uploaded_file):
     assert all(isinstance(doc_id, str) for doc_id in data["doc_ids"])
 
 
-def test_file_list_includes_uploaded_filenames(client):
+def test_file_list_includes_uploaded_filenames(client, uploaded_file):
     """Test that file list includes filenames of uploaded files."""
-    raise NotImplementedError
+    filename = uploaded_file.json()["filename"]
+
+    resp = client.get("/file/list")
+    assert resp.status_code == 200
+
+    assert filename in resp.json()["filenames"]
 
 
-def test_file_list_excludes_deleted_files(client):
+def test_file_list_excludes_deleted_files(client, uploaded_file):
     """Test that file list doesn't include deleted files."""
-    raise NotImplementedError
+    filename = uploaded_file.json()["filename"]
+
+    resp = client.delete(f"/file/delete/{filename}")
+    assert resp.status_code == 200
+
+    resp = client.get("/file/list")
+    assert resp.status_code == 200
+
+    assert filename not in resp.json()["filenames"]
 
 
 def test_file_upload_with_duplicate_filename(client):

@@ -74,6 +74,12 @@ async def extract_file_content(file: UploadFile) -> str:
             detail=f"Unsupported file type: {file.filename}. Supported types: {Config.SUPPORTED_FILE_EXTENSIONS}"
         )
     
+    if not text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file(s) contains no content"
+        )
+    
     return text
 
 def chunk_text(
