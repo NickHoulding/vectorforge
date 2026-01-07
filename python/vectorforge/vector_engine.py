@@ -601,6 +601,8 @@ class VectorEngine:
         """
         doc_ids = []
 
+        # Create a list of doc_ids first to avoid modifying dict during iteration
+        matching_doc_ids = []
         for doc_id, doc in self.documents.items():
             if doc_id in self.deleted_docs:
                 continue
@@ -608,8 +610,12 @@ class VectorEngine:
             source = doc["metadata"].get("source_file", None)
 
             if source == filename:
-                if self.delete_doc(doc_id=doc_id):
-                    doc_ids.append(doc_id)
+                matching_doc_ids.append(doc_id)
+        
+        # Now delete the documents
+        for doc_id in matching_doc_ids:
+            if self.delete_doc(doc_id=doc_id):
+                doc_ids.append(doc_id)
 
         return {
             "status": "deleted" if doc_ids else "not_found",
