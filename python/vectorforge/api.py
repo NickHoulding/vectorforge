@@ -86,12 +86,31 @@ async def upload_file(file: UploadFile):
         FileUploadResponse: Upload confirmation with chunk count and document IDs
         
     Raises:
-        HTTPException: 400 if file format is unsupported
+        HTTPException: 400 if file format is missing, too long, or unsupported
+        HTTPException: 400 if file has no content
         HTTPException: 500 if processing or indexing fails
     """
     try:
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="No filename provided"
+            )
+        if len(file.filename) > Config.MAX_FILENAME_LENGTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Filename too long: {file.filename[:25]}..."
+            )
+
         doc_ids: list[str] = []
         text: str = await extract_file_content(file)
+
+        if not text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded file(s) contains no content"
+            )
+
         chunks: list[str] = chunk_text(text)
 
         for i, chunk in enumerate(chunks):
@@ -113,6 +132,12 @@ async def upload_file(file: UploadFile):
     
     except HTTPException:
         raise
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"{e}"
+        )
     except Exception as e:
         print(f"Unexpected error: {e}")
         raise HTTPException(

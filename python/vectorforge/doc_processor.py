@@ -48,8 +48,7 @@ async def extract_file_content(file: UploadFile) -> str:
         pages concatenated together. For text files, returns the decoded content.
     
     Raises:
-        HTTPException: 400 error if no filename is provided in the upload.
-        HTTPException: 400 error if the file type is not supported (must be .pdf or .txt).
+        ValueError: if an unsupported file type is provided.
     
     Example:
         >>> from fastapi import UploadFile
@@ -57,11 +56,8 @@ async def extract_file_content(file: UploadFile) -> str:
         >>> text = await extract_file_content(file)
     """
     if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="No filename provided"
-        )
-    
+        file.filename = ""
+
     content: bytes = await file.read()
 
     if file.filename.endswith('.pdf'):
@@ -69,16 +65,7 @@ async def extract_file_content(file: UploadFile) -> str:
     elif file.filename.endswith('.txt'):
         text: str = content.decode('utf-8')
     else:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file.filename}. Supported types: {Config.SUPPORTED_FILE_EXTENSIONS}"
-        )
-    
-    if not text.strip():
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file(s) contains no content"
-        )
+        raise ValueError("Unsupported file type: {file.filename}. Supported types: {Config.SUPPORTED_FILE_EXTENSIONS}")
     
     return text
 

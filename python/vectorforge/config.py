@@ -34,6 +34,9 @@ class Config:
     MAX_PATH_LEN: int = 4096
     """Maximum valid path length for save/load functionality"""
     
+    MAX_FILENAME_LENGTH: int = 255
+    """Maximum filename length (including extension)."""
+    
     # =============================================================================
     # Index Management
     # =============================================================================

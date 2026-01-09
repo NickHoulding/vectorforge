@@ -48,15 +48,17 @@ def get_metrics(client):
     def _get_metrics():
         return client.get("/metrics").json()
     return _get_metrics
-def test_file_list_returns_200(client):
-    """Test that GET /file/list returns 200 status."""
-    response = client.get("/file/list")
-    assert response.status_code == 200
 
 
 # =============================================================================
 # File Endpoint Tests
 # =============================================================================
+
+def test_file_list_returns_200(client):
+    """Test that GET /file/list returns 200 status."""
+    response = client.get("/file/list")
+    assert response.status_code == 200
+
 
 def test_file_list_returns_filenames_list(client):
     """Test that file list response contains filenames list."""
@@ -800,3 +802,11 @@ def test_file_operations_consistency_across_multiple_uploads_and_deletes(client,
     
     for active_file in active_files:
         assert active_file in current_files
+
+
+def test_file_upload_exceeds_max_filename_length(upload_file):
+    """Test that uploading with filename exceeding MAX_FILENAME_LENGTH returns 400."""
+    long_filename = "a" * (Config.MAX_FILENAME_LENGTH + 1) + ".txt"
+    
+    resp = upload_file(long_filename, b"Testing filename too long")
+    assert resp.status_code == 400
