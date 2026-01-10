@@ -795,7 +795,7 @@ def test_should_compact_returns_boolean():
     """Test that should_compact returns a boolean."""
     engine = VectorEngine()
     
-    result = engine.should_compact()
+    result = engine._should_compact()
     
     assert isinstance(result, bool)
 
@@ -806,7 +806,7 @@ def test_should_compact_false_when_no_deletions():
     engine.add_doc("Document 1", {})
     engine.add_doc("Document 2", {})
     
-    result = engine.should_compact()
+    result = engine._should_compact()
     
     assert result is False
 
@@ -820,7 +820,7 @@ def test_should_compact_true_when_threshold_exceeded():
     for doc_id in doc_ids[:3]:
         engine.deleted_docs.add(doc_id)
     
-    result = engine.should_compact()
+    result = engine._should_compact()
     
     assert result is True
 
@@ -835,13 +835,13 @@ def test_should_compact_respects_threshold():
     for doc_id in doc_ids[:4]:
         engine.deleted_docs.add(doc_id)
     
-    assert engine.should_compact() is False
+    assert engine._should_compact() is False
     
     engine.deleted_docs.add(doc_ids[4])
-    assert engine.should_compact() is False
+    assert engine._should_compact() is False
     
     engine.deleted_docs.add(doc_ids[5])
-    assert engine.should_compact() is True
+    assert engine._should_compact() is True
 
 
 # =============================================================================
@@ -1578,7 +1578,7 @@ def test_compaction_triggered_automatically():
     for doc_id in doc_ids[:3]:
         engine.delete_doc(doc_id)
     
-    assert len(engine.deleted_docs) == 0 or engine.should_compact() is False
+    assert len(engine.deleted_docs) == 0 or engine._should_compact() is False
 
 
 def test_search_after_compaction():

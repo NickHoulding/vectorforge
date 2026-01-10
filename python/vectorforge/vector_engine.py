@@ -67,6 +67,7 @@ class EngineMetrics:
     query_times: deque[float] = field(default_factory=deque)
     max_query_history: int = Config.MAX_QUERY_HISTORY
 
+
     def to_dict(self) -> dict:
         """Convert metrics to a dictionary for serialization.
         
@@ -130,8 +131,9 @@ class VectorEngine:
         self.metrics = EngineMetrics()
         self.compaction_threshold = Config.COMPACTION_THRESHOLD
 
-        if self.should_compact():
+        if self._should_compact():
             self._compact()
+
 
     def save(self, directory: str = Config.DEFAULT_DATA_DIR) -> dict:
         """Save the vector engine state to disk.
@@ -210,7 +212,8 @@ class VectorEngine:
             "embeddings_saved": len(active_embeddings),
             "version": __version__
         }
-    
+
+
     def load(self, directory: str = Config.DEFAULT_DATA_DIR) -> dict:
         """Load the vector engine state from disk.
         
@@ -294,53 +297,6 @@ class VectorEngine:
             "version": metadata.get("version", "unknown")
         }
 
-    def should_compact(self) -> bool:
-        """Determine whether compaction is needed based on deleted document ratio.
-        
-        Compaction is recommended when the ratio of deleted documents to total
-        embeddings exceeds the configured threshold (default 0.25).
-        
-        Returns:
-            True if compaction should be performed, False otherwise.
-        """
-        if not self.embeddings:
-            return False
-
-        deleted_ratio = len(self.deleted_docs) / len(self.embeddings)
-        return deleted_ratio > self.compaction_threshold
-
-    def _compact(self) -> None:
-        """Clean up the index by removing deleted documents and rebuilding indices.
-        
-        Removes all deleted documents from memory, rebuilds the embedding array
-        and index mappings to eliminate fragmentation. Updates compaction metrics
-        and timestamps.
-        """
-        if len(self.deleted_docs) == 0: return
-
-        new_embeddings = []
-        new_index_to_doc_id = []
-        new_doc_id_to_index = {}
-
-        for old_pos, doc_id in enumerate(self.index_to_doc_id):
-            if doc_id not in self.deleted_docs:
-                new_pos = len(new_embeddings)
-                new_embeddings.append(self.embeddings[old_pos])
-                new_index_to_doc_id.append(doc_id)
-                new_doc_id_to_index[doc_id] = new_pos
-
-        self.embeddings = new_embeddings
-        self.index_to_doc_id = new_index_to_doc_id
-        self.doc_id_to_index = new_doc_id_to_index
-
-        for doc_id in self.deleted_docs:
-            if doc_id in self.documents:
-                del self.documents[doc_id]
-        
-        self.deleted_docs.clear()
-        
-        self.metrics.compactions_performed += 1
-        self.metrics.last_compaction_at = datetime.now().isoformat()
 
     def build(self) -> None:
         """Rebuild the entire index from scratch.
@@ -373,6 +329,7 @@ class VectorEngine:
         self.metrics.compactions_performed += 1
         self.metrics.last_compaction_at = datetime.now().isoformat()
 
+
     def cosine_similarity(self, emb_a: np.ndarray, emb_b: np.ndarray) -> float:
         """Calculate cosine similarity between two pre-normalized embeddings.
         
@@ -387,6 +344,7 @@ class VectorEngine:
             identical vectors and -1 indicates opposite vectors.
         """
         return np.dot(emb_a, emb_b)
+
 
     def search(self, query: str, top_k: int = Config.DEFAULT_TOP_K) -> list[SearchResult]:
         """Search the vector index for documents similar to the query.
@@ -465,7 +423,8 @@ class VectorEngine:
             self.metrics.query_times.popleft()
 
         return search_results
-    
+
+
     def list_files(self) -> list[str]:
         """List all unique source files referenced in active documents.
         
@@ -490,7 +449,8 @@ class VectorEngine:
         filenames.sort()
 
         return filenames
-    
+
+
     def get_doc(self, doc_id: str) -> dict | None:
         """Retrieve a document by its ID.
         
@@ -505,6 +465,7 @@ class VectorEngine:
             return None
         
         return self.documents.get(doc_id, None)
+
 
     def add_doc(self, content: str, metadata: dict[str, Any] | None = None) -> str:
         """Add a new document to the vector index.
@@ -560,6 +521,7 @@ class VectorEngine:
 
         return doc_id
 
+
     def delete_doc(self, doc_id: str) -> bool:
         """Remove a document from the vector index (lazy deletion).
         
@@ -582,11 +544,12 @@ class VectorEngine:
         
         self.metrics.docs_deleted += 1
 
-        if self.should_compact():
+        if self._should_compact():
             self._compact()
 
         return True
-    
+
+
     def delete_file(self, filename: str) -> dict:
         """Delete all document chunks associated with a specific source file.
         
@@ -627,6 +590,7 @@ class VectorEngine:
             "chunks_deleted": len(doc_ids),
             "doc_ids": doc_ids
         }
+
 
     def get_metrics(self) -> dict:
         """Get comprehensive metrics about the vector engine's state and performance.
@@ -675,7 +639,7 @@ class VectorEngine:
             "active_documents": active_docs,
             "total_embeddings": total_embeddings,
             "deleted_ratio": deleted_ratio,
-            "needs_compaction": self.should_compact(),
+            "needs_compaction": self._should_compact(),
             "compact_threshold": self.compaction_threshold,
             
             # Performance metrics
@@ -699,6 +663,7 @@ class VectorEngine:
         })
         
         return metrics_dict
+
 
     def get_index_stats(self) -> dict:
         """Get key statistics about the current index state.
@@ -725,6 +690,56 @@ class VectorEngine:
             "total_embeddings": total_embeddings,
             "deleted_documents": deleted_docs,
             "deleted_ratio": deleted_ratio,
-            "needs_compaction": self.should_compact(),
+            "needs_compaction": self._should_compact(),
             "embedding_dimension": self.model.get_sentence_embedding_dimension() or 0
         }
+
+
+    def _should_compact(self) -> bool:
+        """Determine whether compaction is needed based on deleted document ratio.
+        
+        Compaction is recommended when the ratio of deleted documents to total
+        embeddings exceeds the configured threshold (default 0.25).
+        
+        Returns:
+            True if compaction should be performed, False otherwise.
+        """
+        if not self.embeddings:
+            return False
+
+        deleted_ratio = len(self.deleted_docs) / len(self.embeddings)
+        return deleted_ratio > self.compaction_threshold
+
+
+    def _compact(self) -> None:
+        """Clean up the index by removing deleted documents and rebuilding indices.
+        
+        Removes all deleted documents from memory, rebuilds the embedding array
+        and index mappings to eliminate fragmentation. Updates compaction metrics
+        and timestamps.
+        """
+        if len(self.deleted_docs) == 0: return
+
+        new_embeddings = []
+        new_index_to_doc_id = []
+        new_doc_id_to_index = {}
+
+        for old_pos, doc_id in enumerate(self.index_to_doc_id):
+            if doc_id not in self.deleted_docs:
+                new_pos = len(new_embeddings)
+                new_embeddings.append(self.embeddings[old_pos])
+                new_index_to_doc_id.append(doc_id)
+                new_doc_id_to_index[doc_id] = new_pos
+
+        self.embeddings = new_embeddings
+        self.index_to_doc_id = new_index_to_doc_id
+        self.doc_id_to_index = new_doc_id_to_index
+
+        for doc_id in self.deleted_docs:
+            if doc_id in self.documents:
+                del self.documents[doc_id]
+        
+        self.deleted_docs.clear()
+        
+        self.metrics.compactions_performed += 1
+        self.metrics.last_compaction_at = datetime.now().isoformat()
