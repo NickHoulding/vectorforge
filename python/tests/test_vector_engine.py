@@ -856,7 +856,7 @@ def test_compact_removes_deleted_documents():
     doc_id3 = engine.add_doc("Document 3", {})
     
     engine.deleted_docs.add(doc_id2)
-    engine.compact()
+    engine._compact()
     
     assert doc_id2 not in engine.documents
 
@@ -869,7 +869,7 @@ def test_compact_rebuilds_index_mappings():
     doc_id3 = engine.add_doc("Document 3", {})
     
     engine.deleted_docs.add(doc_id2)
-    engine.compact()
+    engine._compact()
     
     assert len(engine.index_to_doc_id) == 2
     assert doc_id1 in engine.index_to_doc_id
@@ -890,7 +890,7 @@ def test_compact_clears_deleted_docs_set():
     engine.deleted_docs.add(doc_id1)
     assert len(engine.deleted_docs) > 0
     
-    engine.compact()
+    engine._compact()
     
     assert len(engine.deleted_docs) == 0
 
@@ -903,7 +903,7 @@ def test_compact_preserves_active_documents():
     doc_id3 = engine.add_doc("Document 3", {"key": "value3"})
     
     engine.deleted_docs.add(doc_id2)
-    engine.compact()
+    engine._compact()
     
     assert doc_id1 in engine.documents
     assert engine.documents[doc_id1]["content"] == "Document 1"
@@ -943,7 +943,7 @@ def test_compact_with_no_deletions():
     engine.add_doc("Document 2", {})
     initial_count = len(engine.documents)
     
-    engine.compact()
+    engine._compact()
     
     assert len(engine.documents) == initial_count
     assert len(engine.deleted_docs) == 0
@@ -1591,7 +1591,7 @@ def test_search_after_compaction():
     
     engine.deleted_docs.add(doc_id2)
     
-    engine.compact()
+    engine._compact()
     
     results = engine.search("document")
     assert len(results) == 2

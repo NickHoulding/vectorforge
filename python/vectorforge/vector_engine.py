@@ -131,7 +131,7 @@ class VectorEngine:
         self.compaction_threshold = Config.COMPACTION_THRESHOLD
 
         if self.should_compact():
-            self.compact()
+            self._compact()
 
     def save(self, directory: str = Config.DEFAULT_DATA_DIR) -> dict:
         """Save the vector engine state to disk.
@@ -309,7 +309,7 @@ class VectorEngine:
         deleted_ratio = len(self.deleted_docs) / len(self.embeddings)
         return deleted_ratio > self.compaction_threshold
 
-    def compact(self) -> None:
+    def _compact(self) -> None:
         """Clean up the index by removing deleted documents and rebuilding indices.
         
         Removes all deleted documents from memory, rebuilds the embedding array
@@ -583,7 +583,7 @@ class VectorEngine:
         self.metrics.docs_deleted += 1
 
         if self.should_compact():
-            self.compact()
+            self._compact()
 
         return True
     
