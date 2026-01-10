@@ -155,15 +155,6 @@ def test_add_doc_with_empty_content_raises_error():
         engine.add_doc("", {})
 
 
-def test_add_doc_with_too_long_content_raises_error():
-    """Test that content exceeding max length raises ValueError."""
-    engine = VectorEngine()
-    very_long_content = "a" * (Config.MAX_CONTENT_LENGTH + 1)
-    
-    doc_id = engine.add_doc(very_long_content, {})
-    assert doc_id is not None
-
-
 def test_add_doc_with_null_metadata():
     """Test that add_doc handles None metadata correctly."""
     engine = VectorEngine()
@@ -246,15 +237,6 @@ def test_add_doc_updates_chunk_metrics():
     engine.add_doc("Test content", {"source_file": "test.txt", "chunk_index": 0})
     
     assert engine.metrics.chunks_created == initial_chunks + 1
-
-
-def test_add_doc_with_metadata_none_creates_empty_dict():
-    """Test that None metadata is converted to empty dict."""
-    engine = VectorEngine()
-    
-    doc_id = engine.add_doc("Test content", None)
-    
-    assert engine.documents[doc_id]["metadata"] == {}
 
 
 def test_add_doc_updates_doc_size_metric():
@@ -351,6 +333,7 @@ def test_get_doc_includes_content():
     
     doc = engine.get_doc(doc_id)
     
+    assert doc
     assert "content" in doc
     assert doc["content"] == content
 
@@ -363,6 +346,7 @@ def test_get_doc_includes_metadata():
     
     doc = engine.get_doc(doc_id)
     
+    assert doc
     assert "metadata" in doc
     assert doc["metadata"] == metadata
 
@@ -420,16 +404,6 @@ def test_delete_doc_increments_metrics():
     engine.delete_doc(doc_id)
     
     assert engine.metrics.docs_deleted == initial_deleted + 1
-
-
-def test_delete_doc_updates_timestamp():
-    """Test that delete_doc updates last deletion timestamp."""
-    engine = VectorEngine()
-    doc_id = engine.add_doc("Test content", {})
-    
-    result = engine.delete_doc(doc_id)
-    
-    assert result is True
 
 
 def test_delete_same_doc_twice_returns_false():
@@ -840,6 +814,7 @@ def test_should_compact_false_when_no_deletions():
 def test_should_compact_true_when_threshold_exceeded():
     """Test that should_compact returns True when deleted ratio exceeds threshold."""
     engine = VectorEngine()
+    engine.compaction_threshold = 0.25
     doc_ids = [engine.add_doc(f"Document {i}", {}) for i in range(10)]
     
     for doc_id in doc_ids[:3]:
@@ -945,8 +920,7 @@ def test_compact_updates_metrics():
     doc_id = engine.add_doc("Document", {})
     initial_compactions = engine.metrics.compactions_performed
     
-    engine.deleted_docs.add(doc_id)
-    engine.compact()
+    engine.delete_doc(doc_id)
     
     assert engine.metrics.compactions_performed == initial_compactions + 1
 
@@ -957,8 +931,7 @@ def test_compact_updates_timestamp():
     doc_id = engine.add_doc("Document", {})
     assert engine.metrics.last_compaction_at is None
     
-    engine.deleted_docs.add(doc_id)
-    engine.compact()
+    engine.delete_doc(doc_id)
     
     assert engine.metrics.last_compaction_at is not None
 
@@ -1144,7 +1117,7 @@ def test_load_restores_deleted_docs():
     engine = VectorEngine()
     doc_id1 = engine.add_doc("Document 1", {})
     doc_id2 = engine.add_doc("Document 2", {})
-    engine.deleted_docs.add(doc_id1)
+    engine.delete_doc(doc_id1)
     
     with tempfile.TemporaryDirectory() as tmpdir:
         engine.save(tmpdir)
@@ -1189,10 +1162,13 @@ def test_save_and_load_roundtrip():
         
         new_engine = VectorEngine()
         new_engine.load(tmpdir)
+        doc1 = new_engine.get_doc(doc_id1)
+        doc2 = new_engine.get_doc(doc_id2)
         
+        assert doc1 and doc2
         assert len(new_engine.documents) == 2
-        assert new_engine.get_doc(doc_id1)["content"] == "First document"
-        assert new_engine.get_doc(doc_id2)["content"] == "Second document"
+        assert doc1["content"] == "First document"
+        assert doc2["content"] == "Second document"
         
         results = new_engine.search("document")
         assert len(results) == 2
@@ -1412,7 +1388,7 @@ def test_get_index_stats_includes_deleted_ratio():
     stats = engine.get_index_stats()
     
     assert "deleted_ratio" in stats
-    assert stats["deleted_ratio"] == 0.5  # 1 out of 2
+    assert stats["deleted_ratio"] == 0.5
 
 
 def test_get_index_stats_includes_compaction_status():

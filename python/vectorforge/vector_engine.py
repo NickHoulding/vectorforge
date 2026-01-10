@@ -316,6 +316,8 @@ class VectorEngine:
         and index mappings to eliminate fragmentation. Updates compaction metrics
         and timestamps.
         """
+        if len(self.deleted_docs) == 0: return
+
         new_embeddings = []
         new_index_to_doc_id = []
         new_doc_id_to_index = {}
@@ -347,6 +349,8 @@ class VectorEngine:
         the embedding array and index mappings. This is a more aggressive operation
         than compact() as it regenerates all embeddings.
         """
+        if len(self.embeddings) == 0: return
+
         self.documents = {
             doc_id: doc for doc_id, doc in self.documents.items()
             if doc_id not in self.deleted_docs
