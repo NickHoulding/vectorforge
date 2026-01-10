@@ -330,22 +330,6 @@ class VectorEngine:
         self.metrics.last_compaction_at = datetime.now().isoformat()
 
 
-    def cosine_similarity(self, emb_a: np.ndarray, emb_b: np.ndarray) -> float:
-        """Calculate cosine similarity between two pre-normalized embeddings.
-        
-        Since embeddings are pre-normalized, this is equivalent to the dot product.
-        
-        Args:
-            emb_a: First normalized embedding vector.
-            emb_b: Second normalized embedding vector.
-        
-        Returns:
-            Cosine similarity score between -1 and 1, where 1 indicates
-            identical vectors and -1 indicates opposite vectors.
-        """
-        return np.dot(emb_a, emb_b)
-
-
     def search(self, query: str, top_k: int = Config.DEFAULT_TOP_K) -> list[SearchResult]:
         """Search the vector index for documents similar to the query.
         
@@ -391,7 +375,7 @@ class VectorEngine:
             if doc_id in self.deleted_docs:
                 continue
 
-            score: float = self.cosine_similarity(
+            score: float = self._cosine_similarity(
                 emb_a=normalized_query_embedding, 
                 emb_b=embedding
             )
@@ -743,3 +727,19 @@ class VectorEngine:
         
         self.metrics.compactions_performed += 1
         self.metrics.last_compaction_at = datetime.now().isoformat()
+
+
+    def _cosine_similarity(self, emb_a: np.ndarray, emb_b: np.ndarray) -> float:
+        """Calculate cosine similarity between two pre-normalized embeddings.
+        
+        Since embeddings are pre-normalized, this is equivalent to the dot product.
+        
+        Args:
+            emb_a: First normalized embedding vector.
+            emb_b: Second normalized embedding vector.
+        
+        Returns:
+            Cosine similarity score between -1 and 1, where 1 indicates
+            identical vectors and -1 indicates opposite vectors.
+        """
+        return np.dot(emb_a, emb_b)

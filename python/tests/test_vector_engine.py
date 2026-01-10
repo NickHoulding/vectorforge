@@ -1422,7 +1422,7 @@ def test_cosine_similarity_identical_vectors():
     engine = VectorEngine()
     vec = np.array([1.0, 0.0, 0.0])
     
-    similarity = engine.cosine_similarity(vec, vec)
+    similarity = engine._cosine_similarity(vec, vec)
     
     assert np.isclose(similarity, 1.0)
 
@@ -1433,7 +1433,7 @@ def test_cosine_similarity_orthogonal_vectors():
     vec1 = np.array([1.0, 0.0, 0.0])
     vec2 = np.array([0.0, 1.0, 0.0])
     
-    similarity = engine.cosine_similarity(vec1, vec2)
+    similarity = engine._cosine_similarity(vec1, vec2)
     
     assert np.isclose(similarity, 0.0, atol=1e-6)
 
@@ -1444,7 +1444,7 @@ def test_cosine_similarity_opposite_vectors():
     vec1 = np.array([1.0, 0.0, 0.0])
     vec2 = np.array([-1.0, 0.0, 0.0])
     
-    similarity = engine.cosine_similarity(vec1, vec2)
+    similarity = engine._cosine_similarity(vec1, vec2)
     
     assert np.isclose(similarity, -1.0)
 
@@ -1457,7 +1457,7 @@ def test_cosine_similarity_normalized_embeddings():
     vec2 = np.array([1.0, 1.0])
     vec2 = vec2 / np.linalg.norm(vec2)
     
-    similarity = engine.cosine_similarity(vec1, vec2)
+    similarity = engine._cosine_similarity(vec1, vec2)
     
     assert np.isclose(similarity, np.dot(vec1, vec2))
 
