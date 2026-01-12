@@ -35,7 +35,6 @@ app = FastAPI(
     description="High-performance in-memory vector database with semantic search"
 )
 engine = VectorEngine()
-Config.validate()
 
 
 # =============================================================================
@@ -667,7 +666,10 @@ def get_metrics():
     )
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the VectorForge API server"""
+    Config.validate()
+    import uvicorn
     uvicorn.run(
         app=app, 
         host=Config.API_HOST, 
