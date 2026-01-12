@@ -1,4 +1,4 @@
-"""VectorForge API + Engine configuration class"""
+import os
 
 
 class Config:
@@ -106,3 +106,91 @@ class Config:
     
     SUPPORTED_FILE_EXTENSIONS: tuple[str, ...] = (".pdf", ".txt")
     """Tuple of supported file extensions for upload."""
+
+    # =============================================================================
+    # Configuration Class Validator
+    # =============================================================================
+
+    @classmethod
+    def validate(cls) -> None:
+        """Validate configuration values."""
+        assert isinstance(cls.MODEL_NAME, str)
+        assert len(cls.MODEL_NAME) > 0
+
+        assert isinstance(cls.EMBEDDING_DIMENSION, int)
+        assert cls.EMBEDDING_DIMENSION > 0
+
+        assert isinstance(cls.DEFAULT_DATA_DIR, str)
+        assert len(cls.DEFAULT_DATA_DIR) > 0
+        assert len(cls.DEFAULT_DATA_DIR) < cls.MAX_PATH_LEN
+
+        assert isinstance(cls.METADATA_FILENAME, str)
+        assert len(cls.METADATA_FILENAME) > 0
+        assert len(cls.METADATA_FILENAME) <= cls.MAX_FILENAME_LENGTH
+        assert os.path.basename(cls.EMBEDDINGS_FILENAME) == cls.EMBEDDINGS_FILENAME
+
+        assert isinstance(cls.EMBEDDINGS_FILENAME, str)
+        assert len(cls.EMBEDDINGS_FILENAME) > 0
+        assert len(cls.EMBEDDINGS_FILENAME) <= cls.MAX_FILENAME_LENGTH
+        assert os.path.basename(cls.METADATA_FILENAME) == cls.METADATA_FILENAME
+
+        assert isinstance(cls.MAX_PATH_LEN, int)
+        assert cls.MAX_PATH_LEN > 0
+
+        assert isinstance(cls.MAX_FILENAME_LENGTH, int)
+        assert cls.MAX_FILENAME_LENGTH > 0
+        assert cls.MAX_FILENAME_LENGTH <= cls.MAX_PATH_LEN
+
+        assert isinstance(cls.COMPACTION_THRESHOLD, float)
+        assert 0 < cls.COMPACTION_THRESHOLD < 1.0
+
+        assert isinstance(cls.MIN_CONTENT_LENGTH, int)
+        assert cls.MIN_CONTENT_LENGTH > 0
+
+        assert isinstance(cls.MAX_CONTENT_LENGTH, int)
+        assert cls.MAX_CONTENT_LENGTH > 0
+        assert cls.MAX_CONTENT_LENGTH >= cls.MIN_CONTENT_LENGTH
+
+        assert isinstance(cls.MIN_QUERY_LENGTH, int)
+        assert cls.MIN_QUERY_LENGTH > 0
+
+        assert isinstance(cls.MAX_QUERY_LENGTH, int)
+        assert cls.MAX_QUERY_LENGTH > 0
+        assert cls.MAX_QUERY_LENGTH >= cls.MIN_QUERY_LENGTH
+
+        assert isinstance(cls.DEFAULT_CHUNK_SIZE, int)
+        assert cls.DEFAULT_CHUNK_SIZE > 0
+
+        assert isinstance(cls.DEFAULT_CHUNK_OVERLAP, int)
+        assert cls.DEFAULT_CHUNK_OVERLAP >= 0
+        assert cls.DEFAULT_CHUNK_OVERLAP <= cls.DEFAULT_CHUNK_SIZE
+
+        assert isinstance(cls.DEFAULT_TOP_K, int)
+        assert cls.DEFAULT_TOP_K > 0
+        assert cls.MIN_TOP_K <= cls.DEFAULT_TOP_K <= cls.MAX_TOP_K
+
+        assert isinstance(cls.MIN_TOP_K, int)
+        assert cls.MIN_TOP_K > 0
+        
+        assert isinstance(cls.MAX_TOP_K, int)
+        assert cls.MAX_TOP_K > 0
+        assert cls.MAX_TOP_K >= cls.MIN_TOP_K
+
+        assert isinstance(cls.MAX_QUERY_HISTORY, int)
+        assert cls.MAX_QUERY_HISTORY >= 0
+
+        assert isinstance(cls.API_PORT, int)
+        assert 1 <= cls.API_PORT <= 65535
+
+        assert isinstance(cls.API_HOST, str)
+        assert len(cls.API_HOST) > 0
+        assert not cls.API_HOST.isspace()
+
+        assert isinstance(cls.SUPPORTED_FILE_EXTENSIONS, tuple)
+        assert len(cls.SUPPORTED_FILE_EXTENSIONS) > 0
+        assert all(
+            isinstance(ext, str)
+            and ext.startswith(".")
+            and len(ext) > 1
+            for ext in cls.SUPPORTED_FILE_EXTENSIONS
+        )

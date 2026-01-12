@@ -35,6 +35,7 @@ app = FastAPI(
     description="High-performance in-memory vector database with semantic search"
 )
 engine = VectorEngine()
+Config.validate()
 
 
 # =============================================================================
