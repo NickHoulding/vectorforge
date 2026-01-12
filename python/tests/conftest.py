@@ -12,6 +12,12 @@ from vectorforge.api import app, engine
 # =============================================================================
 
 @pytest.fixture
+def anyio_backend():
+    """Configure anyio to use only asyncio backend."""
+    return "asyncio"
+
+
+@pytest.fixture
 def client():
     """Create fresh TestClient for each test.
     

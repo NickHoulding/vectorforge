@@ -98,6 +98,9 @@ def chunk_text(
         20
         >>> # Each chunk overlaps by 50 characters with the next
     """
+    if overlap >= chunk_size:
+        raise ValueError("overlap must be less than chunk_size")
+
     chunks: List[str] = []
     start: int = 0
 
