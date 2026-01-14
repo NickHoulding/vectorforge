@@ -1,3 +1,6 @@
+from vectorforge.api import add_doc, delete_doc, get_doc
+from vectorforge.models.documents import DocumentInput
+
 from ..server import mcp
 
 
@@ -11,7 +14,24 @@ def get_document(doc_id: str) -> dict:
     Returns:
         Dictionary with document ID, content, and metadata.
     """
-    raise NotImplementedError
+    try:
+        response = get_doc(doc_id)
+
+        return {
+            "success": True,
+            "data": {
+                "doc_id": response.id,
+                "content": response.content,
+                "metadata": response.metadata
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": "Operation failed",
+            "details": str(e)
+        }
 
 
 @mcp.tool
@@ -25,7 +45,25 @@ def add_document(content: str, metadata: dict | None = None) -> dict:
     Returns:
         Dictionary with created document ID and status.
     """
-    raise NotImplementedError
+    try:
+        doc_input = DocumentInput(
+            content=content,
+            metadata=metadata
+        )
+        response = add_doc(doc_input)
+
+        return {
+            "success": True,
+            "status": response.status,
+            "doc_id": response.id
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": "Operation failed",
+            "details": str(e)
+        }
 
 
 @mcp.tool
@@ -38,4 +76,18 @@ def delete_document(doc_id: str) -> dict:
     Returns:
         Dictionary with document ID and deletion status.
     """
-    raise NotImplementedError
+    try:
+        response = delete_doc(doc_id=doc_id)
+
+        return {
+            "success": True,
+            "status": response.status,
+            "id": response.id
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": "Operation failed",
+            "details": str(e)
+        }
