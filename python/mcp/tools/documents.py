@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from vectorforge.api import add_doc, delete_doc, get_doc
+from vectorforge import api
 from vectorforge.models.documents import DocumentInput
 
 from ..server import mcp
@@ -18,7 +18,7 @@ def get_document(doc_id: str) -> dict:
         Dictionary with document ID, content, and metadata.
     """
     try:
-        response = get_doc(doc_id)
+        response = api.get_doc(doc_id)
 
         return {
             "success": True,
@@ -59,7 +59,7 @@ def add_document(content: str, metadata: dict | None = None) -> dict:
             content=content,
             metadata=metadata
         )
-        response = add_doc(doc_input)
+        response = api.add_doc(doc_input)
 
         return {
             "success": True,
@@ -98,8 +98,8 @@ def delete_document(doc_id: str) -> dict:
         Dictionary with document ID and deletion status.
     """
     try:
-        response = delete_doc(doc_id=doc_id)
-
+        response = api.delete_doc(doc_id=doc_id)
+        
         return {
             "success": True,
             "status": response.status,

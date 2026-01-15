@@ -552,7 +552,6 @@ class VectorEngine:
         """
         doc_ids = []
 
-        # Create a list of doc_ids first to avoid modifying dict during iteration
         matching_doc_ids = []
         for doc_id, doc in self.documents.items():
             if doc_id in self.deleted_docs:
@@ -563,7 +562,6 @@ class VectorEngine:
             if source == filename:
                 matching_doc_ids.append(doc_id)
         
-        # Now delete the documents
         for doc_id in matching_doc_ids:
             if self.delete_doc(doc_id=doc_id):
                 doc_ids.append(doc_id)
