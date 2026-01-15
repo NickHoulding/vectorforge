@@ -1,3 +1,6 @@
+from fastapi import HTTPException
+from pydantic import ValidationError
+
 from vectorforge.api import add_doc, delete_doc, get_doc
 from vectorforge.models.documents import DocumentInput
 
@@ -26,6 +29,12 @@ def get_document(doc_id: str) -> dict:
             }
         }
 
+    except HTTPException as e:
+        return {
+            "success": False,
+            "error": e.detail,
+            "details": e.status_code
+        }
     except Exception as e:
         return {
             "success": False,
@@ -58,6 +67,18 @@ def add_document(content: str, metadata: dict | None = None) -> dict:
             "doc_id": response.id
         }
 
+    except HTTPException as e:
+        return {
+            "success": False,
+            "error": e.detail,
+            "details": e.status_code
+        }
+    except ValidationError as e:
+        return {
+            "success": False,
+            "error": "Invalid input",
+            "details": str(e)
+        }
     except Exception as e:
         return {
             "success": False,
@@ -85,6 +106,12 @@ def delete_document(doc_id: str) -> dict:
             "id": response.id
         }
 
+    except HTTPException as e:
+        return {
+            "success": False,
+            "error": e.detail,
+            "details": e.status_code
+        }
     except Exception as e:
         return {
             "success": False,
