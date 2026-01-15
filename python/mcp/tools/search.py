@@ -5,6 +5,7 @@ from vectorforge.config import Config
 from vectorforge.models import SearchQuery
 
 from ..server import mcp
+from ..utils import build_error_response, build_success_response
 
 
 @mcp.tool
@@ -24,37 +25,11 @@ def search_documents(query: str, top_k: int = Config.DEFAULT_TOP_K) -> dict:
             top_k=top_k
         )
         response = api.search(search_params=search_params)
-
-        return {
-            "success": True,
-            "query": query,
-            "results": [
-                {
-                    "id": result.id,
-                    "content": result.content,
-                    "metadata": result.metadata,
-                    "score": result.score
-                }
-                for result in response.results
-            ],
-            "count": response.count
-        }
+        return build_success_response(response)
 
     except ValidationError as e:
-        return {
-            "success": False,
-            "error": "Invalid input",
-            "details": str(e)
-        }
+        return build_error_response(Exception("Invalid input"), details=str(e))
     except ValueError as e:
-        return {
-            "success": False,
-            "error": "Invalid query",
-            "details": str(e)
-        }
+        return build_error_response(Exception("Invalid query"), details=str(e))
     except Exception as e:
-        return {
-            "success": False,
-            "error": "Operation failed",
-            "details": str(e)
-        }
+        return build_error_response(Exception("Operation failed"), details=str(e))

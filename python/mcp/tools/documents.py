@@ -5,6 +5,7 @@ from vectorforge import api
 from vectorforge.models.documents import DocumentInput
 
 from ..server import mcp
+from ..utils import build_error_response, build_success_response
 
 
 @mcp.tool
@@ -19,28 +20,12 @@ def get_document(doc_id: str) -> dict:
     """
     try:
         response = api.get_doc(doc_id)
-
-        return {
-            "success": True,
-            "data": {
-                "doc_id": response.id,
-                "content": response.content,
-                "metadata": response.metadata
-            }
-        }
+        return build_success_response(response)
 
     except HTTPException as e:
-        return {
-            "success": False,
-            "error": e.detail,
-            "details": e.status_code
-        }
+        return build_error_response(e, details=e.status_code)
     except Exception as e:
-        return {
-            "success": False,
-            "error": "Operation failed",
-            "details": str(e)
-        }
+        return build_error_response(Exception("Operation failed"), details=str(e))
 
 
 @mcp.tool
@@ -60,31 +45,14 @@ def add_document(content: str, metadata: dict | None = None) -> dict:
             metadata=metadata
         )
         response = api.add_doc(doc_input)
-
-        return {
-            "success": True,
-            "status": response.status,
-            "doc_id": response.id
-        }
+        return build_success_response(response)
 
     except HTTPException as e:
-        return {
-            "success": False,
-            "error": e.detail,
-            "details": e.status_code
-        }
+        return build_error_response(e, details=e.status_code)
     except ValidationError as e:
-        return {
-            "success": False,
-            "error": "Invalid input",
-            "details": str(e)
-        }
+        return build_error_response(Exception("Invalid input"), details=str(e))
     except Exception as e:
-        return {
-            "success": False,
-            "error": "Operation failed",
-            "details": str(e)
-        }
+        return build_error_response(Exception("Operation failed"), details=str(e))
 
 
 @mcp.tool
@@ -99,22 +67,9 @@ def delete_document(doc_id: str) -> dict:
     """
     try:
         response = api.delete_doc(doc_id=doc_id)
-        
-        return {
-            "success": True,
-            "status": response.status,
-            "id": response.id
-        }
+        return build_success_response(response)
 
     except HTTPException as e:
-        return {
-            "success": False,
-            "error": e.detail,
-            "details": e.status_code
-        }
+        return build_error_response(e, details=e.status_code)
     except Exception as e:
-        return {
-            "success": False,
-            "error": "Operation failed",
-            "details": str(e)
-        }
+        return build_error_response(Exception("Operation failed"), details=str(e))
