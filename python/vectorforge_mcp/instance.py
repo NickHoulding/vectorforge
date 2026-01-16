@@ -1,3 +1,4 @@
+"""FastMCP instance for VectorForge MCP Server."""
 from fastmcp import FastMCP
 
 from vectorforge import __version__

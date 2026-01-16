@@ -666,7 +666,7 @@ def get_metrics():
     )
 
 
-def main():
+def main() -> None:
     """Entry point for the VectorForge API server"""
     Config.validate()
     import uvicorn
@@ -675,3 +675,7 @@ def main():
         host=Config.API_HOST, 
         port=Config.API_PORT
     )
+
+
+if __name__ == "__main__":
+    main()

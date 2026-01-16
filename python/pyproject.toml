@@ -13,6 +13,21 @@ dependencies = [
     "sentence-transformers>=5.1.2",
     "python-multipart>=0.0.20",
     "isort>=7.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[project.scripts]
+vectorforge-api = "vectorforge.api:main"
+vectorforge-mcp = "vectorforge_mcp.server:main"
+
+[project.optional-dependencies]
+mcp = [
     "fastmcp>=2.14.1",
 ]
 
@@ -31,4 +46,7 @@ lines_between_types = 1
 [dependency-groups]
 dev = [
     "pytest-cov>=7.0.0",
+]
+mcp = [
+    "fastmcp>=2.14.1",
 ]
