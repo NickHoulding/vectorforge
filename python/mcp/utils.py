@@ -1,5 +1,6 @@
 from typing import Any
 
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 
@@ -47,7 +48,7 @@ def build_error_response(error: Exception, details: Any = None) -> dict:
     """
     response = {
         "success": False,
-        "error": str(error) if not hasattr(error, 'detail') else error.detail
+        "error": error.detail if isinstance(error, HTTPException) else str(error)
     }
     
     if details is not None:
