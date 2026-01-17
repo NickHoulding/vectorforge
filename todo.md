@@ -1,9 +1,9 @@
 ## Implementation
 ### MCP
-- implement VectorForge MCP README
-- use MCPConfig in mcp implementation
-- Implement tests for mcp tools
 - Improve tool metadata (more detailed tool descriptions) for mcp clients
+- use MCPConfig in mcp implementation
+- implement VectorForge MCP README
+- Implement tests for mcp tools
 
 ### Benchmarking
 - benchmark pure python implementation
