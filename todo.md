@@ -4,6 +4,9 @@
 - implement VectorForge MCP README
 - Implement tests for mcp tools
 
+# API
+- Implement centralized error handling
+
 ### Benchmarking
 - benchmark pure python implementation
 
