@@ -10,16 +10,18 @@ from ..instance import mcp
 from ..utils import build_error_response, build_success_response
 
 
-@mcp.tool
+@mcp.tool(
+    description="Semantic search across indexed documents using embeddings. Returns top-k most similar results with scores and metadata."
+)
 def search_documents(query: str, top_k: int = Config.DEFAULT_TOP_K) -> dict:
     """Perform semantic search on indexed documents.
     
     Args:
-        query: Search query string.
-        top_k: Number of top results to return.
+        query: Search query string (natural language).
+        top_k: Number of top results to return (default: 10, max: 100).
         
     Returns:
-        List of search results with document IDs, content, scores, and metadata.
+        List of search results with document IDs, content, similarity scores, and metadata.
     """
     try:
         search_params = SearchQuery(

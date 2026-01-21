@@ -10,12 +10,14 @@ from ..instance import mcp
 from ..utils import build_error_response, build_success_response
 
 
-@mcp.tool
+@mcp.tool(
+    description="Fetch document content and metadata by ID. Use to verify stored content, inspect search results, or retrieve metadata."
+)
 def get_document(doc_id: str) -> dict:
     """Retrieve a single document by ID.
     
     Args:
-        doc_id: Unique document identifier.
+        doc_id: Unique document identifier (UUID).
         
     Returns:
         Dictionary with document ID, content, and metadata.
@@ -53,13 +55,15 @@ def get_document(doc_id: str) -> dict:
         )
 
 
-@mcp.tool
+@mcp.tool(
+    description="Index text content for semantic search. Generates embeddings automatically. Optionally add metadata for organization and filtering."
+)
 def add_document(content: str, metadata: dict | None = None) -> dict:
     """Add a single document to the index.
     
     Args:
-        content: The document text content to index.
-        metadata: Optional metadata dictionary for the document.
+        content: The document text content to index (required, non-empty).
+        metadata: Optional metadata dictionary (e.g., {"source": "email", "date": "2026-01-20"}).
         
     Returns:
         Dictionary with created document ID and status.
@@ -106,12 +110,14 @@ def add_document(content: str, metadata: dict | None = None) -> dict:
         )
 
 
-@mcp.tool
+@mcp.tool(
+    description="Permanently remove a document and its embeddings from the index. Cannot be undone."
+)
 def delete_document(doc_id: str) -> dict:
     """Delete a single document by ID.
     
     Args:
-        doc_id: Unique document identifier to delete.
+        doc_id: Unique document identifier (UUID) to permanently delete.
         
     Returns:
         Dictionary with document ID and deletion status.

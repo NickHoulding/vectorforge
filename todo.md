@@ -1,6 +1,5 @@
 ## Implementation
 ### MCP
-- Improve tool metadata (more detailed tool descriptions) for mcp clients
 - use MCPConfig in mcp implementation
 - implement VectorForge MCP README
 - Implement tests for mcp tools

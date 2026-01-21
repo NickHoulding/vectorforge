@@ -9,7 +9,9 @@ from ..instance import mcp
 from ..utils import build_error_response, build_success_response
 
 
-@mcp.tool
+@mcp.tool(
+    description="Get lightweight index health check: document counts, embedding dimension, deletion ratio, compaction status."
+)
 def get_index_stats() -> dict:
     """Get quick index statistics.
     
@@ -49,7 +51,9 @@ def get_index_stats() -> dict:
         )
 
 
-@mcp.tool
+@mcp.tool(
+    description="Rebuild entire vector index from scratch. Regenerates all embeddings. Optimizes search performance but time-intensive."
+)
 def build_index() -> dict:
     """Build or rebuild the vector index.
     
@@ -89,12 +93,14 @@ def build_index() -> dict:
         )
 
 
-@mcp.tool
+@mcp.tool(
+    description="Persist index to disk (embeddings + metadata). Enables fast recovery and reduces startup time. Returns file sizes and counts."
+)
 def save_index(directory: str = Config.DEFAULT_DATA_DIR) -> dict:
     """Persist index to disk.
     
     Args:
-        directory: Optional directory path for saving (default: './data').
+        directory: Directory path for saving (default: './data').
         
     Returns:
         Dictionary with save confirmation, file sizes, and document counts.
@@ -132,12 +138,14 @@ def save_index(directory: str = Config.DEFAULT_DATA_DIR) -> dict:
         )
 
 
-@mcp.tool
+@mcp.tool(
+    description="Restore index from disk. Loads previously saved embeddings and metadata. Faster than rebuilding from documents."
+)
 def load_index(directory: str = Config.DEFAULT_DATA_DIR) -> dict:
     """Load index from disk.
     
     Args:
-        directory: Optional directory path to load from (default: './data').
+        directory: Directory path to load from (default: './data').
         
     Returns:
         Dictionary with load confirmation, counts, and version information.

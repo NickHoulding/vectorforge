@@ -8,7 +8,9 @@ from ..instance import mcp
 from ..utils import build_error_response, build_success_response
 
 
-@mcp.tool
+@mcp.tool(
+    description="Get comprehensive metrics: performance stats (query times, percentiles), memory usage, operation counts, uptime, and system info."
+)
 def get_metrics() -> dict:
     """Get comprehensive system metrics.
     
@@ -48,9 +50,15 @@ def get_metrics() -> dict:
         )
 
 
-@mcp.tool
+@mcp.tool(
+    description="Verify VectorForge API connectivity and status. Returns version and health status. Use for monitoring and troubleshooting."
+)
 def check_health() -> dict:
-    """Check VectorForge API health and connectivity."""
+    """Check VectorForge API health and connectivity.
+    
+    Returns:
+        Dictionary with health status and version information.
+    """
     try:
         response = api.check_health()
         return {

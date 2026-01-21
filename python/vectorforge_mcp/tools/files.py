@@ -11,7 +11,9 @@ from ..instance import mcp
 from ..utils import build_error_response, build_success_response
 
 
-@mcp.tool
+@mcp.tool(
+    description="Get all filenames that have been uploaded and chunked into the vector index."
+)
 def list_files() -> dict:
     """List all indexed files in the vector store.
     
@@ -51,12 +53,14 @@ def list_files() -> dict:
         )
 
 
-@mcp.tool
+@mcp.tool(
+    description="Upload and index a file (PDF, TXT). Extracts text, chunks it, generates embeddings. Returns chunk count and document IDs."
+)
 async def upload_file(file_path: str) -> dict:
     """Upload and index a file.
     
     Args:
-        file_path: Path to the file to upload and index.
+        file_path: Absolute path to the file to upload (supports .pdf, .txt).
         
     Returns:
         Dictionary with upload status, filename, chunks created, and document IDs.
@@ -110,12 +114,14 @@ async def upload_file(file_path: str) -> dict:
         )
 
 
-@mcp.tool
+@mcp.tool(
+    description="Delete all document chunks from a specific uploaded file. Removes all associated embeddings and metadata."
+)
 def delete_file(filename: str) -> dict:
     """Delete all chunks associated with an indexed file.
     
     Args:
-        filename: Name of the source file to delete.
+        filename: Name of the source file to delete (exact match).
         
     Returns:
         Dictionary with deletion status, filename, chunks deleted, and document IDs.
