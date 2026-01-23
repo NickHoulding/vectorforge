@@ -1,7 +1,5 @@
 ## Implementation
 ### MCP
-- use MCPConfig in mcp implementation
-- implement VectorForge MCP README
 - Implement tests for mcp tools
 
 # API

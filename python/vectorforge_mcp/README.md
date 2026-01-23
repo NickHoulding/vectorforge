@@ -640,28 +640,6 @@ All tools return standardized responses:
 
 ---
 
-## Contributing
-
-Contributions to the MCP server are welcome! Please see the main [VectorForge README](../../README.md) for contribution guidelines.
-
-### **Testing**
-
-```bash
-# Run MCP-specific tests
-pytest tests/test_mcp_tools.py -v
-
-# Test with coverage
-pytest tests/test_mcp_tools.py --cov=vectorforge_mcp
-```
-
----
-
-## License
-
-This project is licensed under the **MIT License** - see the [LICENSE](../../LICENSE) file for details.
-
----
-
 <div align="center">
   <strong>VectorForge MCP Server - Semantic Search for AI Assistants</strong>
 </div>
