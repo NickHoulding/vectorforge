@@ -5,7 +5,7 @@ from vectorforge import __version__
 from vectorforge_mcp.config import MCPConfig
 
 
-mcp = FastMCP(
+mcp: FastMCP = FastMCP(
     name=MCPConfig.SERVER_NAME,
     version=__version__
 )

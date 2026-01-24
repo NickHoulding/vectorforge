@@ -1,5 +1,7 @@
+from typing import Any
+
 from vectorforge import api
-from vectorforge.models.documents import DocumentInput
+from vectorforge.models.documents import DocumentDetail, DocumentInput, DocumentResponse
 
 from ..decorators import handle_api_errors
 from ..instance import mcp
@@ -10,7 +12,7 @@ from ..utils import build_success_response
     description="Fetch document content and metadata by ID. Use to verify stored content, inspect search results, or retrieve metadata."
 )
 @handle_api_errors
-def get_document(doc_id: str) -> dict:
+def get_document(doc_id: str) -> dict[str, Any]:
     """Retrieve a single document by ID.
     
     Args:
@@ -19,7 +21,7 @@ def get_document(doc_id: str) -> dict:
     Returns:
         Dictionary with document ID, content, and metadata.
     """
-    response = api.get_doc(doc_id)
+    response: DocumentDetail = api.get_doc(doc_id)
     return build_success_response(response)
 
 
@@ -27,7 +29,7 @@ def get_document(doc_id: str) -> dict:
     description="Index text content for semantic search. Generates embeddings automatically. Optionally add metadata for organization and filtering."
 )
 @handle_api_errors
-def add_document(content: str, metadata: dict | None = None) -> dict:
+def add_document(content: str, metadata: dict | None = None) -> dict[str, Any]:
     """Add a single document to the index.
     
     Args:
@@ -37,8 +39,8 @@ def add_document(content: str, metadata: dict | None = None) -> dict:
     Returns:
         Dictionary with created document ID and status.
     """
-    doc_input = DocumentInput(content=content, metadata=metadata)
-    response = api.add_doc(doc_input)
+    doc_input: DocumentInput = DocumentInput(content=content, metadata=metadata)
+    response: DocumentResponse = api.add_doc(doc_input)
     return build_success_response(response)
 
 
@@ -46,7 +48,7 @@ def add_document(content: str, metadata: dict | None = None) -> dict:
     description="Permanently remove a document and its embeddings from the index. Cannot be undone."
 )
 @handle_api_errors
-def delete_document(doc_id: str) -> dict:
+def delete_document(doc_id: str) -> dict[str, Any]:
     """Delete a single document by ID.
     
     Args:
@@ -55,5 +57,5 @@ def delete_document(doc_id: str) -> dict:
     Returns:
         Dictionary with document ID and deletion status.
     """
-    response = api.delete_doc(doc_id=doc_id)
+    response: DocumentResponse = api.delete_doc(doc_id=doc_id)
     return build_success_response(response)

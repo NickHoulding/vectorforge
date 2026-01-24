@@ -1,4 +1,7 @@
 ## Implementation
+- Split VFConfig into APIConfig and VFConfig for better separation of concerns
+- Run the test suite again
+
 ### MCP
 - Implement tests for mcp tools
 

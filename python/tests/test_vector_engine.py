@@ -9,7 +9,7 @@ from collections import deque
 import numpy as np
 import pytest
 
-from vectorforge.config import Config
+from vectorforge.config import VFConfig
 from vectorforge.vector_engine import EngineMetrics, VectorEngine
 
 
@@ -26,7 +26,7 @@ def test_vector_engine_initialization():
     assert engine.index_to_doc_id == []
     assert engine.doc_id_to_index == {}
     assert engine.deleted_docs == set()
-    assert engine.compaction_threshold == Config.COMPACTION_THRESHOLD
+    assert engine.compaction_threshold == VFConfig.COMPACTION_THRESHOLD
 
 
 def test_vector_engine_loads_model():
@@ -34,8 +34,8 @@ def test_vector_engine_loads_model():
     engine = VectorEngine()
     
     assert engine.model is not None
-    assert engine.model_name == Config.MODEL_NAME
-    assert engine.model.get_sentence_embedding_dimension() == Config.EMBEDDING_DIMENSION
+    assert engine.model_name == VFConfig.MODEL_NAME
+    assert engine.model.get_sentence_embedding_dimension() == VFConfig.EMBEDDING_DIMENSION
 
 
 def test_vector_engine_initializes_empty_collections():
@@ -52,7 +52,7 @@ def test_vector_engine_sets_default_compaction_threshold():
     """Test that VectorEngine sets default compaction threshold."""
     engine = VectorEngine()
     
-    assert engine.compaction_threshold == Config.COMPACTION_THRESHOLD
+    assert engine.compaction_threshold == VFConfig.COMPACTION_THRESHOLD
     assert engine.compaction_threshold == 0.25
 
 
@@ -111,7 +111,7 @@ def test_add_doc_creates_embedding():
     
     assert len(engine.embeddings) == 1
     assert isinstance(engine.embeddings[0], np.ndarray)
-    assert engine.embeddings[0].shape[0] == Config.EMBEDDING_DIMENSION
+    assert engine.embeddings[0].shape[0] == VFConfig.EMBEDDING_DIMENSION
 
 
 def test_add_doc_normalizes_embedding():
@@ -556,7 +556,7 @@ def test_search_with_default_top_k():
     
     results = engine.search("document")
     
-    assert len(results) == Config.DEFAULT_TOP_K
+    assert len(results) == VFConfig.DEFAULT_TOP_K
 
 
 def test_search_similarity_scores_in_range():
@@ -1023,8 +1023,8 @@ def test_save_creates_files():
     with tempfile.TemporaryDirectory() as tmpdir:
         engine.save(tmpdir)
         
-        metadata_path = os.path.join(tmpdir, Config.METADATA_FILENAME)
-        embeddings_path = os.path.join(tmpdir, Config.EMBEDDINGS_FILENAME)
+        metadata_path = os.path.join(tmpdir, VFConfig.METADATA_FILENAME)
+        embeddings_path = os.path.join(tmpdir, VFConfig.EMBEDDINGS_FILENAME)
         
         assert os.path.exists(metadata_path)
         assert os.path.exists(embeddings_path)
@@ -1410,7 +1410,7 @@ def test_get_index_stats_includes_embedding_dimension():
     stats = engine.get_index_stats()
     
     assert "embedding_dimension" in stats
-    assert stats["embedding_dimension"] == Config.EMBEDDING_DIMENSION
+    assert stats["embedding_dimension"] == VFConfig.EMBEDDING_DIMENSION
 
 
 # =============================================================================

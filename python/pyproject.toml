@@ -13,6 +13,7 @@ dependencies = [
     "sentence-transformers>=5.1.2",
     "python-multipart>=0.0.20",
     "isort>=7.0.0",
+    "mypy>=1.19.1",
 ]
 
 [build-system]

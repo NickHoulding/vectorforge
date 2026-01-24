@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from vectorforge.config import Config
+from vectorforge.config import VFConfig
 
 
 class SearchQuery(BaseModel):
@@ -17,14 +17,14 @@ class SearchQuery(BaseModel):
     """
     query: str = Field(
         ..., 
-        min_length=Config.MIN_QUERY_LENGTH, 
-        max_length=Config.MAX_QUERY_LENGTH, 
+        min_length=VFConfig.MIN_QUERY_LENGTH, 
+        max_length=VFConfig.MAX_QUERY_LENGTH, 
         description="Search query text"
     )
     top_k: int = Field(
-        Config.DEFAULT_TOP_K, 
-        ge=Config.MIN_TOP_K, 
-        le=Config.MAX_TOP_K, 
+        VFConfig.DEFAULT_TOP_K, 
+        ge=VFConfig.MIN_TOP_K, 
+        le=VFConfig.MAX_TOP_K, 
         description="Number of results to return"
     )
     filters: dict | None = Field(default=None, description="Optional metadata filters")

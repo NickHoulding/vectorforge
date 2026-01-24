@@ -1,9 +1,11 @@
+from typing import Any
+
 import uvicorn
 
 from fastapi import FastAPI, HTTPException, UploadFile, status
 
 from vectorforge import __version__
-from vectorforge.config import Config
+from vectorforge.config import VFConfig
 from vectorforge.doc_processor import chunk_text, extract_file_content
 from vectorforge.models import (
     DocumentDetail,
@@ -29,12 +31,12 @@ from vectorforge.models import (
 from vectorforge.vector_engine import VectorEngine
 
 
-app = FastAPI(
+app: FastAPI = FastAPI(
     title="VectorForge API",
     version=__version__,
     description="High-performance in-memory vector database with semantic search"
 )
-engine = VectorEngine()
+engine: VectorEngine = VectorEngine()
 
 
 # =============================================================================
@@ -44,7 +46,7 @@ engine = VectorEngine()
 # --- List Files ---
 
 @app.get('/file/list', response_model=FileListResponse)
-def list_files():
+def list_files() -> FileListResponse:
     """
     List all indexed files
     
@@ -58,8 +60,10 @@ def list_files():
         HTTPException: 500 if internal server error occurs
     """
     try:
+        filenames: list[str] = engine.list_files()
+
         return FileListResponse(
-            filenames=engine.list_files()
+            filenames=filenames
         )
 
     except Exception as e:
@@ -72,7 +76,7 @@ def list_files():
 # --- Upload File ---
 
 @app.post('/file/upload', status_code=status.HTTP_201_CREATED, response_model=FileUploadResponse)
-async def upload_file(file: UploadFile):
+async def upload_file(file: UploadFile) -> FileUploadResponse:
     """
     Upload and index a file
     
@@ -96,7 +100,7 @@ async def upload_file(file: UploadFile):
                 status_code=400,
                 detail="No filename provided"
             )
-        if len(file.filename) > Config.MAX_FILENAME_LENGTH:
+        if len(file.filename) > VFConfig.MAX_FILENAME_LENGTH:
             raise HTTPException(
                 status_code=400,
                 detail=f"Filename too long: {file.filename[:25]}..."
@@ -148,7 +152,7 @@ async def upload_file(file: UploadFile):
 # --- Delete File ---
 
 @app.delete('/file/delete/{filename}', response_model=FileDeleteResponse)
-def delete_file(filename: str):
+def delete_file(filename: str) -> FileDeleteResponse:
     """
     Delete all chunks associated with a file
     
@@ -166,7 +170,7 @@ def delete_file(filename: str):
         HTTPException: 500 if deletion fails
     """
     try:
-        deletion_metrics = engine.delete_file(filename=filename)
+        deletion_metrics: dict[str, Any] = engine.delete_file(filename=filename)
 
         if deletion_metrics["status"] == "not_found":
             raise HTTPException(
@@ -198,7 +202,7 @@ def delete_file(filename: str):
 # --- Get Document ---
 
 @app.get('/doc/{doc_id}', status_code=status.HTTP_200_OK, response_model=DocumentDetail)
-def get_doc(doc_id: str):
+def get_doc(doc_id: str) -> DocumentDetail:
     """
     Retrieve a single document by ID
     
@@ -216,7 +220,7 @@ def get_doc(doc_id: str):
         HTTPException: 500 if retrieval fails
     """
     try:
-        doc = engine.get_doc(doc_id=doc_id)
+        doc: dict[str, Any] | None = engine.get_doc(doc_id=doc_id)
 
         if not doc:
             raise HTTPException(
@@ -242,7 +246,7 @@ def get_doc(doc_id: str):
 # --- Add Document ---
 
 @app.post('/doc/add', status_code=status.HTTP_201_CREATED, response_model=DocumentResponse)
-def add_doc(doc: DocumentInput):
+def add_doc(doc: DocumentInput) -> DocumentResponse:
     """
     Add a single pre-extracted document
     
@@ -259,7 +263,7 @@ def add_doc(doc: DocumentInput):
         HTTPException: 500 if indexing fails
     """
     try:
-        doc_id = engine.add_doc(
+        doc_id: str = engine.add_doc(
             content=doc.content,
             metadata=doc.metadata
         )
@@ -285,7 +289,7 @@ def add_doc(doc: DocumentInput):
 # --- Delete Document ---
 
 @app.delete('/doc/{doc_id}', response_model=DocumentResponse)
-def delete_doc(doc_id: str):
+def delete_doc(doc_id: str) -> DocumentResponse:
     """
     Delete a single document by ID
     
@@ -302,9 +306,9 @@ def delete_doc(doc_id: str):
         HTTPException: 500 if deletion fails
     """
     try:
-        result: bool = engine.delete_doc(doc_id)
+        delete_success: bool = engine.delete_doc(doc_id)
 
-        if not result:
+        if not delete_success:
             raise HTTPException(
                 status_code=404,
                 detail="Doc not found"
@@ -330,7 +334,7 @@ def delete_doc(doc_id: str):
 # =============================================================================
 
 @app.post('/search', response_model=SearchResponse)
-def search(search_params: SearchQuery):
+def search(search_params: SearchQuery) -> SearchResponse:
     """
     Perform semantic search on indexed documents
     
@@ -355,7 +359,7 @@ def search(search_params: SearchQuery):
         ```
     """
     try:
-        query = search_params.query.strip()
+        query: str = search_params.query.strip()
         results: list[SearchResult] = engine.search(
             query=query, 
             top_k=search_params.top_k
@@ -388,7 +392,7 @@ def search(search_params: SearchQuery):
 # --- Get Index Stats ---
 
 @app.get('/index/stats', response_model=IndexStatsResponse)
-def get_index_stats():
+def get_index_stats() -> IndexStatsResponse:
     """
     Get quick index statistics
     
@@ -403,7 +407,7 @@ def get_index_stats():
         HTTPException: 500 if stats retrieval fails
     """
     try:
-        stats = engine.get_index_stats()
+        stats: dict[str, Any] = engine.get_index_stats()
 
         return IndexStatsResponse(
             status="success",
@@ -425,7 +429,7 @@ def get_index_stats():
 # --- Build Index ---
 
 @app.post('/index/build', response_model=IndexStatsResponse)
-def build_index():
+def build_index() -> IndexStatsResponse:
     """
     Build or rebuild the vector index
     
@@ -441,7 +445,7 @@ def build_index():
     """
     try:
         engine.build()
-        stats = engine.get_index_stats()
+        stats: dict[str, Any] = engine.get_index_stats()
 
         return IndexStatsResponse(
             status="success",
@@ -463,7 +467,7 @@ def build_index():
 # --- Save Index ---
 
 @app.post('/index/save', response_model=IndexSaveResponse)
-def save_index(directory: str = Config.DEFAULT_DATA_DIR):
+def save_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse:
     """
     Persist index to disk
     
@@ -483,7 +487,7 @@ def save_index(directory: str = Config.DEFAULT_DATA_DIR):
         POST /index/save?directory=/path/to/storage
     """
     try:
-        save_metrics = engine.save(directory=directory)
+        save_metrics: dict[str, Any] = engine.save(directory=directory)
 
         return IndexSaveResponse(
             status=save_metrics["status"],
@@ -512,7 +516,7 @@ def save_index(directory: str = Config.DEFAULT_DATA_DIR):
 # --- Load Index ---
 
 @app.post('/index/load', response_model=IndexLoadResponse)
-def load_index(directory: str = Config.DEFAULT_DATA_DIR):
+def load_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse:
     """
     Load index from disk
     
@@ -527,7 +531,7 @@ def load_index(directory: str = Config.DEFAULT_DATA_DIR):
         HTTPException: 500 if load operation fails
     """
     try:
-        load_metrics = engine.load(directory=directory)
+        load_metrics: dict[str, Any] = engine.load(directory=directory)
 
         return IndexLoadResponse(
             status=load_metrics["status"],
@@ -564,7 +568,7 @@ def load_index(directory: str = Config.DEFAULT_DATA_DIR):
 # --- Health Check ---
 
 @app.get('/health')
-def check_health():
+def check_health() -> dict[str, Any]:
     """
     API health check
     
@@ -590,7 +594,7 @@ def check_health():
 # --- Metrics ---
 
 @app.get('/metrics', response_model=MetricsResponse)
-def get_metrics():
+def get_metrics() -> MetricsResponse:
     """
     Get comprehensive system metrics
     
@@ -610,9 +614,9 @@ def get_metrics():
     Raises:
         HTTPException: 500 if metrics collection fails
     """
-    metrics = engine.get_metrics()
+    metrics: dict[str, Any] = engine.get_metrics()
     
-    index_metrics = IndexMetrics(
+    index_metrics: IndexMetrics = IndexMetrics(
         total_documents=metrics["active_documents"],
         total_embeddings=metrics["total_embeddings"],
         deleted_documents=metrics["docs_deleted"],
@@ -620,7 +624,7 @@ def get_metrics():
         needs_compaction=metrics["needs_compaction"],
         compact_threshold=metrics["compact_threshold"]
     )
-    performance_metrics = PerformanceMetrics(
+    performance_metrics: PerformanceMetrics = PerformanceMetrics(
         total_queries=metrics["total_queries"],
         avg_query_time_ms=metrics["avg_query_time_ms"],
         total_query_time_ms=metrics["total_query_time_ms"],
@@ -630,26 +634,26 @@ def get_metrics():
         p95_query_time_ms=metrics["p95_query_time_ms"],
         p99_query_time_ms=metrics["p99_query_time_ms"]
     )
-    usage_metrics = UsageMetrics(
+    usage_metrics: UsageMetrics = UsageMetrics(
         documents_added=metrics["docs_added"],
         documents_deleted=metrics["docs_deleted"],
         compactions_performed=metrics["compactions_performed"],
         chunks_created=metrics["chunks_created"],
         files_uploaded=metrics["files_uploaded"]
     )
-    memory_metrics = MemoryMetrics(
+    memory_metrics: MemoryMetrics = MemoryMetrics(
         embeddings_mb=metrics["embeddings_mb"],
         documents_mb=metrics["documents_mb"],
         total_mb=metrics["total_mb"]
     )
-    timestamp_metrics = TimestampMetrics(
+    timestamp_metrics: TimestampMetrics = TimestampMetrics(
         engine_created_at=metrics["created_at"],
         last_query_at=metrics["last_query_at"],
         last_document_added_at=metrics["last_doc_added_at"],
         last_compaction_at=metrics["last_compaction_at"],
         last_file_uploaded_at=metrics["last_file_uploaded_at"]
     )
-    system_info = SystemInfo(
+    system_info: SystemInfo = SystemInfo(
         model_name=metrics["model_name"],
         model_dimension=metrics["model_dimension"],
         uptime_seconds=metrics["uptime_seconds"],
@@ -668,12 +672,11 @@ def get_metrics():
 
 def main() -> None:
     """Entry point for the VectorForge API server"""
-    Config.validate()
-    import uvicorn
+    VFConfig.validate()
     uvicorn.run(
         app=app, 
-        host=Config.API_HOST, 
-        port=Config.API_PORT
+        host=VFConfig.API_HOST, 
+        port=VFConfig.API_PORT
     )
 
 

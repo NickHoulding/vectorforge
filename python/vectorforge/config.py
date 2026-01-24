@@ -1,7 +1,7 @@
 import os
 
 
-class Config:
+class VFConfig:
     """Central configuration for VectorForge engine and API.
     
     Contains all configurable constants for the vector database including

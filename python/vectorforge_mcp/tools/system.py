@@ -1,4 +1,7 @@
+from typing import Any
+
 from vectorforge import api
+from vectorforge.models.metrics import MetricsResponse
 
 from ..decorators import handle_api_errors
 from ..instance import mcp
@@ -9,13 +12,13 @@ from ..utils import build_success_response
     description="Get comprehensive metrics: performance stats (query times, percentiles), memory usage, operation counts, uptime, and system info."
 )
 @handle_api_errors
-def get_metrics() -> dict:
+def get_metrics() -> dict[str, Any]:
     """Get comprehensive system metrics.
     
     Returns:
         Dictionary with detailed performance, usage, memory, timestamp, and system metrics.
     """
-    response = api.get_metrics()
+    response: MetricsResponse = api.get_metrics()
     return build_success_response(response)
 
 
@@ -23,13 +26,13 @@ def get_metrics() -> dict:
     description="Verify VectorForge API connectivity and status. Returns version and health status. Use for monitoring and troubleshooting."
 )
 @handle_api_errors
-def check_health() -> dict:
+def check_health() -> dict[str, Any]:
     """Check VectorForge API health and connectivity.
     
     Returns:
         Dictionary with health status and version information.
     """
-    response = api.check_health()
+    response: dict[str, Any] = api.check_health()
     return {
         "success": True,
         "data": response

@@ -1,8 +1,15 @@
 import os
 
+from typing import Any
+
 from fastapi import UploadFile
 
 from vectorforge import api
+from vectorforge.models.files import (
+    FileDeleteResponse,
+    FileListResponse,
+    FileUploadResponse,
+)
 
 from ..decorators import handle_api_errors
 from ..instance import mcp
@@ -13,13 +20,13 @@ from ..utils import build_error_response, build_success_response
     description="Get all filenames that have been uploaded and chunked into the vector index."
 )
 @handle_api_errors
-def list_files() -> dict:
+def list_files() -> dict[str, Any]:
     """List all indexed files in the vector store.
     
     Returns:
         List of filenames that have been uploaded and indexed.
     """
-    response = api.list_files()
+    response: FileListResponse = api.list_files()
     return build_success_response(response)
 
 
@@ -27,7 +34,7 @@ def list_files() -> dict:
     description="Upload and index a file (PDF, TXT). Extracts text, chunks it, generates embeddings. Returns chunk count and document IDs."
 )
 @handle_api_errors
-async def upload_file(file_path: str) -> dict:
+async def upload_file(file_path: str) -> dict[str, Any]:
     """Upload and index a file.
     
     Args:
@@ -42,11 +49,11 @@ async def upload_file(file_path: str) -> dict:
         )
     
     with open(file_path, 'rb') as f:
-        file = UploadFile(
+        file: UploadFile = UploadFile(
             filename=os.path.basename(file_path),
             file=f
         )
-        response = await api.upload_file(file)
+        response: FileUploadResponse = await api.upload_file(file)
 
     return build_success_response(response)
 
@@ -55,7 +62,7 @@ async def upload_file(file_path: str) -> dict:
     description="Delete all document chunks from a specific uploaded file. Removes all associated embeddings and metadata."
 )
 @handle_api_errors
-def delete_file(filename: str) -> dict:
+def delete_file(filename: str) -> dict[str, Any]:
     """Delete all chunks associated with an indexed file.
     
     Args:
@@ -64,5 +71,5 @@ def delete_file(filename: str) -> dict:
     Returns:
         Dictionary with deletion status, filename, chunks deleted, and document IDs.
     """
-    response = api.delete_file(filename=filename)
+    response: FileDeleteResponse = api.delete_file(filename=filename)
     return build_success_response(response)

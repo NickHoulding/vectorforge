@@ -2,9 +2,9 @@ from typing import List, cast
 
 import fitz
 
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 
-from vectorforge.config import Config
+from vectorforge.config import VFConfig
 
 
 def extract_pdf(content: bytes) -> str:
@@ -69,10 +69,7 @@ async def extract_file_content(file: UploadFile) -> str:
     
     return text
 
-def chunk_text(
-    text: str, 
-    chunk_size: int = Config.DEFAULT_CHUNK_SIZE, 
-    overlap: int = Config.DEFAULT_CHUNK_OVERLAP
+def chunk_text(text: str, chunk_size: int = VFConfig.DEFAULT_CHUNK_SIZE, overlap: int = VFConfig.DEFAULT_CHUNK_OVERLAP
 ) -> List[str]:
     """Split text into overlapping chunks for semantic processing.
     

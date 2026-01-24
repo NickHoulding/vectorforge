@@ -29,7 +29,7 @@ from .metrics import (
 from .search import SearchQuery, SearchResponse, SearchResult
 
 
-__all__ = [
+__all__: list[str] = [
     # Documents
     "DocumentInput",
     "DocumentResponse",

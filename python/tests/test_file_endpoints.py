@@ -4,7 +4,7 @@ import io
 
 import pytest
 
-from vectorforge.config import Config
+from vectorforge.config import VFConfig
 
 
 # =============================================================================
@@ -39,7 +39,7 @@ def uploaded_test_file(client, sample_file):
 @pytest.fixture
 def large_file_content():
     """Return content that will create multiple chunks."""
-    return b"x" * (Config.DEFAULT_CHUNK_SIZE * 3)
+    return b"x" * (VFConfig.DEFAULT_CHUNK_SIZE * 3)
 
 
 @pytest.fixture
@@ -276,7 +276,7 @@ def test_file_upload_response_format(upload_file):
 
 def test_file_upload_large_pdf(upload_file):
     """Test uploading a large file that creates multiple chunks."""
-    large_content = b"a" * (Config.DEFAULT_CHUNK_SIZE * 5)
+    large_content = b"a" * (VFConfig.DEFAULT_CHUNK_SIZE * 5)
     resp = upload_file("large_document.txt", large_content)
     
     assert resp.status_code == 201
@@ -570,7 +570,7 @@ def test_file_upload_increases_total_documents(get_metrics, upload_file):
 
 def test_file_upload_chunk_overlap_behavior(client, upload_file):
     """Test that chunks overlap correctly according to DEFAULT_CHUNK_OVERLAP."""
-    chunk_size = Config.DEFAULT_CHUNK_SIZE
+    chunk_size = VFConfig.DEFAULT_CHUNK_SIZE
     content = "ABCDEFGH" * (chunk_size // 4)
     
     resp = upload_file("overlap_test.txt", content.encode('utf-8'))
@@ -591,7 +591,7 @@ def test_file_upload_chunk_overlap_behavior(client, upload_file):
 
 def test_file_delete_returns_all_chunk_ids_for_multipart_file(client, upload_file):
     """Test that deleting a multi-chunk file returns all chunk IDs."""
-    large_content = b"x" * (Config.DEFAULT_CHUNK_SIZE * 4)
+    large_content = b"x" * (VFConfig.DEFAULT_CHUNK_SIZE * 4)
     
     upload_resp = upload_file("multipart_delete_test.txt", large_content)
     assert upload_resp.status_code == 201
@@ -666,7 +666,7 @@ def test_file_upload_and_delete_affects_embeddings_count(get_metrics, upload_fil
     initial_metrics = get_metrics()
     initial_embeddings = initial_metrics["index"]["total_embeddings"]
     
-    file_content = b"x" * (Config.DEFAULT_CHUNK_SIZE * 2)
+    file_content = b"x" * (VFConfig.DEFAULT_CHUNK_SIZE * 2)
     resp = upload_file("embeddings_test.txt", file_content)
     assert resp.status_code == 201
     chunks_created = resp.json()["chunks_created"]
@@ -719,7 +719,7 @@ def test_file_upload_single_character_file(client, upload_file):
 
 def test_file_upload_exact_chunk_size_boundary(upload_file):
     """Test uploading content that's exactly the chunk size."""
-    file_content = b"X" * Config.DEFAULT_CHUNK_SIZE
+    file_content = b"X" * VFConfig.DEFAULT_CHUNK_SIZE
     
     resp = upload_file("exact_size.txt", file_content)
     assert resp.status_code == 201
@@ -806,7 +806,7 @@ def test_file_operations_consistency_across_multiple_uploads_and_deletes(client,
 
 def test_file_upload_exceeds_max_filename_length(upload_file):
     """Test that uploading with filename exceeding MAX_FILENAME_LENGTH returns 400."""
-    long_filename = "a" * (Config.MAX_FILENAME_LENGTH + 1) + ".txt"
+    long_filename = "a" * (VFConfig.MAX_FILENAME_LENGTH + 1) + ".txt"
     
     resp = upload_file(long_filename, b"Testing filename too long")
     assert resp.status_code == 400

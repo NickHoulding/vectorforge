@@ -2,6 +2,8 @@
 import functools
 import inspect
 
+from typing import Any
+
 import httpx
 
 from fastapi import HTTPException
@@ -25,7 +27,7 @@ def handle_api_errors(func):
         Wrapped function with comprehensive error handling.
     """
     @functools.wraps(func)
-    def sync_wrapper(*args, **kwargs):
+    def sync_wrapper(*args, **kwargs) -> dict[str, Any]:
         try:
             return func(*args, **kwargs)
             
@@ -50,7 +52,10 @@ def handle_api_errors(func):
                     Exception("API version mismatch"),
                     details="Request format incompatible with API version"
                 )
-            return build_error_response(e, details=str(e.status_code))
+            return build_error_response(
+                e, 
+                details=str(e.status_code)
+            )
         except Exception as e:
             return build_error_response(
                 Exception("Operation failed"), 
@@ -58,7 +63,7 @@ def handle_api_errors(func):
             )
     
     @functools.wraps(func)
-    async def async_wrapper(*args, **kwargs):
+    async def async_wrapper(*args, **kwargs) -> dict[str, Any]:
         try:
             return await func(*args, **kwargs)
             
@@ -83,7 +88,10 @@ def handle_api_errors(func):
                     Exception("API version mismatch"),
                     details="Request format incompatible with API version"
                 )
-            return build_error_response(e, details=str(e.status_code))
+            return build_error_response(
+                e, 
+                details=str(e.status_code)
+            )
         except Exception as e:
             return build_error_response(
                 Exception("Operation failed"), 

@@ -1,8 +1,11 @@
 """Shared test fixtures for VectorForge test suite"""
 
+from typing import Any, Generator
+
 import pytest
 
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from vectorforge.api import app, engine
 
@@ -12,13 +15,13 @@ from vectorforge.api import app, engine
 # =============================================================================
 
 @pytest.fixture
-def anyio_backend():
+def anyio_backend() -> str:
     """Configure anyio to use only asyncio backend."""
     return "asyncio"
 
 
 @pytest.fixture
-def client():
+def client() -> TestClient:
     """Create fresh TestClient for each test.
     
     Provides a FastAPI TestClient instance for making HTTP requests
@@ -28,7 +31,7 @@ def client():
 
 
 @pytest.fixture(autouse=True)
-def reset_engine():
+def reset_engine() -> Generator[None, Any, None]:
     """Clear the engine state before each test.
     
     Automatically runs before every test to ensure a clean slate.
@@ -43,7 +46,7 @@ def reset_engine():
 
 
 @pytest.fixture
-def sample_doc():
+def sample_doc() -> dict[str, Any]:
     """Reusable sample document data"""
     return {
         "content": "This is a test document content",
@@ -55,13 +58,13 @@ def sample_doc():
 
 
 @pytest.fixture
-def added_doc(client):
+def added_doc(client: TestClient) -> Any:
     """Add a sample document and return its metadata.
     
     Creates a test document about machine learning and returns the API
     response containing the document ID and status.
     """
-    response = client.post("/doc/add", json={
+    response: Response = client.post("/doc/add", json={
         "content": "Machine learning is fascinating",
         "metadata": {
             "topic": "AI"
@@ -72,7 +75,7 @@ def added_doc(client):
 
 
 @pytest.fixture
-def multiple_added_docs(client):
+def multiple_added_docs(client: TestClient) -> list[str]:
     """Add multiple documents with varied content for similarity testing.
     
     Creates 20 documents with diverse topics to ensure different similarity
@@ -81,7 +84,7 @@ def multiple_added_docs(client):
     Returns:
         list[str]: List of document IDs
     """
-    varied_content = [
+    varied_content: list[str] = [
         "Python is a high-level programming language used for web development",
         "Machine learning algorithms can predict patterns in data",
         "The solar system contains eight planets orbiting the sun",
@@ -104,9 +107,9 @@ def multiple_added_docs(client):
         "Cybersecurity protects computer systems from malicious attacks"
     ]
     
-    doc_ids = []
+    doc_ids: list[str] = []
     for i, content in enumerate(varied_content):
-        response = client.post("/doc/add", json={
+        response: Response = client.post("/doc/add", json={
             "content": content,
             "metadata": {
                 "source_file": f"doc_{i}.txt",

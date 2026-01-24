@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from vectorforge.config import Config
+from vectorforge.config import VFConfig
 
 
 class DocumentInput(BaseModel):
@@ -16,8 +16,8 @@ class DocumentInput(BaseModel):
     """
     content: str = Field(
         ..., 
-        min_length=Config.MIN_CONTENT_LENGTH, 
-        max_length=Config.MAX_CONTENT_LENGTH, 
+        min_length=VFConfig.MIN_CONTENT_LENGTH, 
+        max_length=VFConfig.MAX_CONTENT_LENGTH, 
         description="Document text content"
     )
     metadata: dict | None = Field(default=None, description="Optional metadata")

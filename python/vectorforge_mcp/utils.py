@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 
-def build_success_response(response: BaseModel, **extra_fields: Any) -> dict:
+def build_success_response(response: BaseModel, **extra_fields: Any) -> dict[str, Any]:
     """Build a standardized success response from an API response model.
     
     Converts a Pydantic response model to a dictionary and adds a success flag
@@ -29,7 +29,7 @@ def build_success_response(response: BaseModel, **extra_fields: Any) -> dict:
     }
 
 
-def build_error_response(error: Exception, details: Any = None) -> dict:
+def build_error_response(error: Exception, details: Any = None) -> dict[str, Any]:
     """Build a standardized error response.
     
     Creates a consistent error response structure for MCP tools to return
@@ -46,9 +46,12 @@ def build_error_response(error: Exception, details: Any = None) -> dict:
         >>> return build_error_response(e, details=e.status_code)
         {'success': False, 'error': 'Not found', 'details': 404}
     """
-    response = {
+    response: dict[str, Any] = {
         "success": False,
-        "error": error.detail if isinstance(error, HTTPException) else str(error)
+        "error": (
+            error.detail
+            if isinstance(error, HTTPException) else str(error)
+        )
     }
     
     if details is not None:

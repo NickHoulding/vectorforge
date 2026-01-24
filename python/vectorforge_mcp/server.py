@@ -12,7 +12,6 @@ def main() -> None:
         level=MCPConfig.LOG_LEVEL,
         format=MCPConfig.LOG_FORMAT
     )
-    
     mcp.run()
 
 
