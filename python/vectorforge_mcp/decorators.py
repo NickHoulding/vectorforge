@@ -2,7 +2,7 @@
 import functools
 import inspect
 
-from typing import Any
+from typing import Any, Callable, cast
 
 import httpx
 
@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from .utils import build_error_response
 
 
-def handle_api_errors(func):
+def handle_api_errors(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to handle common VectorForge API errors consistently.
     
     Catches and formats errors for:
@@ -27,9 +27,9 @@ def handle_api_errors(func):
         Wrapped function with comprehensive error handling.
     """
     @functools.wraps(func)
-    def sync_wrapper(*args, **kwargs) -> dict[str, Any]:
+    def sync_wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
-            return func(*args, **kwargs)
+            return cast(dict[str, Any], func(*args, **kwargs))
             
         except ConnectionRefusedError:
             return build_error_response(
@@ -63,9 +63,9 @@ def handle_api_errors(func):
             )
     
     @functools.wraps(func)
-    async def async_wrapper(*args, **kwargs) -> dict[str, Any]:
+    async def async_wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
-            return await func(*args, **kwargs)
+            return cast(dict[str, Any], await func(*args, **kwargs))
             
         except ConnectionRefusedError:
             return build_error_response(

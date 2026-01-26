@@ -1,9 +1,9 @@
 ## Implementation
 - Split VFConfig into APIConfig and VFConfig for better separation of concerns
-- Run the test suite again
 
 ### MCP
 - Implement tests for mcp tools
+- See if test suite can be made more efficient
 
 # API
 - Implement centralized error handling
