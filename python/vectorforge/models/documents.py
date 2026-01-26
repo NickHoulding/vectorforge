@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from vectorforge.config import VFConfig
@@ -20,7 +22,7 @@ class DocumentInput(BaseModel):
         max_length=VFConfig.MAX_CONTENT_LENGTH, 
         description="Document text content"
     )
-    metadata: dict | None = Field(default=None, description="Optional metadata")
+    metadata: dict[str, Any] | None = Field(default=None, description="Optional metadata")
 
     class ConfigDict:
         json_schema_extra = {
@@ -65,7 +67,7 @@ class DocumentDetail(BaseModel):
     """
     id: str = Field(..., description="Unique document identifier")
     content: str = Field(..., description="Document text content")
-    metadata: dict | None = Field(default=None, description="Document metadata")
+    metadata: dict[str, Any] | None = Field(default=None, description="Document metadata")
 
     class ConfigDict:
         json_schema_extra = {

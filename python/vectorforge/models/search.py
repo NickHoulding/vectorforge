@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from vectorforge.config import VFConfig
@@ -27,7 +29,7 @@ class SearchQuery(BaseModel):
         le=VFConfig.MAX_TOP_K, 
         description="Number of results to return"
     )
-    filters: dict | None = Field(default=None, description="Optional metadata filters")
+    filters: dict[str, Any] | None = Field(default=None, description="Optional metadata filters")
 
     class ConfigDict:
         json_schema_extra = {
@@ -53,7 +55,7 @@ class SearchResult(BaseModel):
     """
     id: str = Field(..., description="Document identifier")
     content: str = Field(..., description="Document text content")
-    metadata: dict | None = Field(default=None, description="Document metadata")
+    metadata: dict[str, Any] | None = Field(default=None, description="Document metadata")
     score: float = Field(..., description="Similarity score")
 
     class ConfigDict:

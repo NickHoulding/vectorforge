@@ -29,7 +29,7 @@ def get_document(doc_id: str) -> dict[str, Any]:
     description="Index text content for semantic search. Generates embeddings automatically. Optionally add metadata for organization and filtering."
 )
 @handle_api_errors
-def add_document(content: str, metadata: dict | None = None) -> dict[str, Any]:
+def add_document(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """Add a single document to the index.
     
     Args:

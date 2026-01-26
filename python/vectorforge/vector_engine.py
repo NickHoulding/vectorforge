@@ -215,7 +215,7 @@ class VectorEngine:
         }
 
 
-    def load(self, directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict:
+    def load(self, directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
         """Load the vector engine state from disk.
         
         Restores the complete engine state including documents, embeddings,
@@ -263,7 +263,7 @@ class VectorEngine:
 
         embeddings_data: dict[str, Any] = np.load(embeddings_path)
         embeddings_array: list[np.ndarray] = embeddings_data["embeddings"]
-        self.embeddings: list[np.ndarray] = [
+        self.embeddings = [
             embeddings_array[i] 
             for i in range(len(embeddings_array))
         ]
@@ -290,7 +290,7 @@ class VectorEngine:
             max_query_history=saved_metrics["max_query_history"]
         )
 
-        self.model: SentenceTransformer = SentenceTransformer(self.model_name)
+        self.model = SentenceTransformer(self.model_name)
 
         return {
             "status": "loaded",
@@ -312,14 +312,14 @@ class VectorEngine:
         if len(self.embeddings) == 0:
             return
 
-        self.documents: dict[str, dict[str, Any]] = {
+        self.documents = {
             doc_id: doc 
             for doc_id, doc in self.documents.items()
             if doc_id not in self.deleted_docs
         }
-        self.embeddings: list[np.ndarray] = []
-        self.index_to_doc_id: list[str] = []
-        self.doc_id_to_index: dict[str, int] = {}
+        self.embeddings = []
+        self.index_to_doc_id = []
+        self.doc_id_to_index = {}
 
         for doc_id, doc in self.documents.items():
             embedding: np.ndarray = self.model.encode(sentences=doc["content"], convert_to_numpy=True)
@@ -394,7 +394,7 @@ class VectorEngine:
 
         search_results: list[SearchResult] = []
         for pos, score in results[:top_k]:
-            doc_id: str = self.index_to_doc_id[pos]
+            doc_id = self.index_to_doc_id[pos]
             doc: dict[str, Any] = self.documents[doc_id]
 
             search_results.append(SearchResult(
@@ -404,7 +404,7 @@ class VectorEngine:
                 score=score
             ))
 
-        elapsed_ms: float = (time.perf_counter() - start_time) * 1000
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
         self.metrics.total_query_time_ms += elapsed_ms
         self.metrics.last_query_at = datetime.now().isoformat()
         
@@ -723,9 +723,9 @@ class VectorEngine:
                 new_index_to_doc_id.append(doc_id)
                 new_doc_id_to_index[doc_id] = new_pos
 
-        self.embeddings: list[np.ndarray] = new_embeddings
-        self.index_to_doc_id: list[str] = new_index_to_doc_id
-        self.doc_id_to_index: dict[str, int] = new_doc_id_to_index
+        self.embeddings = new_embeddings
+        self.index_to_doc_id = new_index_to_doc_id
+        self.doc_id_to_index = new_doc_id_to_index
 
         for doc_id in self.deleted_docs:
             if doc_id in self.documents:
@@ -750,4 +750,4 @@ class VectorEngine:
             Cosine similarity score between -1 and 1, where 1 indicates
             identical vectors and -1 indicates opposite vectors.
         """
-        return np.dot(embedding_a, embedding_b)
+        return float(np.dot(embedding_a, embedding_b))

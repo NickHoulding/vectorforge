@@ -59,11 +59,12 @@ async def extract_file_content(file: UploadFile) -> str:
         file.filename = ""
 
     content: bytes = await file.read()
+    text: str = ""
 
     if file.filename.endswith('.pdf'):
-        text: str = extract_pdf(content)
+        text = extract_pdf(content)
     elif file.filename.endswith('.txt'):
-        text: str = content.decode('utf-8')
+        text = content.decode('utf-8')
     else:
         raise ValueError("Unsupported file type: {file.filename}. Supported types: {Config.SUPPORTED_FILE_EXTENSIONS}")
     
@@ -108,6 +109,6 @@ def chunk_text(text: str, chunk_size: int = VFConfig.DEFAULT_CHUNK_SIZE, overlap
         if chunk_text:
             chunks.append(chunk_text)
 
-        start: int = end - overlap if end < len(text) else len(text)
+        start = end - overlap if end < len(text) else len(text)
 
     return chunks
