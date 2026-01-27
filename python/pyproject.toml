@@ -28,38 +28,10 @@ package = true
 vectorforge-api = "vectorforge.api:main"
 vectorforge-mcp = "vectorforge_mcp.server:main"
 
-[tool.pytest.ini_options]
-filterwarnings = [
-    "ignore::DeprecationWarning:importlib._bootstrap",
-    "ignore:builtin type.*has no __module__ attribute:DeprecationWarning"
-]
-
 [project.optional-dependencies]
 mcp = [
     "fastmcp>=2.14.1",
 ]
-
-[tool.mypy]
-python_version = "3.11"
-disable_error_code = [
-    "import-untyped",
-    "import-not-found",
-    "untyped-decorator"
-]
-exclude = ["tests/"]
-strict = true
-
-[tool.isort]
-profile = "black"
-line_length = 88
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-known_first_party = ["vectorforge"]
-lines_after_imports = 2
-lines_between_types = 1
 
 [dependency-groups]
 dev = [
