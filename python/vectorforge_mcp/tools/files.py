@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import UploadFile
 
-from vectorforge import api
+from vectorforge.api import files
 from vectorforge.models.files import (
     FileDeleteResponse,
     FileListResponse,
@@ -26,7 +26,7 @@ def list_files() -> dict[str, Any]:
     Returns:
         List of filenames that have been uploaded and indexed.
     """
-    response: FileListResponse = api.list_files()
+    response: FileListResponse = files.list_files()
     return build_success_response(response)
 
 
@@ -53,7 +53,7 @@ async def upload_file(file_path: str) -> dict[str, Any]:
             filename=os.path.basename(file_path),
             file=f
         )
-        response: FileUploadResponse = await api.upload_file(file)
+        response: FileUploadResponse = await files.upload_file(file=file)
 
     return build_success_response(response)
 
@@ -71,5 +71,5 @@ def delete_file(filename: str) -> dict[str, Any]:
     Returns:
         Dictionary with deletion status, filename, chunks deleted, and document IDs.
     """
-    response: FileDeleteResponse = api.delete_file(filename=filename)
+    response: FileDeleteResponse = files.delete_file(filename=filename)
     return build_success_response(response)

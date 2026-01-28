@@ -1,6 +1,6 @@
 from typing import Any
 
-from vectorforge import api
+from vectorforge.api import documents
 from vectorforge.models.documents import DocumentDetail, DocumentInput, DocumentResponse
 
 from ..decorators import handle_api_errors
@@ -21,7 +21,7 @@ def get_document(doc_id: str) -> dict[str, Any]:
     Returns:
         Dictionary with document ID, content, and metadata.
     """
-    response: DocumentDetail = api.get_doc(doc_id)
+    response: DocumentDetail = documents.get_doc(doc_id=doc_id)
     return build_success_response(response)
 
 
@@ -40,7 +40,7 @@ def add_document(content: str, metadata: dict[str, Any] | None = None) -> dict[s
         Dictionary with created document ID and status.
     """
     doc_input: DocumentInput = DocumentInput(content=content, metadata=metadata)
-    response: DocumentResponse = api.add_doc(doc_input)
+    response: DocumentResponse = documents.add_doc(doc=doc_input)
     return build_success_response(response)
 
 
@@ -57,5 +57,5 @@ def delete_document(doc_id: str) -> dict[str, Any]:
     Returns:
         Dictionary with document ID and deletion status.
     """
-    response: DocumentResponse = api.delete_doc(doc_id=doc_id)
+    response: DocumentResponse = documents.delete_doc(doc_id=doc_id)
     return build_success_response(response)

@@ -1,6 +1,18 @@
 """Entry point when running vectorforge as a module"""
 
-from vectorforge.api import main
+import uvicorn
+
+from vectorforge.config import VFConfig
+
+
+def main() -> None:
+    """Entry point for the VectorForge API server"""
+    VFConfig.validate()
+    uvicorn.run(
+        "vectorforge.api:app", 
+        host=VFConfig.API_HOST, 
+        port=VFConfig.API_PORT
+    )
 
 
 if __name__ == "__main__":

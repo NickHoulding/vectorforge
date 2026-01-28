@@ -1,6 +1,6 @@
 from typing import Any
 
-from vectorforge import api
+from vectorforge.api import index
 from vectorforge.config import VFConfig
 from vectorforge.models.index import (
     IndexLoadResponse,
@@ -23,7 +23,7 @@ def get_index_stats() -> dict[str, Any]:
     Returns:
         Dictionary with index statistics including document counts, embedding dimension, and compaction status.
     """
-    response: IndexStatsResponse = api.get_index_stats()
+    response: IndexStatsResponse = index.get_index_stats()
     return build_success_response(response)
 
 
@@ -37,7 +37,7 @@ def build_index() -> dict[str, Any]:
     Returns:
         Dictionary with updated index statistics after rebuild.
     """
-    response: IndexStatsResponse = api.build_index()
+    response: IndexStatsResponse = index.build_index()
     return build_success_response(response)
 
 
@@ -54,7 +54,7 @@ def save_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     Returns:
         Dictionary with save confirmation, file sizes, and document counts.
     """
-    response: IndexSaveResponse = api.save_index(directory=directory)
+    response: IndexSaveResponse = index.save_index(directory=directory)
     return build_success_response(response)
 
 
@@ -71,5 +71,5 @@ def load_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     Returns:
         Dictionary with load confirmation, counts, and version information.
     """
-    response: IndexLoadResponse = api.load_index(directory=directory)
+    response: IndexLoadResponse = index.load_index(directory=directory)
     return build_success_response(response)

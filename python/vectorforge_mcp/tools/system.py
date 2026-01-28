@@ -1,6 +1,6 @@
 from typing import Any
 
-from vectorforge import api
+from vectorforge.api import system
 from vectorforge.models.metrics import MetricsResponse
 
 from ..decorators import handle_api_errors
@@ -18,7 +18,7 @@ def get_metrics() -> dict[str, Any]:
     Returns:
         Dictionary with detailed performance, usage, memory, timestamp, and system metrics.
     """
-    response: MetricsResponse = api.get_metrics()
+    response: MetricsResponse = system.get_metrics()
     return build_success_response(response)
 
 
@@ -32,7 +32,7 @@ def check_health() -> dict[str, Any]:
     Returns:
         Dictionary with health status and version information.
     """
-    response: dict[str, Any] = api.check_health()
+    response: dict[str, Any] = system.check_health()
     return {
         "success": True,
         "data": response

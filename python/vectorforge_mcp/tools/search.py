@@ -1,6 +1,6 @@
 from typing import Any
 
-from vectorforge import api
+from vectorforge.api import search
 from vectorforge.config import VFConfig
 from vectorforge.models import SearchQuery
 from vectorforge.models.search import SearchResponse
@@ -25,5 +25,5 @@ def search_documents(query: str, top_k: int = VFConfig.DEFAULT_TOP_K) -> dict[st
         List of search results with document IDs, content, similarity scores, and metadata.
     """
     search_params: SearchQuery = SearchQuery(query=query, top_k=top_k)
-    response: SearchResponse = api.search(search_params=search_params)
+    response: SearchResponse = search.search(search_params=search_params)
     return build_success_response(response)
