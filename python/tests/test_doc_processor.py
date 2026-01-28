@@ -7,7 +7,7 @@ import pytest
 
 from fastapi import UploadFile
 
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 from vectorforge.doc_processor import chunk_text, extract_file_content, extract_pdf
 
 
@@ -129,7 +129,7 @@ def test_chunk_text_default_parameters():
     chunks = chunk_text(text)
     
     assert len(chunks) > 0
-    assert all(len(chunk) <= VFConfig.DEFAULT_CHUNK_SIZE for chunk in chunks)
+    assert all(len(chunk) <= VFGConfig.DEFAULT_CHUNK_SIZE for chunk in chunks)
 
 
 def test_chunk_text_custom_parameters():

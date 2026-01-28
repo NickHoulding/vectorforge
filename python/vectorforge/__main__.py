@@ -2,16 +2,16 @@
 
 import uvicorn
 
-from vectorforge.config import VFConfig
+from vectorforge.api.config import APIConfig
 
 
 def main() -> None:
     """Entry point for the VectorForge API server"""
-    VFConfig.validate()
+    APIConfig.validate()
     uvicorn.run(
         "vectorforge.api:app", 
-        host=VFConfig.API_HOST, 
-        port=VFConfig.API_PORT
+        host=APIConfig.API_HOST, 
+        port=APIConfig.API_PORT
     )
 
 

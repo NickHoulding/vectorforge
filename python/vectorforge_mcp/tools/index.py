@@ -1,7 +1,7 @@
 from typing import Any
 
 from vectorforge.api import index
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 from vectorforge.models.index import (
     IndexLoadResponse,
     IndexSaveResponse,
@@ -45,7 +45,7 @@ def build_index() -> dict[str, Any]:
     description="Persist index to disk (embeddings + metadata). Enables fast recovery and reduces startup time. Returns file sizes and counts."
 )
 @handle_api_errors
-def save_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
+def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     """Persist index to disk.
     
     Args:
@@ -62,7 +62,7 @@ def save_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     description="Restore index from disk. Loads previously saved embeddings and metadata. Faster than rebuilding from documents."
 )
 @handle_api_errors
-def load_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
+def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     """Load index from disk.
     
     Args:

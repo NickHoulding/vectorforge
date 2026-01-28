@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, UploadFile, status
 
 from vectorforge.api import engine
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 from vectorforge.doc_processor import chunk_text, extract_file_content
 from vectorforge.models import FileDeleteResponse, FileListResponse, FileUploadResponse
 
@@ -66,7 +66,7 @@ async def upload_file(file: UploadFile) -> FileUploadResponse:
                 status_code=400,
                 detail="No filename provided"
             )
-        if len(file.filename) > VFConfig.MAX_FILENAME_LENGTH:
+        if len(file.filename) > VFGConfig.MAX_FILENAME_LENGTH:
             raise HTTPException(
                 status_code=400,
                 detail=f"Filename too long: {file.filename[:25]}..."

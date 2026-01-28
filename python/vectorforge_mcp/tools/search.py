@@ -1,7 +1,7 @@
 from typing import Any
 
 from vectorforge.api import search
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 from vectorforge.models import SearchQuery
 from vectorforge.models.search import SearchResponse
 
@@ -14,7 +14,7 @@ from ..utils import build_success_response
     description="Semantic search across indexed documents using embeddings. Returns top-k most similar results with scores and metadata."
 )
 @handle_api_errors
-def search_documents(query: str, top_k: int = VFConfig.DEFAULT_TOP_K) -> dict[str, Any]:
+def search_documents(query: str, top_k: int = VFGConfig.DEFAULT_TOP_K) -> dict[str, Any]:
     """Perform semantic search on indexed documents.
     
     Args:

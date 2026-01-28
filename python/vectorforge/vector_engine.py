@@ -13,7 +13,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from vectorforge import __version__
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 from vectorforge.models import SearchResult
 
 
@@ -65,7 +65,7 @@ class EngineMetrics:
 
     # Query performance history
     query_times: deque[float] = field(default_factory=deque)
-    max_query_history: int = VFConfig.MAX_QUERY_HISTORY
+    max_query_history: int = VFGConfig.MAX_QUERY_HISTORY
 
 
     def to_dict(self) -> dict[str, Any]:
@@ -126,17 +126,17 @@ class VectorEngine:
         self.doc_id_to_index: dict[str, int] = {}
         self.deleted_docs: set[str] = set()
         
-        self.model_name: str = VFConfig.MODEL_NAME
+        self.model_name: str = VFGConfig.MODEL_NAME
         self.model: SentenceTransformer = SentenceTransformer(self.model_name)
 
         self.metrics: EngineMetrics = EngineMetrics()
-        self.compaction_threshold: float = VFConfig.COMPACTION_THRESHOLD
+        self.compaction_threshold: float = VFGConfig.COMPACTION_THRESHOLD
 
         if self._should_compact():
             self._compact()
 
 
-    def save(self, directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
+    def save(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
         """Save the vector engine state to disk.
         
         Persists the complete engine state including active documents, 
@@ -156,7 +156,7 @@ class VectorEngine:
                 - documents_saved: Number of documents persisted
                 - embeddings_saved: Number of embeddings persisted
         """
-        if len(directory) > VFConfig.MAX_PATH_LEN:
+        if len(directory) > VFGConfig.MAX_PATH_LEN:
             raise ValueError(f"Save path length is too long: {directory}")
 
         os.makedirs(directory, exist_ok=True)
@@ -188,11 +188,11 @@ class VectorEngine:
             "version": __version__
         }
 
-        metadata_path: str = os.path.join(directory, VFConfig.METADATA_FILENAME)
+        metadata_path: str = os.path.join(directory, VFGConfig.METADATA_FILENAME)
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
 
-        embeddings_path: str = os.path.join(directory, VFConfig.EMBEDDINGS_FILENAME)
+        embeddings_path: str = os.path.join(directory, VFGConfig.EMBEDDINGS_FILENAME)
         np.savez_compressed(
             embeddings_path,
             embeddings=np.array(active_embeddings)
@@ -215,7 +215,7 @@ class VectorEngine:
         }
 
 
-    def load(self, directory: str = VFConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
+    def load(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
         """Load the vector engine state from disk.
         
         Restores the complete engine state including documents, embeddings,
@@ -238,13 +238,13 @@ class VectorEngine:
             FileNotFoundError: If metadata.json or embeddings.npz files
                 are not found in the specified directory.
         """
-        if len(directory) > VFConfig.MAX_PATH_LEN:
+        if len(directory) > VFGConfig.MAX_PATH_LEN:
             raise ValueError(f"Load path length is too long: {directory}")
         if not os.path.exists(directory):
             raise FileNotFoundError(f"Directory not found: {directory}")
 
-        metadata_path: str = os.path.join(directory, VFConfig.METADATA_FILENAME)
-        embeddings_path: str = os.path.join(directory, VFConfig.EMBEDDINGS_FILENAME)
+        metadata_path: str = os.path.join(directory, VFGConfig.METADATA_FILENAME)
+        embeddings_path: str = os.path.join(directory, VFGConfig.EMBEDDINGS_FILENAME)
 
         if not os.path.exists(metadata_path):
             raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
@@ -336,7 +336,7 @@ class VectorEngine:
         self.metrics.last_compaction_at = datetime.now().isoformat()
 
 
-    def search(self, query: str, top_k: int = VFConfig.DEFAULT_TOP_K) -> list[SearchResult]:
+    def search(self, query: str, top_k: int = VFGConfig.DEFAULT_TOP_K) -> list[SearchResult]:
         """Search the vector index for documents similar to the query.
         
         Encodes the query text, computes similarity scores against all active

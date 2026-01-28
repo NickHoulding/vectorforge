@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 
 
 class SearchQuery(BaseModel):
@@ -19,14 +19,14 @@ class SearchQuery(BaseModel):
     """
     query: str = Field(
         ..., 
-        min_length=VFConfig.MIN_QUERY_LENGTH, 
-        max_length=VFConfig.MAX_QUERY_LENGTH, 
+        min_length=VFGConfig.MIN_QUERY_LENGTH, 
+        max_length=VFGConfig.MAX_QUERY_LENGTH, 
         description="Search query text"
     )
     top_k: int = Field(
-        VFConfig.DEFAULT_TOP_K, 
-        ge=VFConfig.MIN_TOP_K, 
-        le=VFConfig.MAX_TOP_K, 
+        VFGConfig.DEFAULT_TOP_K, 
+        ge=VFGConfig.MIN_TOP_K, 
+        le=VFGConfig.MAX_TOP_K, 
         description="Number of results to return"
     )
     filters: dict[str, Any] | None = Field(default=None, description="Optional metadata filters")

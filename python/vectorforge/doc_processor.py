@@ -4,7 +4,7 @@ import fitz
 
 from fastapi import UploadFile
 
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 
 
 def extract_pdf(content: bytes) -> str:
@@ -66,11 +66,11 @@ async def extract_file_content(file: UploadFile) -> str:
     elif file.filename.endswith('.txt'):
         text = content.decode('utf-8')
     else:
-        raise ValueError("Unsupported file type: {file.filename}. Supported types: {Config.SUPPORTED_FILE_EXTENSIONS}")
+        raise ValueError(f"Unsupported file type: {file.filename}. Supported types: {VFGConfig.SUPPORTED_FILE_EXTENSIONS}")
     
     return text
 
-def chunk_text(text: str, chunk_size: int = VFConfig.DEFAULT_CHUNK_SIZE, overlap: int = VFConfig.DEFAULT_CHUNK_OVERLAP
+def chunk_text(text: str, chunk_size: int = VFGConfig.DEFAULT_CHUNK_SIZE, overlap: int = VFGConfig.DEFAULT_CHUNK_OVERLAP
 ) -> List[str]:
     """Split text into overlapping chunks for semantic processing.
     

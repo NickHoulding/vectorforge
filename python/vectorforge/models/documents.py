@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 
 
 class DocumentInput(BaseModel):
@@ -18,8 +18,8 @@ class DocumentInput(BaseModel):
     """
     content: str = Field(
         ..., 
-        min_length=VFConfig.MIN_CONTENT_LENGTH, 
-        max_length=VFConfig.MAX_CONTENT_LENGTH, 
+        min_length=VFGConfig.MIN_CONTENT_LENGTH, 
+        max_length=VFGConfig.MAX_CONTENT_LENGTH, 
         description="Document text content"
     )
     metadata: dict[str, Any] | None = Field(default=None, description="Optional metadata")

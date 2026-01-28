@@ -1,8 +1,8 @@
 import os
 
 
-class VFConfig:
-    """Central configuration for VectorForge engine and API.
+class VFGConfig:
+    """Central configuration for VectorForge engine.
     
     Contains all configurable constants for the vector database including
     model settings, validation limits, storage paths, and performance tuning.
@@ -91,16 +91,6 @@ class VFConfig:
     """Maximum number of query times to retain for percentile calculations."""
     
     # =============================================================================
-    # API Configuration
-    # =============================================================================
-    
-    API_PORT: int = 3001
-    """Default port for the FastAPI server."""
-    
-    API_HOST: str = "0.0.0.0"
-    """Default host binding for the FastAPI server."""
-    
-    # =============================================================================
     # Supported File Types
     # =============================================================================
     
@@ -178,13 +168,6 @@ class VFConfig:
 
         assert isinstance(cls.MAX_QUERY_HISTORY, int)
         assert cls.MAX_QUERY_HISTORY >= 0
-
-        assert isinstance(cls.API_PORT, int)
-        assert 1 <= cls.API_PORT <= 65535
-
-        assert isinstance(cls.API_HOST, str)
-        assert len(cls.API_HOST) > 0
-        assert not cls.API_HOST.isspace()
 
         assert isinstance(cls.SUPPORTED_FILE_EXTENSIONS, tuple)
         assert len(cls.SUPPORTED_FILE_EXTENSIONS) > 0

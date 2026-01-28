@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from vectorforge import __version__
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 
 
 TEST_DATA_PATH = os.path.join(
@@ -110,7 +110,7 @@ def test_index_stats_with_empty_index(client):
     assert stats["deleted_documents"] == 0
     assert stats["deleted_ratio"] == 0.0
     assert stats["needs_compaction"] is False
-    assert stats["embedding_dimension"] == VFConfig.EMBEDDING_DIMENSION
+    assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
 
 
 def test_index_stats_after_adding_documents(client):
@@ -166,7 +166,7 @@ def test_index_stats_needs_compaction_true(client, multiple_added_docs):
         client.delete(f"/doc/{multiple_added_docs[i]}")
     
     stats = client.get("/index/stats").json()
-    assert stats["deleted_ratio"] == VFConfig.COMPACTION_THRESHOLD
+    assert stats["deleted_ratio"] == VFGConfig.COMPACTION_THRESHOLD
     assert stats["needs_compaction"] is False
     
     client.delete(f"/doc/{multiple_added_docs[5]}")
@@ -180,7 +180,7 @@ def test_index_stats_needs_compaction_true(client, multiple_added_docs):
 def test_index_stats_embedding_dimension_is_384(client):
     """Test that embedding_dimension matches configured model dimension."""
     stats = client.get("/index/stats").json()
-    assert stats["embedding_dimension"] == VFConfig.EMBEDDING_DIMENSION
+    assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
 
 
 def test_index_stats_multiple_deletions_below_threshold(client, multiple_added_docs):
@@ -302,8 +302,8 @@ def test_index_build_returns_updated_stats(client, multiple_added_docs):
     assert updated_stats["deleted_ratio"] == 0.0
     assert initial_stats["needs_compaction"] == False
     assert updated_stats["needs_compaction"] == False
-    assert initial_stats["embedding_dimension"] == VFConfig.EMBEDDING_DIMENSION
-    assert updated_stats["embedding_dimension"] == VFConfig.EMBEDDING_DIMENSION
+    assert initial_stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
+    assert updated_stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
 
 
 def test_index_build_with_empty_index(client):
@@ -450,7 +450,7 @@ def test_index_build_at_compaction_threshold(client, multiple_added_docs):
         client.delete(f"/doc/{multiple_added_docs[i]}")
     
     stats_before = client.get("/index/stats").json()
-    assert stats_before["deleted_ratio"] == VFConfig.COMPACTION_THRESHOLD
+    assert stats_before["deleted_ratio"] == VFGConfig.COMPACTION_THRESHOLD
     
     response = client.post("/index/build")
     assert response.status_code == 200
@@ -507,8 +507,8 @@ def test_index_save_creates_directory_if_not_exists(client):
 def test_index_save_persists_to_disk(save_data):
     """Test that saving index creates files on disk."""
     files = os.listdir(save_data["directory"])
-    assert VFConfig.METADATA_FILENAME in files
-    assert VFConfig.EMBEDDINGS_FILENAME in files
+    assert VFGConfig.METADATA_FILENAME in files
+    assert VFGConfig.EMBEDDINGS_FILENAME in files
 
 
 def test_index_save_returns_save_metrics(save_data):
@@ -571,7 +571,7 @@ def test_index_save_empty_index(client):
     assert data["embeddings_saved"] == 0
     assert os.path.exists(os.path.join(
         TEST_DATA_PATH,
-        VFConfig.METADATA_FILENAME
+        VFGConfig.METADATA_FILENAME
     ))
 
 
@@ -657,14 +657,14 @@ def test_index_save_with_default_directory(client):
     
     data = response.json()
     assert "directory" in data
-    assert data["directory"] == VFConfig.DEFAULT_DATA_DIR
+    assert data["directory"] == VFGConfig.DEFAULT_DATA_DIR
 
 
 def test_index_save_creates_valid_json_metadata(client, added_doc):
     """Test that saved metadata.json is valid JSON."""
     client.post("/index/save", params={"directory": TEST_DATA_PATH})
     
-    metadata_path = os.path.join(TEST_DATA_PATH, VFConfig.METADATA_FILENAME)
+    metadata_path = os.path.join(TEST_DATA_PATH, VFGConfig.METADATA_FILENAME)
     with open(metadata_path, 'r') as f:
         metadata = json.load(f)
     
@@ -677,7 +677,7 @@ def test_index_save_creates_valid_embeddings_file(client, added_doc):
     """Test that saved embeddings.npz is valid numpy format."""
     client.post("/index/save", params={"directory": TEST_DATA_PATH})
     
-    embeddings_path = os.path.join(TEST_DATA_PATH, VFConfig.EMBEDDINGS_FILENAME)
+    embeddings_path = os.path.join(TEST_DATA_PATH, VFGConfig.EMBEDDINGS_FILENAME)
     data = np.load(embeddings_path)
     
     assert "embeddings" in data
@@ -686,7 +686,7 @@ def test_index_save_creates_valid_embeddings_file(client, added_doc):
 
 def test_index_save_with_very_long_directory_path(client):
     """Test save with directory path over the maximum length."""
-    long_dir = "a" * (VFConfig.MAX_PATH_LEN + 1)
+    long_dir = "a" * (VFGConfig.MAX_PATH_LEN + 1)
 
     resp = client.post("/index/save", params={"directory": long_dir})
     assert resp.status_code == 400
@@ -986,7 +986,7 @@ def test_index_load_with_custom_directory(client, multiple_added_docs):
 
 def test_index_load_with_very_long_directory_path(client):
     """Test load with directory path over the maximum length."""
-    long_dir = "a" * (VFConfig.MAX_PATH_LEN + 1)
+    long_dir = "a" * (VFGConfig.MAX_PATH_LEN + 1)
 
     resp = client.post("/index/load", params={"directory": long_dir})
     assert resp.status_code == 400

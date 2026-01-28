@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from vectorforge.api import engine
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 from vectorforge.models import IndexLoadResponse, IndexSaveResponse, IndexStatsResponse
 
 
@@ -85,7 +85,7 @@ def build_index() -> IndexStatsResponse:
 
 
 @router.post('/index/save', response_model=IndexSaveResponse)
-def save_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse:
+def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse:
     """
     Persist index to disk
     
@@ -93,7 +93,7 @@ def save_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse:
     directory. Creates persistent storage for index recovery and reduces startup time.
     
     Args:
-        directory (str, optional): Directory path for saving. Defaults to EngineConfig.DEFAULT_DATA_DIR
+        directory (str, optional): Directory path for saving. Defaults to VFGConfig.DEFAULT_DATA_DIR
         
     Returns:
         IndexSaveResponse: Save confirmation with file sizes and document counts
@@ -133,7 +133,7 @@ def save_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse:
 
 
 @router.post('/index/load', response_model=IndexLoadResponse)
-def load_index(directory: str = VFConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse:
+def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse:
     """
     Load index from disk
     

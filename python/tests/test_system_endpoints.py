@@ -9,7 +9,7 @@ from datetime import datetime
 import pytest
 
 from vectorforge import __version__
-from vectorforge.config import VFConfig
+from vectorforge.config import VFGConfig
 
 
 # =============================================================================
@@ -544,10 +544,10 @@ def test_metrics_usage_counters_are_cumulative(client):
 def test_metrics_model_name_is_correct(client):
     """Test that model_name matches the configured model."""
     metrics = client.get("/metrics").json()
-    assert metrics["system"]["model_name"] == VFConfig.MODEL_NAME
+    assert metrics["system"]["model_name"] == VFGConfig.MODEL_NAME
 
 
 def test_metrics_model_dimension_is_correct(client):
     """Test that model_dimension matches the configured dimension."""
     metrics = client.get("/metrics").json()
-    assert metrics["system"]["model_dimension"] == VFConfig.EMBEDDING_DIMENSION
+    assert metrics["system"]["model_dimension"] == VFGConfig.EMBEDDING_DIMENSION
