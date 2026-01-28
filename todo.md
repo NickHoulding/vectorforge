@@ -1,5 +1,4 @@
 ## Implementation
-- Split VFConfig into APIConfig and VFConfig for better separation of concerns
 - Implement centralized error handling for API
 
 ## Testing
