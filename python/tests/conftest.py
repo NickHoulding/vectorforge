@@ -6,8 +6,11 @@ import pytest
 
 from fastapi.testclient import TestClient
 from httpx import Response
+from sentence_transformers import SentenceTransformer
 
 from vectorforge.api import app, engine
+from vectorforge.config import VFGConfig
+from vectorforge.vector_engine import EngineMetrics, VectorEngine
 
 
 # =============================================================================
@@ -43,6 +46,40 @@ def reset_engine() -> Generator[None, Any, None]:
     engine.doc_id_to_index.clear()
     engine.deleted_docs.clear()
     yield
+
+
+@pytest.fixture(scope="session")
+def shared_model() -> SentenceTransformer:
+    """Load the sentence transformer model once for all tests.
+    
+    Session-scoped fixture that loads the model once and reuses it across
+    all vector engine tests. This significantly speeds up test execution.
+    """
+    return SentenceTransformer(VFGConfig.MODEL_NAME)
+
+
+@pytest.fixture
+def vector_engine(shared_model: SentenceTransformer) -> VectorEngine:
+    """Create a fresh VectorEngine for each test with a pre-loaded model.
+    
+    Reuses the session-scoped model to avoid expensive model reloading.
+    Creates a new engine instance with clean state for test isolation.
+    """
+    engine_instance = VectorEngine.__new__(VectorEngine)
+
+    engine_instance.documents = {}
+    engine_instance.embeddings = []
+    engine_instance.index_to_doc_id = []
+    engine_instance.doc_id_to_index = {}
+    engine_instance.deleted_docs = set()
+    
+    engine_instance.model_name = VFGConfig.MODEL_NAME
+    engine_instance.model = shared_model
+    
+    engine_instance.metrics = EngineMetrics()
+    engine_instance.compaction_threshold = VFGConfig.COMPACTION_THRESHOLD
+    
+    return engine_instance
 
 
 @pytest.fixture
