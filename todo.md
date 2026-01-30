@@ -3,7 +3,6 @@
 
 ## Testing
 - Implement tests for mcp tools
-- See if test suite can be made more efficient
 
 ## Benchmarking
 - benchmark pure python implementation
