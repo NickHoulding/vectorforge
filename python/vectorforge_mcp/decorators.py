@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from .utils import build_error_response
 
 
-def handle_api_errors(func: Callable[..., Any]) -> Callable[..., Any]:
+def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to handle common VectorForge API errors consistently.
     
     Catches and formats errors for:

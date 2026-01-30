@@ -3,12 +3,14 @@
 from fastapi import APIRouter, HTTPException
 
 from vectorforge.api import engine
+from vectorforge.api.decorators import handle_api_errors
 from vectorforge.models import SearchQuery, SearchResponse, SearchResult
 
 
 router: APIRouter = APIRouter()
 
 @router.post('/search', response_model=SearchResponse)
+@handle_api_errors
 def search(search_params: SearchQuery) -> SearchResponse:
     """
     Perform semantic search on indexed documents
@@ -33,28 +35,14 @@ def search(search_params: SearchQuery) -> SearchResponse:
         }
         ```
     """
-    try:
-        query: str = search_params.query.strip()
-        results: list[SearchResult] = engine.search(
-            query=query, 
-            top_k=search_params.top_k
-        )
+    query: str = search_params.query.strip()
+    results: list[SearchResult] = engine.search(
+        query=query, 
+        top_k=search_params.top_k
+    )
 
-        return SearchResponse(
-            query=query,
-            results=results,
-            count=len(results)
-        )
-    
-    except ValueError as e:
-        print(f"ValueError: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Malformed data: {e}"
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+    return SearchResponse(
+        query=query,
+        results=results,
+        count=len(results)
+    )

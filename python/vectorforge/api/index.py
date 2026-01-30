@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from vectorforge.api import engine
+from vectorforge.api.decorators import handle_api_errors
 from vectorforge.config import VFGConfig
 from vectorforge.models import IndexLoadResponse, IndexSaveResponse, IndexStatsResponse
 
@@ -12,6 +13,7 @@ from vectorforge.models import IndexLoadResponse, IndexSaveResponse, IndexStatsR
 router: APIRouter = APIRouter()
 
 @router.get('/index/stats', response_model=IndexStatsResponse)
+@handle_api_errors
 def get_index_stats() -> IndexStatsResponse:
     """
     Get quick index statistics
@@ -26,28 +28,21 @@ def get_index_stats() -> IndexStatsResponse:
     Raises:
         HTTPException: 500 if stats retrieval fails
     """
-    try:
-        stats: dict[str, Any] = engine.get_index_stats()
+    stats: dict[str, Any] = engine.get_index_stats()
 
-        return IndexStatsResponse(
-            status="success",
-            total_documents=stats["total_documents"],
-            total_embeddings=stats["total_embeddings"],
-            deleted_documents=stats["deleted_documents"],
-            deleted_ratio=stats["deleted_ratio"],
-            needs_compaction=stats["needs_compaction"],
-            embedding_dimension=stats["embedding_dimension"]
-        )
-    
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+    return IndexStatsResponse(
+        status="success",
+        total_documents=stats["total_documents"],
+        total_embeddings=stats["total_embeddings"],
+        deleted_documents=stats["deleted_documents"],
+        deleted_ratio=stats["deleted_ratio"],
+        needs_compaction=stats["needs_compaction"],
+        embedding_dimension=stats["embedding_dimension"]
+    )
 
 
 @router.post('/index/build', response_model=IndexStatsResponse)
+@handle_api_errors
 def build_index() -> IndexStatsResponse:
     """
     Build or rebuild the vector index
@@ -62,29 +57,22 @@ def build_index() -> IndexStatsResponse:
     Raises:
         HTTPException: 500 if index build fails
     """
-    try:
-        engine.build()
-        stats: dict[str, Any] = engine.get_index_stats()
+    engine.build()
+    stats: dict[str, Any] = engine.get_index_stats()
 
-        return IndexStatsResponse(
-            status="success",
-            total_documents=stats["total_documents"],
-            total_embeddings=stats["total_embeddings"],
-            deleted_documents=stats["deleted_documents"],
-            deleted_ratio=stats["deleted_ratio"],
-            needs_compaction=stats["needs_compaction"],
-            embedding_dimension=stats["embedding_dimension"]
-        )
-
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+    return IndexStatsResponse(
+        status="success",
+        total_documents=stats["total_documents"],
+        total_embeddings=stats["total_embeddings"],
+        deleted_documents=stats["deleted_documents"],
+        deleted_ratio=stats["deleted_ratio"],
+        needs_compaction=stats["needs_compaction"],
+        embedding_dimension=stats["embedding_dimension"]
+    )
 
 
 @router.post('/index/save', response_model=IndexSaveResponse)
+@handle_api_errors
 def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse:
     """
     Persist index to disk
@@ -104,35 +92,22 @@ def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse
     Example:
         POST /index/save?directory=/path/to/storage
     """
-    try:
-        save_metrics: dict[str, Any] = engine.save(directory=directory)
+    save_metrics: dict[str, Any] = engine.save(directory=directory)
 
-        return IndexSaveResponse(
-            status=save_metrics["status"],
-            directory=save_metrics["directory"],
-            metadata_size_mb=save_metrics["metadata_size_mb"],
-            embeddings_size_mb=save_metrics["embeddings_size_mb"],
-            total_size_mb=save_metrics["total_size_mb"],
-            documents_saved=save_metrics["documents_saved"],
-            embeddings_saved=save_metrics["embeddings_saved"],
-            version=save_metrics["version"]
-        )
-
-    except ValueError as e:
-        print(f"ValueError: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Malformed data: {e}"
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+    return IndexSaveResponse(
+        status=save_metrics["status"],
+        directory=save_metrics["directory"],
+        metadata_size_mb=save_metrics["metadata_size_mb"],
+        embeddings_size_mb=save_metrics["embeddings_size_mb"],
+        total_size_mb=save_metrics["total_size_mb"],
+        documents_saved=save_metrics["documents_saved"],
+        embeddings_saved=save_metrics["embeddings_saved"],
+        version=save_metrics["version"]
+    )
 
 
 @router.post('/index/load', response_model=IndexLoadResponse)
+@handle_api_errors
 def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse:
     """
     Load index from disk
@@ -147,32 +122,13 @@ def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse
         HTTPException: 404 if index files not found
         HTTPException: 500 if load operation fails
     """
-    try:
-        load_metrics: dict[str, Any] = engine.load(directory=directory)
+    load_metrics: dict[str, Any] = engine.load(directory=directory)
 
-        return IndexLoadResponse(
-            status=load_metrics["status"],
-            directory=load_metrics["directory"],
-            documents_loaded=load_metrics["documents_loaded"],
-            embeddings_loaded=load_metrics["embeddings_loaded"],
-            deleted_docs=load_metrics["deleted_docs"],
-            version=load_metrics["version"]
-        )
-
-    except FileNotFoundError as e:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Index files not found: {str(e)}"
-        )
-    except ValueError as e:
-        print(f"ValueError: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Malformed data: {e}"
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+    return IndexLoadResponse(
+        status=load_metrics["status"],
+        directory=load_metrics["directory"],
+        documents_loaded=load_metrics["documents_loaded"],
+        embeddings_loaded=load_metrics["embeddings_loaded"],
+        deleted_docs=load_metrics["deleted_docs"],
+        version=load_metrics["version"]
+    )

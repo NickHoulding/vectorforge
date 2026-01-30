@@ -3,7 +3,7 @@ from typing import Any
 from vectorforge.api import documents
 from vectorforge.models.documents import DocumentDetail, DocumentInput, DocumentResponse
 
-from ..decorators import handle_api_errors
+from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
 
@@ -11,7 +11,7 @@ from ..utils import build_success_response
 @mcp.tool(
     description="Fetch document content and metadata by ID. Use to verify stored content, inspect search results, or retrieve metadata."
 )
-@handle_api_errors
+@handle_tool_errors
 def get_document(doc_id: str) -> dict[str, Any]:
     """Retrieve a single document by ID.
     
@@ -28,7 +28,7 @@ def get_document(doc_id: str) -> dict[str, Any]:
 @mcp.tool(
     description="Index text content for semantic search. Generates embeddings automatically. Optionally add metadata for organization and filtering."
 )
-@handle_api_errors
+@handle_tool_errors
 def add_document(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """Add a single document to the index.
     
@@ -47,7 +47,7 @@ def add_document(content: str, metadata: dict[str, Any] | None = None) -> dict[s
 @mcp.tool(
     description="Permanently remove a document and its embeddings from the index. Cannot be undone."
 )
-@handle_api_errors
+@handle_tool_errors
 def delete_document(doc_id: str) -> dict[str, Any]:
     """Delete a single document by ID.
     

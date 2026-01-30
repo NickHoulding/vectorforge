@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from vectorforge import __version__
 from vectorforge.api import engine
+from vectorforge.api.decorators import handle_api_errors
 from vectorforge.models import (
     IndexMetrics,
     MemoryMetrics,
@@ -20,6 +21,7 @@ from vectorforge.models import (
 router: APIRouter = APIRouter()
 
 @router.get('/health')
+@handle_api_errors
 def check_health() -> dict[str, Any]:
     """
     API health check
@@ -45,6 +47,7 @@ def check_health() -> dict[str, Any]:
 
 
 @router.get('/metrics', response_model=MetricsResponse)
+@handle_api_errors
 def get_metrics() -> MetricsResponse:
     """
     Get comprehensive system metrics

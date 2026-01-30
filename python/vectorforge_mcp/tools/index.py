@@ -8,7 +8,7 @@ from vectorforge.models.index import (
     IndexStatsResponse,
 )
 
-from ..decorators import handle_api_errors
+from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
 
@@ -16,7 +16,7 @@ from ..utils import build_success_response
 @mcp.tool(
     description="Get lightweight index health check: document counts, embedding dimension, deletion ratio, compaction status."
 )
-@handle_api_errors
+@handle_tool_errors
 def get_index_stats() -> dict[str, Any]:
     """Get quick index statistics.
     
@@ -30,7 +30,7 @@ def get_index_stats() -> dict[str, Any]:
 @mcp.tool(
     description="Rebuild entire vector index from scratch. Regenerates all embeddings. Optimizes search performance but time-intensive."
 )
-@handle_api_errors
+@handle_tool_errors
 def build_index() -> dict[str, Any]:
     """Build or rebuild the vector index.
     
@@ -44,7 +44,7 @@ def build_index() -> dict[str, Any]:
 @mcp.tool(
     description="Persist index to disk (embeddings + metadata). Enables fast recovery and reduces startup time. Returns file sizes and counts."
 )
-@handle_api_errors
+@handle_tool_errors
 def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     """Persist index to disk.
     
@@ -61,7 +61,7 @@ def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
 @mcp.tool(
     description="Restore index from disk. Loads previously saved embeddings and metadata. Faster than rebuilding from documents."
 )
-@handle_api_errors
+@handle_tool_errors
 def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     """Load index from disk.
     

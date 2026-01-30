@@ -5,7 +5,7 @@ from vectorforge.config import VFGConfig
 from vectorforge.models import SearchQuery
 from vectorforge.models.search import SearchResponse
 
-from ..decorators import handle_api_errors
+from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
 
@@ -13,7 +13,7 @@ from ..utils import build_success_response
 @mcp.tool(
     description="Semantic search across indexed documents using embeddings. Returns top-k most similar results with scores and metadata."
 )
-@handle_api_errors
+@handle_tool_errors
 def search_documents(query: str, top_k: int = VFGConfig.DEFAULT_TOP_K) -> dict[str, Any]:
     """Perform semantic search on indexed documents.
     

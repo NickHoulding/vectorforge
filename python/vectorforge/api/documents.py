@@ -5,12 +5,14 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 
 from vectorforge.api import engine
+from vectorforge.api.decorators import handle_api_errors
 from vectorforge.models import DocumentDetail, DocumentInput, DocumentResponse
 
 
 router: APIRouter = APIRouter()
 
 @router.get('/doc/{doc_id}', status_code=status.HTTP_200_OK, response_model=DocumentDetail)
+@handle_api_errors
 def get_doc(doc_id: str) -> DocumentDetail:
     """
     Retrieve a single document by ID
@@ -28,32 +30,23 @@ def get_doc(doc_id: str) -> DocumentDetail:
         HTTPException: 404 if document not found
         HTTPException: 500 if retrieval fails
     """
-    try:
-        doc: dict[str, Any] | None = engine.get_doc(doc_id=doc_id)
+    doc: dict[str, Any] | None = engine.get_doc(doc_id=doc_id)
 
-        if not doc:
-            raise HTTPException(
-                status_code=404,
-                detail="Doc not found"
-            )
-
-        return DocumentDetail(
-            id=doc_id,
-            content=doc["content"],
-            metadata=doc["metadata"]
-        )
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Unexpected error: {e}")
+    if not doc:
         raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
+            status_code=404,
+            detail="Doc not found"
         )
+
+    return DocumentDetail(
+        id=doc_id,
+        content=doc["content"],
+        metadata=doc["metadata"]
+    )
 
 
 @router.post('/doc/add', status_code=status.HTTP_201_CREATED, response_model=DocumentResponse)
+@handle_api_errors
 def add_doc(doc: DocumentInput) -> DocumentResponse:
     """
     Add a single pre-extracted document
@@ -70,32 +63,19 @@ def add_doc(doc: DocumentInput) -> DocumentResponse:
     Raises:
         HTTPException: 500 if indexing fails
     """
-    try:
-        doc_id: str = engine.add_doc(
-            content=doc.content,
-            metadata=doc.metadata
-        )
+    doc_id: str = engine.add_doc(
+        content=doc.content,
+        metadata=doc.metadata
+    )
 
-        return DocumentResponse(
-            id=doc_id,
-            status="indexed"
-        )
-
-    except ValueError as e:
-        print(f"ValueError: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Malformed data: {e}"
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+    return DocumentResponse(
+        id=doc_id,
+        status="indexed"
+    )
 
 
 @router.delete('/doc/{doc_id}', response_model=DocumentResponse)
+@handle_api_errors
 def delete_doc(doc_id: str) -> DocumentResponse:
     """
     Delete a single document by ID
@@ -112,25 +92,15 @@ def delete_doc(doc_id: str) -> DocumentResponse:
         HTTPException: 404 if document not found
         HTTPException: 500 if deletion fails
     """
-    try:
-        delete_success: bool = engine.delete_doc(doc_id)
+    delete_success: bool = engine.delete_doc(doc_id)
 
-        if not delete_success:
-            raise HTTPException(
-                status_code=404,
-                detail="Doc not found"
-            )
-        
-        return DocumentResponse(
-            id=doc_id,
-            status="deleted"
+    if not delete_success:
+        raise HTTPException(
+            status_code=404,
+            detail="Doc not found"
         )
     
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+    return DocumentResponse(
+        id=doc_id,
+        status="deleted"
+    )

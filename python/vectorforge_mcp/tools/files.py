@@ -11,7 +11,7 @@ from vectorforge.models.files import (
     FileUploadResponse,
 )
 
-from ..decorators import handle_api_errors
+from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_error_response, build_success_response
 
@@ -19,7 +19,7 @@ from ..utils import build_error_response, build_success_response
 @mcp.tool(
     description="Get all filenames that have been uploaded and chunked into the vector index."
 )
-@handle_api_errors
+@handle_tool_errors
 def list_files() -> dict[str, Any]:
     """List all indexed files in the vector store.
     
@@ -33,7 +33,7 @@ def list_files() -> dict[str, Any]:
 @mcp.tool(
     description="Upload and index a file (PDF, TXT). Extracts text, chunks it, generates embeddings. Returns chunk count and document IDs."
 )
-@handle_api_errors
+@handle_tool_errors
 async def upload_file(file_path: str) -> dict[str, Any]:
     """Upload and index a file.
     
@@ -61,7 +61,7 @@ async def upload_file(file_path: str) -> dict[str, Any]:
 @mcp.tool(
     description="Delete all document chunks from a specific uploaded file. Removes all associated embeddings and metadata."
 )
-@handle_api_errors
+@handle_tool_errors
 def delete_file(filename: str) -> dict[str, Any]:
     """Delete all chunks associated with an indexed file.
     
