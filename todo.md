@@ -1,6 +1,3 @@
-## Implementation
-- Implement centralized error handling for API
-
 ## Testing
 - Implement tests for mcp tools
 
