@@ -23,9 +23,9 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def client() -> TestClient:
-    """Create fresh TestClient for each test.
+    """Create a TestClient for each testing session.
     
     Provides a FastAPI TestClient instance for making HTTP requests
     to the VectorForge API endpoints in tests.
