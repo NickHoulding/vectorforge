@@ -1,6 +1,3 @@
-## Testing
-- Implement tests for mcp tools
-
 ## Benchmarking
 - benchmark pure python implementation
 
