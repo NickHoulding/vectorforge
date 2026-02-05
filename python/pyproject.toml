@@ -28,14 +28,12 @@ package = true
 vectorforge-api = "vectorforge.api:main"
 vectorforge-mcp = "vectorforge_mcp.server:main"
 
-[project.optional-dependencies]
-mcp = [
-    "fastmcp>=2.14.1",
-]
-
 [dependency-groups]
 dev = [
     "pytest-cov>=7.0.0",
+    "pytest-benchmark>=5.2.3",
+    "memory-profiler>=0.61.0",
+    "faker>=40.1.2",
 ]
 mcp = [
     "fastmcp>=2.14.1",
