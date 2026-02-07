@@ -19,7 +19,6 @@ from .metrics import (
 )
 from .search import SearchQuery, SearchResponse, SearchResult
 
-
 __all__: list[str] = [
     "DocumentInput",
     "DocumentResponse",

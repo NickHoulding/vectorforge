@@ -2,11 +2,4 @@
 
 from . import documents, files, index, search, system
 
-
-__all__ = [
-    "documents", 
-    "files", 
-    "index", 
-    "search",
-    "system"
-]
+__all__ = ["documents", "files", "index", "search", "system"]

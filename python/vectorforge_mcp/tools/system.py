@@ -14,7 +14,7 @@ from ..utils import build_success_response
 @handle_tool_errors
 def get_metrics() -> dict[str, Any]:
     """Get comprehensive system metrics.
-    
+
     Returns:
         Dictionary with detailed performance, usage, memory, timestamp, and system metrics.
     """
@@ -28,12 +28,9 @@ def get_metrics() -> dict[str, Any]:
 @handle_tool_errors
 def check_health() -> dict[str, Any]:
     """Check VectorForge API health and connectivity.
-    
+
     Returns:
         Dictionary with health status and version information.
     """
     response: dict[str, Any] = system.check_health()
-    return {
-        "success": True,
-        "data": response
-    }
+    return {"success": True, "data": response}

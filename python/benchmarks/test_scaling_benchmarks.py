@@ -14,11 +14,19 @@ Metrics tracked:
 - Real-world workflow performance
 """
 
+import os
+import tempfile
+
+import psutil
 import pytest
 
-from benchmarks.conftest import SCALES, generate_documents
+from benchmarks.conftest import (
+    SCALES,
+    generate_document,
+    generate_documents,
+    generate_file_chunk,
+)
 from vectorforge.vector_engine import VectorEngine
-
 
 # ============================================================================
 # Query Latency Scaling
@@ -46,8 +54,6 @@ def test_query_latency_scaling(benchmark, scale: str, simple_queries: list[str])
 @pytest.mark.parametrize("scale", ["tiny", "small", "medium"])
 def test_indexing_speed_scaling(benchmark, scale: str):
     """Measure indexing speed at different index sizes."""
-    from benchmarks.conftest import generate_document
-
     # Pre-populate engine
     engine = VectorEngine()
     docs = generate_documents(SCALES[scale])
@@ -71,9 +77,6 @@ def test_indexing_speed_scaling(benchmark, scale: str):
 @pytest.mark.parametrize("doc_count", [100, 500, 1000, 5000, 10000])
 def test_memory_scaling(benchmark, doc_count: int):
     """Measure memory usage at different scales."""
-    import os
-
-    import psutil
 
     def build_index_and_measure():
         process = psutil.Process(os.getpid())
@@ -139,10 +142,6 @@ def test_top_k_scaling(
 
 def test_e2e_workflow_small_scale(benchmark):
     """End-to-end workflow: build index, search, save, load - small scale."""
-    import tempfile
-
-    from benchmarks.conftest import generate_documents
-
     docs = generate_documents(100)
 
     def workflow():
@@ -172,10 +171,6 @@ def test_e2e_workflow_small_scale(benchmark):
 @pytest.mark.slow
 def test_e2e_workflow_medium_scale(benchmark):
     """End-to-end workflow: build index, search, save, load - medium scale."""
-    import tempfile
-
-    from benchmarks.conftest import generate_documents
-
     docs = generate_documents(1000)
 
     def workflow():
@@ -228,7 +223,6 @@ def test_realistic_document_search_workflow(benchmark, engine_medium: VectorEngi
 
 def test_realistic_file_upload_workflow(benchmark, empty_engine: VectorEngine):
     """Simulate realistic file upload and processing workflow."""
-    from benchmarks.conftest import generate_file_chunk
 
     # Simulate uploading 3 files with 20 chunks each
     def upload_workflow():
@@ -250,7 +244,6 @@ def test_realistic_file_upload_workflow(benchmark, empty_engine: VectorEngine):
 
 def test_realistic_crud_workflow(benchmark):
     """Simulate realistic CRUD operations workflow."""
-    from benchmarks.conftest import generate_document, generate_documents
 
     def crud_workflow():
         engine = VectorEngine()
@@ -304,8 +297,6 @@ def test_performance_before_compaction(
 
 def test_performance_after_compaction(benchmark, simple_queries: list[str]):
     """Measure search performance after compaction."""
-    from benchmarks.conftest import SCALES, generate_documents
-
     # Build index
     engine = VectorEngine()
     docs = generate_documents(SCALES["medium"])
@@ -348,7 +339,6 @@ def test_sequential_concurrent_queries(benchmark, engine_medium: VectorEngine):
 @pytest.mark.slow
 def test_long_running_session(benchmark):
     """Simulate long-running session with mixed operations."""
-    from benchmarks.conftest import generate_document, generate_documents
 
     def long_session():
         engine = VectorEngine()

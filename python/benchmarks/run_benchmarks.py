@@ -15,8 +15,6 @@ import argparse
 import subprocess
 import sys
 
-from pathlib import Path
-
 
 def run_command(cmd: list[str]) -> int:
     """Run a command and return exit code."""
@@ -24,6 +22,7 @@ def run_command(cmd: list[str]) -> int:
     print("-" * 80)
     result = subprocess.run(cmd)
     print("-" * 80)
+
     return result.returncode
 
 
@@ -134,7 +133,6 @@ Examples:
     if args.rounds:
         cmd.append(f"--benchmark-min-rounds={args.rounds}")
 
-    # Run benchmarks
     return run_command(cmd)
 
 

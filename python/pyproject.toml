@@ -34,7 +34,23 @@ dev = [
     "pytest-benchmark>=5.2.3",
     "memory-profiler>=0.61.0",
     "faker>=40.1.2",
+    "black>=24.0.0",
 ]
 mcp = [
     "fastmcp>=2.14.1",
 ]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.venv
+  | __pycache__
+  | data
+)/
+'''

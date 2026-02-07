@@ -2,16 +2,16 @@
 
 from vectorforge.config import VFGConfig
 
-
 # =============================================================================
 # Document Endpoint Tests
 # =============================================================================
+
 
 def test_doc_add_returns_unique_ids_for_multiple_docs(client, sample_doc):
     """Test that adding multiple documents generates unique IDs for each."""
     first_response = client.post("/doc/add", json=sample_doc)
     first_id = first_response.json()["id"]
-    
+
     second_response = client.post("/doc/add", json=sample_doc)
     second_id = second_response.json()["id"]
 
@@ -67,7 +67,7 @@ def test_doc_get_returns_matching_content(client, sample_doc):
     """Test that retrieved document content matches original."""
     add_response = client.post("/doc/add", json=sample_doc)
     doc_id = add_response.json()["id"]
-    
+
     get_response = client.get(f"/doc/{doc_id}")
     data = get_response.json()
     assert data["content"] == sample_doc["content"]
@@ -78,7 +78,7 @@ def test_doc_get_preserves_metadata(client, sample_doc):
     add_response = client.post("/doc/add", json=sample_doc)
     doc_id = add_response.json()["id"]
     get_response = client.get(f"/doc/{doc_id}")
-    
+
     metadata = get_response.json()["metadata"]
     assert metadata["source_file"] == "test.txt"
     assert metadata["chunk_index"] == 0
@@ -156,7 +156,7 @@ def test_doc_add_metadata_with_only_chunk_index(client, sample_doc):
 
 def test_doc_add_with_special_characters_in_content(client, sample_doc):
     """Test that documents with special characters in content are accepted."""
-    sample_doc["metadata"]["content"] = "!@#$%^&*()_~-=+,.<>/?;:\"\'[]|\\"
+    sample_doc["metadata"]["content"] = "!@#$%^&*()_~-=+,.<>/?;:\"'[]|\\"
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
 
@@ -164,15 +164,15 @@ def test_doc_add_with_special_characters_in_content(client, sample_doc):
 def test_doc_add_with_unicode_content(client, sample_doc):
     """Test that documents with unicode characters are properly handled."""
     sample_doc["content"] = (
-        "Hello 世界 🌍 "    # Chinese + emoji
-        "Héllo Wörld "      # Accented Latin
-        "Привет мир "      # Cyrillic
-        "مرحبا بالعالم "   # Arabic
-        "שלום עולם "       # Hebrew
-        "こんにちは世界 "    # Japanese
-        "안녕하세요 "        # Korean
+        "Hello 世界 🌍 "  # Chinese + emoji
+        "Héllo Wörld "  # Accented Latin
+        "Привет мир "  # Cyrillic
+        "مرحبا بالعالم "  # Arabic
+        "שלום עולם "  # Hebrew
+        "こんにちは世界 "  # Japanese
+        "안녕하세요 "  # Korean
         "Γειά σου κόσμε "  # Greek
-        "🎉🚀💻🔥"          # Emojis
+        "🎉🚀💻🔥"  # Emojis
     )
 
     response = client.post("/doc/add", json=sample_doc)
@@ -186,23 +186,13 @@ def test_doc_add_with_unicode_content(client, sample_doc):
 def test_doc_add_with_nested_metadata(client, sample_doc):
     """Test that metadata can contain nested objects and arrays."""
     sample_doc["metadata"]["nested_object"] = {
-        "location": {
-            "country": "USA",
-            "city": "San Francisco"
-        },
-        "dimensions": {
-            "width": 100,
-            "height": 200
-        }
+        "location": {"country": "USA", "city": "San Francisco"},
+        "dimensions": {"width": 100, "height": 200},
     }
-    sample_doc["metadata"]["nested_array"] = [
-        "tag1",
-        "tag2",
-        "tag3"
-    ]
+    sample_doc["metadata"]["nested_array"] = ["tag1", "tag2", "tag3"]
     sample_doc["metadata"]["mixed_nested"] = [
         {"name": "item1", "value": 10},
-        {"name": "item2", "value": 20}
+        {"name": "item2", "value": 20},
     ]
 
     response = client.post("/doc/add", json=sample_doc)
@@ -226,7 +216,6 @@ def test_doc_get_deleted_document(client, added_doc):
     assert response.status_code == 404
 
 
-
 def test_doc_delete_same_document_twice(client, added_doc):
     """Test that deleting the same document twice returns 404 on second attempt."""
     response = client.delete(f"/doc/{added_doc['id']}")
@@ -238,12 +227,7 @@ def test_doc_delete_same_document_twice(client, added_doc):
 
 def test_doc_add_invalid_json_structure(client):
     """Test that POST /doc/add with invalid JSON structure (missing 'content') returns 422."""
-    invalid_doc = {
-        "metadata": {
-            "source_file": "test.txt",
-            "chunk_index": 0
-        }
-    }
+    invalid_doc = {"metadata": {"source_file": "test.txt", "chunk_index": 0}}
 
     response = client.post("/doc/add", json=invalid_doc)
     assert response.status_code == 422
@@ -361,7 +345,7 @@ def test_doc_add_response_contains_all_required_fields(client, sample_doc):
     """Test that successful add response contains id and status fields."""
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
-    
+
     response_data = response.json()
     assert "id" in response_data
     assert "status" in response_data
@@ -371,7 +355,7 @@ def test_doc_delete_response_contains_all_required_fields(client, added_doc):
     """Test that successful delete response contains id and status fields."""
     response = client.delete(f"/doc/{added_doc['id']}")
     assert response.status_code == 200
-    
+
     response_data = response.json()
     assert "id" in response_data
     assert "status" in response_data
@@ -431,7 +415,7 @@ def test_doc_delete_returns_id_field(client, added_doc):
     """Test that delete response contains 'id' field."""
     response = client.delete(f"/doc/{added_doc['id']}")
     assert response.status_code == 200
-    
+
     response_data = response.json()
     assert "id" in response_data
 
@@ -510,7 +494,7 @@ def test_doc_add_with_deeply_nested_metadata(client, sample_doc):
     for i in range(10):
         current[f"level{i}"] = {}
         current = current[f"level{i}"]
-    
+
     sample_doc["metadata"]["nested"] = nested
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
@@ -566,11 +550,11 @@ def test_doc_add_preserves_order_of_metadata_keys(client, sample_doc):
     sample_doc["metadata"] = {
         "z_field": "last",
         "a_field": "first",
-        "m_field": "middle"
+        "m_field": "middle",
     }
     response = client.post("/doc/add", json=sample_doc)
     doc_id = response.json()["id"]
-    
+
     get_response = client.get(f"/doc/{doc_id}")
     metadata_keys = list(get_response.json()["metadata"].keys())
     expected_keys = list(sample_doc["metadata"].keys())
@@ -597,10 +581,10 @@ def test_doc_get_after_index_compaction(client, sample_doc):
     for i in range(10):
         resp = client.post("/doc/add", json={**sample_doc, "content": f"Doc {i}"})
         doc_ids.append(resp.json()["id"])
-    
+
     for doc_id in doc_ids[:3]:
         client.delete(f"/doc/{doc_id}")
-    
+
     for doc_id in doc_ids[3:]:
         response = client.get(f"/doc/{doc_id}")
         assert response.status_code == 200
@@ -611,14 +595,23 @@ def test_doc_operations_update_all_relevant_metrics(client, sample_doc):
     initial_metrics = client.get("/metrics").json()
     add_resp = client.post("/doc/add", json=sample_doc)
     doc_id = add_resp.json()["id"]
-    
+
     after_add = client.get("/metrics").json()
-    assert after_add["usage"]["documents_added"] == initial_metrics["usage"]["documents_added"] + 1
-    assert after_add["index"]["total_documents"] > initial_metrics["index"]["total_documents"]
-    
+    assert (
+        after_add["usage"]["documents_added"]
+        == initial_metrics["usage"]["documents_added"] + 1
+    )
+    assert (
+        after_add["index"]["total_documents"]
+        > initial_metrics["index"]["total_documents"]
+    )
+
     client.delete(f"/doc/{doc_id}")
     after_delete = client.get("/metrics").json()
-    assert after_delete["usage"]["documents_deleted"] == initial_metrics["usage"]["documents_deleted"] + 1
+    assert (
+        after_delete["usage"]["documents_deleted"]
+        == initial_metrics["usage"]["documents_deleted"] + 1
+    )
 
 
 def test_doc_add_metadata_with_array_values(client, sample_doc):
@@ -640,9 +633,9 @@ def test_doc_delete_increments_deleted_count(client, added_doc):
     """Test that delete increments deleted_documents metric."""
     initial_metrics = client.get("/metrics").json()
     initial_deleted = initial_metrics["usage"]["documents_deleted"]
-    
+
     client.delete(f"/doc/{added_doc['id']}")
-    
+
     updated_metrics = client.get("/metrics").json()
     assert updated_metrics["usage"]["documents_deleted"] == initial_deleted + 1
 

@@ -15,6 +15,7 @@ Metrics tracked:
 """
 
 import pytest
+from faker import Faker
 
 from benchmarks.conftest import (
     generate_document,
@@ -22,7 +23,6 @@ from benchmarks.conftest import (
     generate_file_chunk,
 )
 from vectorforge.vector_engine import VectorEngine
-
 
 # ============================================================================
 # Single Document Insertion
@@ -132,8 +132,6 @@ def test_batch_insert_10000_docs(benchmark):
 
 def test_add_small_doc(benchmark, empty_engine: VectorEngine):
     """Benchmark adding small document (50-100 chars)."""
-    from faker import Faker
-
     fake = Faker()
 
     doc = {"content": fake.sentence(), "metadata": {"size": "small"}}
@@ -146,8 +144,6 @@ def test_add_small_doc(benchmark, empty_engine: VectorEngine):
 
 def test_add_medium_doc(benchmark, empty_engine: VectorEngine):
     """Benchmark adding medium document (500-1000 chars)."""
-    from faker import Faker
-
     fake = Faker()
 
     content = " ".join([fake.sentence() for _ in range(20)])
@@ -161,8 +157,6 @@ def test_add_medium_doc(benchmark, empty_engine: VectorEngine):
 
 def test_add_large_doc(benchmark, empty_engine: VectorEngine):
     """Benchmark adding large document (2000-5000 chars)."""
-    from faker import Faker
-
     fake = Faker()
 
     content = " ".join([fake.sentence() for _ in range(100)])
@@ -297,8 +291,6 @@ def test_add_doc_minimal_metadata(benchmark, empty_engine: VectorEngine):
 
 def test_add_doc_rich_metadata(benchmark, empty_engine: VectorEngine):
     """Benchmark adding document with rich metadata."""
-    from faker import Faker
-
     fake = Faker()
 
     doc = {

@@ -19,7 +19,7 @@ from ..utils import build_success_response
 @handle_tool_errors
 def get_index_stats() -> dict[str, Any]:
     """Get quick index statistics.
-    
+
     Returns:
         Dictionary with index statistics including document counts, embedding dimension, and compaction status.
     """
@@ -33,7 +33,7 @@ def get_index_stats() -> dict[str, Any]:
 @handle_tool_errors
 def build_index() -> dict[str, Any]:
     """Build or rebuild the vector index.
-    
+
     Returns:
         Dictionary with updated index statistics after rebuild.
     """
@@ -47,10 +47,10 @@ def build_index() -> dict[str, Any]:
 @handle_tool_errors
 def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     """Persist index to disk.
-    
+
     Args:
         directory: Directory path for saving (default: './data').
-        
+
     Returns:
         Dictionary with save confirmation, file sizes, and document counts.
     """
@@ -64,10 +64,10 @@ def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
 @handle_tool_errors
 def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
     """Load index from disk.
-    
+
     Args:
         directory: Directory path to load from (default: './data').
-        
+
     Returns:
         Dictionary with load confirmation, counts, and version information.
     """

@@ -7,21 +7,16 @@ Provides fixtures for:
 - Memory tracking utilities
 """
 
-import os
 import tempfile
-
 from typing import Any, Generator
 
 import pytest
-
 from faker import Faker
 
 from vectorforge.vector_engine import VectorEngine
 
-
-# Initialize Faker for generating realistic test data
 fake = Faker()
-Faker.seed(42)  # Consistent data across runs
+Faker.seed(42)
 
 
 # ============================================================================
@@ -124,7 +119,7 @@ def generate_query(complexity: str = "simple") -> str:
         return fake.word()
     elif complexity == "medium":
         return " ".join([fake.word() for _ in range(3)])
-    else:  # complex
+    else:
         return fake.sentence()
 
 

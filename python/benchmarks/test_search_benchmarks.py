@@ -14,8 +14,8 @@ Metrics tracked:
 
 import pytest
 
+from benchmarks.conftest import SCALES, generate_documents
 from vectorforge.vector_engine import VectorEngine
-
 
 # ============================================================================
 # Search Latency - Varying Index Size
@@ -197,8 +197,6 @@ def test_search_cold_engine(benchmark, simple_queries: list[str]):
 
     def run_cold_search():
         # Create fresh engine for each iteration to measure cold start
-        from benchmarks.conftest import SCALES, generate_documents
-
         engine = VectorEngine()
         docs = generate_documents(SCALES["small"])
         for doc in docs:
@@ -276,9 +274,9 @@ def test_search_after_compaction(
         engine_medium.delete_doc(doc_id)
 
     # This should have triggered compaction
-    assert len(engine_medium.deleted_docs) == 0, (
-        "Compaction should have cleared deleted_docs"
-    )
+    assert (
+        len(engine_medium.deleted_docs) == 0
+    ), "Compaction should have cleared deleted_docs"
 
     # Benchmark search after compaction
     query = simple_queries[0]

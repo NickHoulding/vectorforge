@@ -14,13 +14,15 @@ from ..utils import build_success_response
     description="Semantic search across indexed documents using embeddings. Returns top-k most similar results with scores and metadata."
 )
 @handle_tool_errors
-def search_documents(query: str, top_k: int = VFGConfig.DEFAULT_TOP_K) -> dict[str, Any]:
+def search_documents(
+    query: str, top_k: int = VFGConfig.DEFAULT_TOP_K
+) -> dict[str, Any]:
     """Perform semantic search on indexed documents.
-    
+
     Args:
         query: Search query string (natural language).
         top_k: Number of top results to return (default: 10, max: 100).
-        
+
     Returns:
         List of search results with document IDs, content, similarity scores, and metadata.
     """

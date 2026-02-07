@@ -2,14 +2,12 @@ import json
 import os
 import time
 import uuid
-
 from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Optional
 
 import numpy as np
-
 from sentence_transformers import SentenceTransformer
 
 from vectorforge import __version__
@@ -42,6 +40,7 @@ class EngineMetrics:
         query_times: Rolling window of recent query execution times in milliseconds.
         max_query_history: Maximum number of query times to retain in the rolling window.
     """
+
     # Counters
     total_queries: int = 0
     docs_added: int = 0
@@ -67,13 +66,12 @@ class EngineMetrics:
     query_times: deque[float] = field(default_factory=deque)
     max_query_history: int = VFGConfig.MAX_QUERY_HISTORY
 
-
     def to_dict(self) -> dict[str, Any]:
         """Convert metrics to a dictionary for serialization.
-        
+
         Transforms the dataclass into a JSON-serializable dictionary, converting
         the deque of query_times into a list for proper serialization.
-        
+
         Returns:
             Dictionary representation of all metrics with query_times converted
             to a list.
@@ -113,9 +111,10 @@ class VectorEngine:
         >>> results = engine.search("greeting", top_k=5)
         >>> engine.save()
     """
+
     def __init__(self) -> None:
         """Initialize the VectorEngine with an empty index and default settings.
-        
+
         Creates an empty vector database with the 'all-MiniLM-L6-v2' sentence
         transformer model. Initializes metrics tracking and performs compaction
         if needed.
@@ -125,7 +124,7 @@ class VectorEngine:
         self.index_to_doc_id: list[str] = []
         self.doc_id_to_index: dict[str, int] = {}
         self.deleted_docs: set[str] = set()
-        
+
         self.model_name: str = VFGConfig.MODEL_NAME
         self.model: SentenceTransformer = SentenceTransformer(self.model_name)
 
@@ -135,17 +134,16 @@ class VectorEngine:
         if self._should_compact():
             self._compact()
 
-
     def save(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
         """Save the vector engine state to disk.
-        
-        Persists the complete engine state including active documents, 
+
+        Persists the complete engine state including active documents,
         embeddings, metadata, and metrics to the specified directory.
-        
+
         Args:
             directory: Path to the directory where data will be saved.
                 Defaults to './data'.
-        
+
         Returns:
             A dictionary containing save operation status and statistics:
                 - status: 'saved'
@@ -162,7 +160,8 @@ class VectorEngine:
         os.makedirs(directory, exist_ok=True)
 
         active_documents: dict[str, dict[str, Any]] = {
-            doc_id: doc for doc_id, doc in self.documents.items()
+            doc_id: doc
+            for doc_id, doc in self.documents.items()
             if doc_id not in self.deleted_docs
         }
 
@@ -185,23 +184,20 @@ class VectorEngine:
             "model_name": self.model_name,
             "compaction_threshold": self.compaction_threshold,
             "metrics": self.metrics.to_dict(),
-            "version": __version__
+            "version": __version__,
         }
 
         metadata_path: str = os.path.join(directory, VFGConfig.METADATA_FILENAME)
-        with open(metadata_path, 'w') as f:
+        with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=2)
 
         embeddings_path: str = os.path.join(directory, VFGConfig.EMBEDDINGS_FILENAME)
-        np.savez_compressed(
-            embeddings_path,
-            embeddings=np.array(active_embeddings)
-        )
+        np.savez_compressed(embeddings_path, embeddings=np.array(active_embeddings))
 
         metadata_size: int = os.path.getsize(metadata_path)
-        metadata_size_mb: float = metadata_size / (1024 ** 2)
+        metadata_size_mb: float = metadata_size / (1024**2)
         embeddings_size: int = os.path.getsize(embeddings_path)
-        embeddings_size_mb: float = embeddings_size / (1024 ** 2)
+        embeddings_size_mb: float = embeddings_size / (1024**2)
 
         return {
             "status": "saved",
@@ -211,20 +207,19 @@ class VectorEngine:
             "total_size_mb": metadata_size_mb + embeddings_size_mb,
             "documents_saved": len(active_documents),
             "embeddings_saved": len(active_embeddings),
-            "version": __version__
+            "version": __version__,
         }
-
 
     def load(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
         """Load the vector engine state from disk.
-        
+
         Restores the complete engine state including documents, embeddings,
         metadata, and metrics from the specified directory.
-        
+
         Args:
             directory: Path to the directory containing saved data.
                 Defaults to './data'.
-        
+
         Returns:
             A dictionary containing load operation status and statistics:
                 - status: 'loaded'
@@ -233,7 +228,7 @@ class VectorEngine:
                 - embeddings_loaded: Number of embeddings restored
                 - deleted_docs: Number of deleted documents tracked
                 - version: Version of the saved data format
-        
+
         Raises:
             FileNotFoundError: If metadata.json or embeddings.npz files
                 are not found in the specified directory.
@@ -250,8 +245,8 @@ class VectorEngine:
             raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
         if not os.path.exists(embeddings_path):
             raise FileNotFoundError(f"Embeddings file not found: {embeddings_path}")
-        
-        with open(metadata_path, 'r') as f:
+
+        with open(metadata_path, "r") as f:
             metadata: dict[str, Any] = json.load(f)
 
         self.documents = metadata["documents"]
@@ -263,10 +258,7 @@ class VectorEngine:
 
         embeddings_data: dict[str, Any] = np.load(embeddings_path)
         embeddings_array: list[np.ndarray] = embeddings_data["embeddings"]
-        self.embeddings = [
-            embeddings_array[i] 
-            for i in range(len(embeddings_array))
-        ]
+        self.embeddings = [embeddings_array[i] for i in range(len(embeddings_array))]
 
         saved_metrics: dict[str, Any] = metadata["metrics"]
         self.metrics = EngineMetrics(
@@ -284,10 +276,9 @@ class VectorEngine:
             last_compaction_at=saved_metrics["last_compaction_at"],
             last_file_uploaded_at=saved_metrics["last_file_uploaded_at"],
             query_times=deque(
-                saved_metrics["query_times"], 
-                maxlen=saved_metrics["max_query_history"]
+                saved_metrics["query_times"], maxlen=saved_metrics["max_query_history"]
             ),
-            max_query_history=saved_metrics["max_query_history"]
+            max_query_history=saved_metrics["max_query_history"],
         )
 
         self.model = SentenceTransformer(self.model_name)
@@ -298,13 +289,12 @@ class VectorEngine:
             "documents_loaded": len(self.documents),
             "embeddings_loaded": len(self.embeddings),
             "deleted_docs": len(self.deleted_docs),
-            "version": metadata.get("version", "unknown")
+            "version": metadata.get("version", "unknown"),
         }
-
 
     def build(self) -> None:
         """Rebuild the entire index from scratch.
-        
+
         Re-encodes all active documents (excluding deleted ones) and reconstructs
         the embedding array and index mappings. This is a more aggressive operation
         than compact() as it regenerates all embeddings.
@@ -313,7 +303,7 @@ class VectorEngine:
             return
 
         self.documents = {
-            doc_id: doc 
+            doc_id: doc
             for doc_id, doc in self.documents.items()
             if doc_id not in self.deleted_docs
         }
@@ -322,7 +312,9 @@ class VectorEngine:
         self.doc_id_to_index = {}
 
         for doc_id, doc in self.documents.items():
-            embedding: np.ndarray = self.model.encode(sentences=doc["content"], convert_to_numpy=True)
+            embedding: np.ndarray = self.model.encode(
+                sentences=doc["content"], convert_to_numpy=True
+            )
             normalized_embedding: np.ndarray = embedding / np.linalg.norm(embedding)
 
             vector_index: int = len(self.embeddings)
@@ -335,18 +327,19 @@ class VectorEngine:
         self.metrics.compactions_performed += 1
         self.metrics.last_compaction_at = datetime.now().isoformat()
 
-
-    def search(self, query: str, top_k: int = VFGConfig.DEFAULT_TOP_K) -> list[SearchResult]:
+    def search(
+        self, query: str, top_k: int = VFGConfig.DEFAULT_TOP_K
+    ) -> list[SearchResult]:
         """Search the vector index for documents similar to the query.
-        
+
         Encodes the query text, computes similarity scores against all active
         documents, and returns the top-k most similar results. Tracks query
         performance metrics.
-        
+
         Args:
             query: Text query to search for.
             top_k: Maximum number of results to return. Defaults to 10.
-        
+
         Returns:
             List of SearchResult objects sorted by similarity score in
             descending order. Returns empty list if index is empty.
@@ -369,66 +362,64 @@ class VectorEngine:
             return []
 
         query_embedding: np.ndarray = self.model.encode(
-            sentences=query, 
-            convert_to_numpy=True
+            sentences=query, convert_to_numpy=True
         )
-        normalized_query_embedding: np.ndarray = query_embedding / np.linalg.norm(query_embedding)
+        normalized_query_embedding: np.ndarray = query_embedding / np.linalg.norm(
+            query_embedding
+        )
         results: list[tuple[int, float]] = []
 
         for pos, embedding in enumerate(self.embeddings):
             doc_id: str = self.index_to_doc_id[pos]
-            
-            if doc_id in self.deleted_docs: 
+
+            if doc_id in self.deleted_docs:
                 continue
 
             score: float = self._cosine_similarity(
-                embedding_a=normalized_query_embedding, 
-                embedding_b=embedding
+                embedding_a=normalized_query_embedding, embedding_b=embedding
             )
             results.append((pos, score))
 
-        results.sort(
-            key=lambda result: result[1], 
-            reverse=True
-        )
+        results.sort(key=lambda result: result[1], reverse=True)
 
         search_results: list[SearchResult] = []
         for pos, score in results[:top_k]:
             doc_id = self.index_to_doc_id[pos]
             doc: dict[str, Any] = self.documents[doc_id]
 
-            search_results.append(SearchResult(
-                id=doc_id,
-                content=doc["content"],
-                metadata=doc["metadata"],
-                score=score
-            ))
+            search_results.append(
+                SearchResult(
+                    id=doc_id,
+                    content=doc["content"],
+                    metadata=doc["metadata"],
+                    score=score,
+                )
+            )
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         self.metrics.total_query_time_ms += elapsed_ms
         self.metrics.last_query_at = datetime.now().isoformat()
-        
+
         self.metrics.query_times.append(elapsed_ms)
         if len(self.metrics.query_times) > self.metrics.max_query_history:
             self.metrics.query_times.popleft()
 
         return search_results
 
-
     def list_files(self) -> list[str]:
         """List all unique source files referenced in active documents.
-        
+
         Extracts the 'source_file' field from document metadata and returns
         a sorted list of unique filenames.
-        
+
         Returns:
             Sorted list of unique source filenames. Documents lacking source_file
             metadata are skipped.
         """
         filenames: set[str] = set()
         active_docs: list[dict[str, Any]] = [
-            doc 
-            for doc_id, doc in self.documents.items() 
+            doc
+            for doc_id, doc in self.documents.items()
             if doc_id not in self.deleted_docs
         ]
 
@@ -441,36 +432,34 @@ class VectorEngine:
 
         return unique_filenames
 
-
     def get_doc(self, doc_id: str) -> dict[str, Any] | None:
         """Retrieve a document by its ID.
-        
+
         Args:
             doc_id: Unique identifier of the document to retrieve.
-        
+
         Returns:
             Dictionary containing 'content' and 'metadata' keys if found,
             None if document doesn't exist or has been deleted.
         """
-        if doc_id in self.deleted_docs: 
+        if doc_id in self.deleted_docs:
             return None
 
         return self.documents.get(doc_id, None)
 
-
     def add_doc(self, content: str, metadata: dict[str, Any] | None = None) -> str:
         """Add a new document to the vector index.
-        
+
         Generates a unique ID, encodes the content, and adds the document to
         the index. Updates metrics for document additions, file uploads, and
         chunk creation based on metadata.
-        
+
         Args:
             content: Text content of the document to index.
             metadata: Optional metadata dictionary. Special handling for:
                 - source_file: Tracks file uploads when present
                 - chunk_index: When 0, increments files_uploaded counter
-        
+
         Returns:
             Unique document ID (UUID v4) for the newly added document.
         """
@@ -483,14 +472,13 @@ class VectorEngine:
         has_chunk_index: bool = "chunk_index" in metadata
 
         if has_source != has_chunk_index:
-            raise ValueError("Metadata must contain both 'source_file' and 'chunk_index' or neither")
+            raise ValueError(
+                "Metadata must contain both 'source_file' and 'chunk_index' or neither"
+            )
 
         doc_id: str = str(uuid.uuid4())
 
-        self.documents[doc_id] = {
-            "content": content, 
-            "metadata": metadata
-        }
+        self.documents[doc_id] = {"content": content, "metadata": metadata}
 
         embedding: np.ndarray = self.model.encode(content, convert_to_numpy=True)
         normalized_embedding: np.ndarray = embedding / np.linalg.norm(embedding)
@@ -503,27 +491,26 @@ class VectorEngine:
         self.metrics.docs_added += 1
         self.metrics.total_doc_size_bytes += len(content)
         self.metrics.last_doc_added_at = datetime.now().isoformat()
-        
+
         if metadata and metadata.get("source_file"):
             if metadata.get("chunk_index") == 0:
                 self.metrics.files_uploaded += 1
                 self.metrics.last_file_uploaded_at = datetime.now().isoformat()
-            
+
             self.metrics.chunks_created += 1
 
         return doc_id
 
-
     def delete_doc(self, doc_id: str) -> bool:
         """Remove a document from the vector index (lazy deletion).
-        
+
         Marks the document as deleted without immediately freeing memory.
         Triggers compaction if the deletion threshold is exceeded. Updates
         deletion metrics.
-        
+
         Args:
             doc_id: Unique identifier of the document to remove.
-        
+
         Returns:
             True if document was found and marked for deletion, False if
             document ID doesn't exist.
@@ -533,7 +520,7 @@ class VectorEngine:
 
         self.metrics.total_doc_size_bytes -= len(self.documents[doc_id]["content"])
         self.deleted_docs.add(doc_id)
-        
+
         self.metrics.docs_deleted += 1
 
         if self._should_compact():
@@ -541,16 +528,15 @@ class VectorEngine:
 
         return True
 
-
     def delete_file(self, filename: str) -> dict[str, Any]:
         """Delete all document chunks associated with a specific source file.
-        
+
         Finds all documents where metadata['source_file'] matches the given
         filename and marks them for deletion. Triggers compaction if needed.
-        
+
         Args:
             filename: Name of the source file whose chunks should be deleted.
-        
+
         Returns:
             Dictionary containing:
                 - status: 'deleted' if chunks found, 'not_found' if no matches
@@ -564,12 +550,12 @@ class VectorEngine:
         for doc_id, doc in self.documents.items():
             if doc_id in self.deleted_docs:
                 continue
-            
+
             source: str | None = doc["metadata"].get("source_file", None)
 
             if source == filename:
                 matching_doc_ids.append(doc_id)
-        
+
         for doc_id in matching_doc_ids:
             if self.delete_doc(doc_id=doc_id):
                 doc_ids.append(doc_id)
@@ -578,13 +564,12 @@ class VectorEngine:
             "status": "deleted" if doc_ids else "not_found",
             "filename": filename,
             "chunks_deleted": len(doc_ids),
-            "doc_ids": doc_ids
+            "doc_ids": doc_ids,
         }
-
 
     def get_metrics(self) -> dict[str, Any]:
         """Get comprehensive metrics about the vector engine's state and performance.
-        
+
         Returns:
             Dictionary containing:
                 - Counters: total_queries, docs_added, docs_deleted, etc.
@@ -595,69 +580,75 @@ class VectorEngine:
                 - Timestamps: created_at, last_query_at, last_doc_added_at, etc.
         """
         metrics_dict: dict[str, Any] = self.metrics.to_dict()
-        
+
         total_docs: int = len(self.documents)
         deleted_docs: int = len(self.deleted_docs)
         active_docs: int = total_docs - deleted_docs
         total_embeddings: int = len(self.embeddings)
         deleted_ratio: float = (
-            deleted_docs / total_embeddings 
-            if total_embeddings > 0 else 0.0
+            deleted_docs / total_embeddings if total_embeddings > 0 else 0.0
         )
-        
+
         avg_query_time: float = (
-            self.metrics.total_query_time_ms / self.metrics.total_queries 
-            if self.metrics.total_queries > 0 else 0.0
+            self.metrics.total_query_time_ms / self.metrics.total_queries
+            if self.metrics.total_queries > 0
+            else 0.0
         )
-        
-        sorted_times: list[float] = sorted(self.metrics.query_times) if self.metrics.query_times else []
-        p50: float | None = float(np.percentile(sorted_times, 50)) if sorted_times else None
-        p95: float | None = float(np.percentile(sorted_times, 95)) if sorted_times else None
-        p99: float | None = float(np.percentile(sorted_times, 99)) if sorted_times else None
+
+        sorted_times: list[float] = (
+            sorted(self.metrics.query_times) if self.metrics.query_times else []
+        )
+        p50: float | None = (
+            float(np.percentile(sorted_times, 50)) if sorted_times else None
+        )
+        p95: float | None = (
+            float(np.percentile(sorted_times, 95)) if sorted_times else None
+        )
+        p99: float | None = (
+            float(np.percentile(sorted_times, 99)) if sorted_times else None
+        )
         min_time: float | None = min(sorted_times) if sorted_times else None
         max_time: float | None = max(sorted_times) if sorted_times else None
-        
+
         embedding_dim: int = self.model.get_sentence_embedding_dimension() or 0
         embeddings_mb: float = (total_embeddings * embedding_dim * 4) / (1024 * 1024)
         documents_mb: float = self.metrics.total_doc_size_bytes / (1024 * 1024)
-        
+
         created: datetime = datetime.fromisoformat(self.metrics.created_at)
         uptime: float = (datetime.now() - created).total_seconds()
-        
-        metrics_dict.update({
-            # Index metrics
-            "active_documents": active_docs,
-            "total_embeddings": total_embeddings,
-            "deleted_ratio": deleted_ratio,
-            "needs_compaction": self._should_compact(),
-            "compact_threshold": self.compaction_threshold,
-            
-            # Performance metrics
-            "avg_query_time_ms": avg_query_time,
-            "min_query_time_ms": min_time,
-            "max_query_time_ms": max_time,
-            "p50_query_time_ms": p50,
-            "p95_query_time_ms": p95,
-            "p99_query_time_ms": p99,
-            
-            # Memory metrics
-            "embeddings_mb": embeddings_mb,
-            "documents_mb": documents_mb,
-            "total_mb": embeddings_mb + documents_mb,
-            
-            # System info
-            "model_name": self.model_name,
-            "model_dimension": embedding_dim,
-            "uptime_seconds": uptime,
-            "version": __version__
-        })
-        
-        return metrics_dict
 
+        metrics_dict.update(
+            {
+                # Index metrics
+                "active_documents": active_docs,
+                "total_embeddings": total_embeddings,
+                "deleted_ratio": deleted_ratio,
+                "needs_compaction": self._should_compact(),
+                "compact_threshold": self.compaction_threshold,
+                # Performance metrics
+                "avg_query_time_ms": avg_query_time,
+                "min_query_time_ms": min_time,
+                "max_query_time_ms": max_time,
+                "p50_query_time_ms": p50,
+                "p95_query_time_ms": p95,
+                "p99_query_time_ms": p99,
+                # Memory metrics
+                "embeddings_mb": embeddings_mb,
+                "documents_mb": documents_mb,
+                "total_mb": embeddings_mb + documents_mb,
+                # System info
+                "model_name": self.model_name,
+                "model_dimension": embedding_dim,
+                "uptime_seconds": uptime,
+                "version": __version__,
+            }
+        )
+
+        return metrics_dict
 
     def get_index_stats(self) -> dict[str, Any]:
         """Get key statistics about the current index state.
-        
+
         Returns:
             Dictionary containing:
                 - total_documents: Total number of documents in storage
@@ -671,8 +662,7 @@ class VectorEngine:
         total_embeddings: int = len(self.embeddings)
         deleted_docs: int = len(self.deleted_docs)
         deleted_ratio: float = (
-            deleted_docs / total_embeddings 
-            if total_embeddings > 0 else 0.0
+            deleted_docs / total_embeddings if total_embeddings > 0 else 0.0
         )
 
         return {
@@ -681,30 +671,28 @@ class VectorEngine:
             "deleted_documents": deleted_docs,
             "deleted_ratio": deleted_ratio,
             "needs_compaction": self._should_compact(),
-            "embedding_dimension": self.model.get_sentence_embedding_dimension() or 0
+            "embedding_dimension": self.model.get_sentence_embedding_dimension() or 0,
         }
-
 
     def _should_compact(self) -> bool:
         """Determine whether compaction is needed based on deleted document ratio.
-        
+
         Compaction is recommended when the ratio of deleted documents to total
         embeddings exceeds the configured threshold (default 0.25).
-        
+
         Returns:
             True if compaction should be performed, False otherwise.
         """
-        if not self.embeddings: 
+        if not self.embeddings:
             return False
-        
-        deleted_ratio: float = len(self.deleted_docs) / len(self.embeddings)
-        
-        return deleted_ratio > self.compaction_threshold
 
+        deleted_ratio: float = len(self.deleted_docs) / len(self.embeddings)
+
+        return deleted_ratio > self.compaction_threshold
 
     def _compact(self) -> None:
         """Clean up the index by removing deleted documents and rebuilding indices.
-        
+
         Removes all deleted documents from memory, rebuilds the embedding array
         and index mappings to eliminate fragmentation. Updates compaction metrics
         and timestamps.
@@ -730,22 +718,23 @@ class VectorEngine:
         for doc_id in self.deleted_docs:
             if doc_id in self.documents:
                 del self.documents[doc_id]
-        
+
         self.deleted_docs.clear()
-        
+
         self.metrics.compactions_performed += 1
         self.metrics.last_compaction_at = datetime.now().isoformat()
 
-
-    def _cosine_similarity(self, embedding_a: np.ndarray, embedding_b: np.ndarray) -> float:
+    def _cosine_similarity(
+        self, embedding_a: np.ndarray, embedding_b: np.ndarray
+    ) -> float:
         """Calculate cosine similarity between two pre-normalized embeddings.
-        
+
         Since embeddings are pre-normalized, this is equivalent to the dot product.
-        
+
         Args:
             emb_a: First normalized embedding vector.
             emb_b: Second normalized embedding vector.
-        
+
         Returns:
             Cosine similarity score between -1 and 1, where 1 indicates
             identical vectors and -1 indicates opposite vectors.

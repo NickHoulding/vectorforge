@@ -18,8 +18,8 @@ import os
 
 import pytest
 
+from benchmarks.conftest import generate_document, generate_documents
 from vectorforge.vector_engine import VectorEngine
-
 
 # ============================================================================
 # Save Performance
@@ -217,8 +217,6 @@ def test_save_after_additions(
     benchmark, engine_small: VectorEngine, temp_save_dir: str
 ):
     """Benchmark save performance after adding documents."""
-    from benchmarks.conftest import generate_documents
-
     save_path = os.path.join(temp_save_dir, "incremental")
 
     # Add more documents
@@ -250,8 +248,6 @@ def test_save_after_deletions(
 
 def test_repeated_saves(benchmark, engine_small: VectorEngine, temp_save_dir: str):
     """Benchmark repeated save operations (simulating periodic checkpoints)."""
-    from benchmarks.conftest import generate_document
-
     save_path = os.path.join(temp_save_dir, "repeated")
 
     def save_checkpoint():

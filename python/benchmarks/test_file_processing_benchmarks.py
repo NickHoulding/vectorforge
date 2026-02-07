@@ -13,10 +13,10 @@ Metrics tracked:
 - Total processing time
 """
 
-import pytest
+import fitz
+from faker import Faker
 
 from vectorforge.doc_processor import chunk_text, extract_pdf
-
 
 # ============================================================================
 # Text Chunking Benchmarks
@@ -100,16 +100,9 @@ def test_chunk_overlap_200(benchmark, sample_text_medium: str):
 
 def test_extract_pdf_synthetic_small(benchmark):
     """Benchmark PDF extraction on small synthetic PDF."""
-    # Create a simple PDF in memory for testing
-    import fitz
-
-    # Generate small PDF content
-    from faker import Faker
-
     fake = Faker()
     text_content = " ".join([fake.sentence() for _ in range(50)])
 
-    # Create PDF in memory
     doc = fitz.open()
     page = doc.new_page()
     page.insert_text((72, 72), text_content)
@@ -121,13 +114,7 @@ def test_extract_pdf_synthetic_small(benchmark):
 
 def test_extract_pdf_synthetic_medium(benchmark):
     """Benchmark PDF extraction on medium synthetic PDF."""
-    import fitz
-
-    from faker import Faker
-
     fake = Faker()
-
-    # Create PDF with multiple pages
     doc = fitz.open()
 
     for _ in range(5):
@@ -143,13 +130,7 @@ def test_extract_pdf_synthetic_medium(benchmark):
 
 def test_extract_pdf_synthetic_large(benchmark):
     """Benchmark PDF extraction on large synthetic PDF."""
-    import fitz
-
-    from faker import Faker
-
     fake = Faker()
-
-    # Create PDF with many pages
     doc = fitz.open()
 
     for _ in range(20):
@@ -170,13 +151,10 @@ def test_extract_pdf_synthetic_large(benchmark):
 
 def test_e2e_process_text_file(benchmark, sample_text_medium: str, empty_engine):
     """Benchmark end-to-end text file processing and indexing."""
-    from vectorforge.doc_processor import chunk_text
 
     def process_and_index():
-        # Chunk the text
         chunks = chunk_text(sample_text_medium, chunk_size=500, overlap=50)
 
-        # Index all chunks
         for i, chunk in enumerate(chunks):
             empty_engine.add_doc(
                 content=chunk, metadata={"source_file": "test.txt", "chunk_index": i}
@@ -187,31 +165,21 @@ def test_e2e_process_text_file(benchmark, sample_text_medium: str, empty_engine)
 
 def test_e2e_process_pdf_file(benchmark, empty_engine):
     """Benchmark end-to-end PDF processing and indexing."""
-    import fitz
-
-    from faker import Faker
-
-    from vectorforge.doc_processor import chunk_text, extract_pdf
-
     fake = Faker()
-
-    # Create a realistic PDF
     doc = fitz.open()
+
     for _ in range(10):
         page = doc.new_page()
         text_content = " ".join([fake.sentence() for _ in range(100)])
         page.insert_text((72, 72), text_content)
+
     pdf_bytes = doc.tobytes()
     doc.close()
 
     def process_and_index():
-        # Extract text
         text = extract_pdf(pdf_bytes)
-
-        # Chunk the text
         chunks = chunk_text(text, chunk_size=500, overlap=50)
 
-        # Index all chunks
         for i, chunk in enumerate(chunks):
             empty_engine.add_doc(
                 content=chunk, metadata={"source_file": "test.pdf", "chunk_index": i}
@@ -227,7 +195,7 @@ def test_e2e_process_pdf_file(benchmark, empty_engine):
 
 def test_chunking_throughput(benchmark, sample_text_large: str):
     """Measure chunking throughput (chunks per second)."""
-    result = benchmark(chunk_text, text=sample_text_large, chunk_size=500, overlap=50)
+    benchmark(chunk_text, text=sample_text_large, chunk_size=500, overlap=50)
 
     # Number of chunks will vary, but benchmark stats show time
     # Chunks per second = len(result) / time
@@ -240,16 +208,11 @@ def test_chunking_throughput(benchmark, sample_text_large: str):
 
 def test_chunk_memory_efficiency(benchmark):
     """Test chunking on very large text to measure memory efficiency."""
-    from faker import Faker
-
     fake = Faker()
-
-    # Generate large text (~10MB of text)
     large_text = " ".join([fake.sentence() for _ in range(100000)])
 
     def chunk_large():
         chunks = chunk_text(large_text, chunk_size=500, overlap=50)
-        # Force evaluation
         return len(chunks)
 
     benchmark.pedantic(chunk_large, iterations=1, rounds=3)
@@ -262,13 +225,13 @@ def test_chunk_memory_efficiency(benchmark):
 
 def test_chunk_exact_size(benchmark):
     """Benchmark chunking text that's exactly chunk_size."""
-    text = "a" * 500  # Exactly 500 characters
+    text = "a" * 500
     benchmark(chunk_text, text=text, chunk_size=500, overlap=50)
 
 
 def test_chunk_smaller_than_size(benchmark):
     """Benchmark chunking text smaller than chunk_size."""
-    text = "a" * 100  # Smaller than chunk_size
+    text = "a" * 100
     benchmark(chunk_text, text=text, chunk_size=500, overlap=50)
 
 
