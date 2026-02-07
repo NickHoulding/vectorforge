@@ -86,7 +86,7 @@ pytest benchmarks/ --benchmark-only --benchmark-min-rounds=10
 
 Benchmarks use different data scales:
 - **tiny**: 10 documents
-- **small**: 100 documents  
+- **small**: 100 documents
 - **medium**: 1,000 documents
 - **large**: 10,000 documents (marked `@pytest.mark.slow`)
 - **xlarge**: 50,000 documents (marked `@pytest.mark.slow`)
@@ -219,7 +219,7 @@ benchmarks/
 ├── __init__.py                          # Package init
 ├── conftest.py                          # Fixtures and test data generation
 ├── test_search_benchmarks.py            # Search performance tests
-├── test_indexing_benchmarks.py          # Indexing performance tests  
+├── test_indexing_benchmarks.py          # Indexing performance tests
 ├── test_file_processing_benchmarks.py   # File processing tests
 ├── test_persistence_benchmarks.py       # Save/load tests
 ├── test_scaling_benchmarks.py           # Scaling and end-to-end tests

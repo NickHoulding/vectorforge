@@ -1,0 +1,58 @@
+# Pre-commit hooks configuration
+# These hooks run BEFORE pushing to remote
+# To run manually: pre-commit run --all-files
+# To skip hooks: git push --no-verify
+
+repos:
+  # isort - Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (import sorting)
+        stages: [pre-push]
+        files: ^python/
+        args: ["--profile", "black", "--line-length", "88"]
+
+  # Black - Code formatting
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        name: black (code formatting)
+        stages: [pre-push]
+        files: ^python/
+        args: ["--line-length", "88"]
+
+  # mypy - Type checking (using local installation for better performance)
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (type checking)
+        entry: bash -c 'cd python && uv run mypy .'
+        language: system
+        types: [python]
+        files: ^python/(vectorforge|vectorforge_mcp)/
+        stages: [pre-push]
+        pass_filenames: false
+
+  # Built-in hooks (useful extras)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: trim trailing whitespace
+        stages: [pre-push]
+      - id: end-of-file-fixer
+        name: fix end of files
+        stages: [pre-push]
+      - id: check-yaml
+        name: check yaml syntax
+        stages: [pre-push]
+      - id: check-added-large-files
+        name: check for large files
+        stages: [pre-push]
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+        name: check for merge conflicts
+        stages: [pre-push]

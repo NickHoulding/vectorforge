@@ -513,7 +513,7 @@ for result in results:
 ## Development Process
 
 **TODO: Fill in with dev challenges, learnings, interesting bugs/edge cases discovered, performance optimization insights, etc.**
-<!-- 
+<!--
 Fill in with your experience:
 - What challenges did you face during development?
 - How did you overcome specific technical hurdles?
@@ -527,7 +527,7 @@ Fill in with your experience:
 ## Known Limitations & Future Improvements
 
 **TODO: Fill in with current limitations, performance improvements, and scalability considerations**
-<!-- 
+<!--
 Fill in with:
 - Current limitations you're aware of
 - Features you plan to add
