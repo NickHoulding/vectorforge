@@ -328,7 +328,10 @@ class VectorEngine:
         self.metrics.last_compaction_at = datetime.now().isoformat()
 
     def search(
-        self, query: str, top_k: int = VFGConfig.DEFAULT_TOP_K
+        self,
+        query: str,
+        top_k: int = VFGConfig.DEFAULT_TOP_K,
+        filters: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
         """Search the vector index for documents similar to the query.
 
@@ -339,10 +342,14 @@ class VectorEngine:
         Args:
             query: Text query to search for.
             top_k: Maximum number of results to return. Defaults to 10.
+            filters: Optional metadata filters as key-value pairs. All filters
+                    must match (AND logic). Matching is case-sensitive and
+                    uses exact equality. Example: {"source_file": "doc.pdf"}
 
         Returns:
             List of SearchResult objects sorted by similarity score in
-            descending order. Returns empty list if index is empty.
+            descending order. Returns empty list if index is empty or no
+            documents match the filters.
         """
         if not query.strip():
             raise ValueError("Search query cannot be empty")
@@ -383,9 +390,12 @@ class VectorEngine:
         results.sort(key=lambda result: result[1], reverse=True)
 
         search_results: list[SearchResult] = []
-        for pos, score in results[:top_k]:
+        for pos, score in results:
             doc_id = self.index_to_doc_id[pos]
             doc: dict[str, Any] = self.documents[doc_id]
+
+            if filters and not self._matches_filters(doc["metadata"], filters):
+                continue
 
             search_results.append(
                 SearchResult(
@@ -395,6 +405,9 @@ class VectorEngine:
                     score=score,
                 )
             )
+
+            if len(search_results) >= top_k:
+                break
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         self.metrics.total_query_time_ms += elapsed_ms
@@ -740,3 +753,29 @@ class VectorEngine:
             identical vectors and -1 indicates opposite vectors.
         """
         return float(np.dot(embedding_a, embedding_b))
+
+    def _matches_filters(
+        self, metadata: dict[str, Any] | None, filters: dict[str, Any]
+    ) -> bool:
+        """Check if document metadata matches all filter criteria.
+
+        Applies AND logic: all filter key-value pairs must match exactly
+        for the document to pass. Matching is case-sensitive and uses
+        equality comparison.
+
+        Args:
+            metadata: Document metadata dictionary, or None.
+            filters: Filter criteria as key-value pairs.
+
+        Returns:
+            True if all filters match the metadata, False otherwise.
+            Returns False if metadata is None and filters are provided.
+        """
+        if metadata is None:
+            return False
+
+        for key, value in filters.items():
+            if key not in metadata or metadata[key] != value:
+                return False
+
+        return True

@@ -567,6 +567,153 @@ def test_search_top_k_larger_than_available(vector_engine):
 
 
 # =============================================================================
+# search() with filters Tests
+# =============================================================================
+
+
+def test_search_filter_by_source_file(vector_engine):
+    """Test that filtering by source_file returns only matching documents."""
+    vector_engine.add_doc(
+        "Python tutorial", {"source_file": "python.pdf", "chunk_index": 0}
+    )
+    vector_engine.add_doc(
+        "Java tutorial", {"source_file": "java.pdf", "chunk_index": 0}
+    )
+    vector_engine.add_doc(
+        "JavaScript tutorial", {"source_file": "js.pdf", "chunk_index": 0}
+    )
+
+    results = vector_engine.search(
+        "tutorial", top_k=10, filters={"source_file": "python.pdf"}
+    )
+
+    assert len(results) == 1
+    assert results[0].metadata["source_file"] == "python.pdf"
+
+
+def test_search_filter_by_chunk_index(vector_engine):
+    """Test that filtering by chunk_index returns only matching documents."""
+    vector_engine.add_doc(
+        "Chunk 0 content", {"source_file": "doc.pdf", "chunk_index": 0}
+    )
+    vector_engine.add_doc(
+        "Chunk 1 content", {"source_file": "doc.pdf", "chunk_index": 1}
+    )
+    vector_engine.add_doc(
+        "Chunk 2 content", {"source_file": "doc.pdf", "chunk_index": 2}
+    )
+
+    results = vector_engine.search("content", top_k=10, filters={"chunk_index": 1})
+
+    assert len(results) == 1
+    assert results[0].metadata["chunk_index"] == 1
+
+
+def test_search_filter_by_both_fields(vector_engine):
+    """Test that filtering by both source_file and chunk_index uses AND logic."""
+    vector_engine.add_doc("Doc A Chunk 0", {"source_file": "a.pdf", "chunk_index": 0})
+    vector_engine.add_doc("Doc A Chunk 1", {"source_file": "a.pdf", "chunk_index": 1})
+    vector_engine.add_doc("Doc B Chunk 0", {"source_file": "b.pdf", "chunk_index": 0})
+
+    results = vector_engine.search(
+        "doc chunk", top_k=10, filters={"source_file": "a.pdf", "chunk_index": 1}
+    )
+
+    assert len(results) == 1
+    assert results[0].metadata["source_file"] == "a.pdf"
+    assert results[0].metadata["chunk_index"] == 1
+
+
+def test_search_filter_and_logic(vector_engine):
+    """Test that multiple filters require all to match (AND logic)."""
+    vector_engine.add_doc(
+        "Python programming",
+        {"source_file": "python.pdf", "chunk_index": 0, "topic": "programming"},
+    )
+    vector_engine.add_doc(
+        "Python data science",
+        {"source_file": "python.pdf", "chunk_index": 1, "topic": "data"},
+    )
+    vector_engine.add_doc(
+        "Java programming",
+        {"source_file": "java.pdf", "chunk_index": 0, "topic": "programming"},
+    )
+
+    results = vector_engine.search(
+        "programming",
+        top_k=10,
+        filters={"source_file": "python.pdf", "topic": "programming"},
+    )
+
+    assert len(results) == 1
+    assert results[0].metadata["source_file"] == "python.pdf"
+    assert results[0].metadata["topic"] == "programming"
+
+
+def test_search_filter_no_matches(vector_engine):
+    """Test that filtering with no matches returns empty list."""
+    vector_engine.add_doc(
+        "Document content", {"source_file": "doc.pdf", "chunk_index": 0}
+    )
+
+    results = vector_engine.search(
+        "content", top_k=10, filters={"source_file": "missing.pdf"}
+    )
+
+    assert len(results) == 0
+
+
+def test_search_filter_custom_metadata(vector_engine):
+    """Test that filtering works with custom metadata fields."""
+    vector_engine.add_doc("Article 1", {"author": "Alice", "year": 2020})
+    vector_engine.add_doc("Article 2", {"author": "Bob", "year": 2021})
+    vector_engine.add_doc("Article 3", {"author": "Alice", "year": 2021})
+
+    results = vector_engine.search("article", top_k=10, filters={"author": "Alice"})
+
+    assert len(results) == 2
+    for result in results:
+        assert result.metadata["author"] == "Alice"
+
+
+def test_search_filter_none(vector_engine):
+    """Test that filters=None returns all results."""
+    vector_engine.add_doc("Doc 1", {"source_file": "a.pdf", "chunk_index": 0})
+    vector_engine.add_doc("Doc 2", {"source_file": "b.pdf", "chunk_index": 0})
+
+    results = vector_engine.search("doc", top_k=10, filters=None)
+
+    assert len(results) == 2
+
+
+def test_search_filter_empty_dict(vector_engine):
+    """Test that filters={} (empty dict) returns all results."""
+    vector_engine.add_doc("Doc 1", {"source_file": "a.pdf", "chunk_index": 0})
+    vector_engine.add_doc("Doc 2", {"source_file": "b.pdf", "chunk_index": 0})
+
+    results = vector_engine.search("doc", top_k=10, filters={})
+
+    assert len(results) == 2
+
+
+def test_search_filter_case_sensitive(vector_engine):
+    """Test that filter matching is case-sensitive."""
+    vector_engine.add_doc("Document", {"source_file": "Doc.pdf", "chunk_index": 0})
+
+    results = vector_engine.search(
+        "document", top_k=10, filters={"source_file": "doc.pdf"}
+    )
+
+    assert len(results) == 0
+
+    results = vector_engine.search(
+        "document", top_k=10, filters={"source_file": "Doc.pdf"}
+    )
+
+    assert len(results) == 1
+
+
+# =============================================================================
 # list_files() Tests
 # =============================================================================
 

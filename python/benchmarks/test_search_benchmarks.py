@@ -281,3 +281,70 @@ def test_search_after_compaction(
     # Benchmark search after compaction
     query = simple_queries[0]
     benchmark(engine_medium.search, query=query, top_k=10)
+
+
+# ============================================================================
+# Search with Filters - Performance Impact
+# ============================================================================
+
+
+def test_search_with_filters_small_dataset(benchmark, simple_queries: list[str]):
+    """Benchmark filtered search on small dataset (100 docs)."""
+    engine = VectorEngine()
+
+    # Add 100 documents with varied metadata (10 files, 10 chunks each)
+    for file_num in range(10):
+        for chunk_num in range(10):
+            content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
+            metadata = {"source_file": f"file_{file_num}.pdf", "chunk_index": chunk_num}
+            engine.add_doc(content, metadata)
+
+    # Benchmark search with filter (should match ~10% of docs)
+    query = simple_queries[0]
+    filters = {"source_file": "file_5.pdf"}
+    benchmark(engine.search, query=query, top_k=10, filters=filters)
+
+
+@pytest.mark.scale(size="medium")
+def test_search_with_filters_medium_dataset(benchmark, simple_queries: list[str]):
+    """Benchmark filtered search on medium dataset (1,000 docs)."""
+    engine = VectorEngine()
+
+    # Add 1,000 documents with varied metadata (50 files, 20 chunks each)
+    for file_num in range(50):
+        for chunk_num in range(20):
+            content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
+            metadata = {"source_file": f"file_{file_num}.pdf", "chunk_index": chunk_num}
+            engine.add_doc(content, metadata)
+
+    # Benchmark search with multiple filters (should match ~2% of docs)
+    query = simple_queries[0]
+    filters = {"source_file": "file_25.pdf", "chunk_index": 10}
+    benchmark(engine.search, query=query, top_k=10, filters=filters)
+
+
+@pytest.mark.scale(size="large")
+@pytest.mark.slow
+def test_search_with_filters_large_dataset(benchmark, simple_queries: list[str]):
+    """Benchmark filtered search on large dataset (10,000 docs)."""
+    engine = VectorEngine()
+
+    # Add 10,000 documents with varied metadata (100 files, 100 chunks each)
+    for file_num in range(100):
+        for chunk_num in range(100):
+            content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
+            metadata = {
+                "source_file": f"file_{file_num}.pdf",
+                "chunk_index": chunk_num,
+                "category": simple_queries[chunk_num % len(simple_queries)],
+            }
+            engine.add_doc(content, metadata)
+
+    # Benchmark search with three filters (should match ~0.1% of docs)
+    query = simple_queries[0]
+    filters = {
+        "source_file": "file_50.pdf",
+        "chunk_index": 50,
+        "category": simple_queries[5],
+    }
+    benchmark(engine.search, query=query, top_k=10, filters=filters)

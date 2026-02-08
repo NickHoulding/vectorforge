@@ -433,3 +433,94 @@ def test_search_preserves_all_metadata_fields(client):
 
     result_metadata = search_response.json()["results"][0]["metadata"]
     assert result_metadata == metadata
+
+
+# =============================================================================
+# Search with Filters Tests
+# =============================================================================
+
+
+def test_search_with_filters_success(client):
+    """Test that search endpoint accepts filters and returns filtered results."""
+    client.post(
+        "/doc/add",
+        json={
+            "content": "Python programming tutorial",
+            "metadata": {"source_file": "python.pdf", "chunk_index": 0},
+        },
+    )
+    client.post(
+        "/doc/add",
+        json={
+            "content": "Java programming tutorial",
+            "metadata": {"source_file": "java.pdf", "chunk_index": 0},
+        },
+    )
+
+    response = client.post(
+        "/search",
+        json={
+            "query": "programming",
+            "top_k": 10,
+            "filters": {"source_file": "python.pdf"},
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["results"][0]["metadata"]["source_file"] == "python.pdf"
+
+
+def test_search_with_filters_no_matches(client):
+    """Test that search with non-matching filters returns empty results."""
+    client.post(
+        "/doc/add",
+        json={
+            "content": "Test content",
+            "metadata": {"source_file": "doc.pdf", "chunk_index": 0},
+        },
+    )
+
+    response = client.post(
+        "/search",
+        json={"query": "test", "top_k": 10, "filters": {"source_file": "missing.pdf"}},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 0
+    assert len(data["results"]) == 0
+
+
+def test_search_filters_json_format(client):
+    """Test that filters are properly serialized/deserialized as JSON."""
+    client.post(
+        "/doc/add",
+        json={
+            "content": "Article content",
+            "metadata": {"author": "Alice", "year": 2024},
+        },
+    )
+
+    response = client.post(
+        "/search",
+        json={"query": "article", "filters": {"author": "Alice", "year": 2024}},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["results"][0]["metadata"]["author"] == "Alice"
+    assert data["results"][0]["metadata"]["year"] == 2024
+
+
+def test_search_filters_validation(client):
+    """Test that invalid filter format is handled appropriately."""
+    # Test with null filters (should work - same as no filters)
+    response = client.post("/search", json={"query": "test", "filters": None})
+    assert response.status_code == 200
+
+    # Test with empty dict (should work - same as no filters)
+    response = client.post("/search", json={"query": "test", "filters": {}})
+    assert response.status_code == 200

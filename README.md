@@ -109,6 +109,7 @@ Perfect for building:
 ### **Semantic Search**
 - Vector similarity search using cosine distance
 - Configurable top-k results
+- **Metadata filtering** - Filter results by exact metadata field matching (AND logic)
 - Real-time embedding generation
 - Query performance tracking with percentile metrics (p50, p95, p99)
 
@@ -402,7 +403,110 @@ curl -X POST http://localhost:3001/search \
 }
 ```
 
-### **3. Upload a File**
+### **3. Search with Metadata Filters**
+
+Filter search results by metadata fields using exact equality matching. All filters use AND logic (all must match).
+
+**Key Features:**
+- **Exact matching**: Filters use case-sensitive equality comparison
+- **AND logic**: Multiple filters require all to match
+- **Flexible filtering**: Filter by any metadata field independently
+- **No pairing required**: `source_file` and `chunk_index` can be used separately or together
+- **Performance**: Filtering happens after similarity scoring
+
+#### **Common Filtering Scenarios:**
+
+**1. Filter by source file (all chunks from a specific file):**
+
+```bash
+curl -X POST http://localhost:3001/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "machine learning concepts",
+    "top_k": 10,
+    "filters": {
+      "source_file": "textbook.pdf"
+    }
+  }'
+```
+
+Returns all matching chunks from `textbook.pdf`, regardless of chunk index.
+
+**2. Filter by chunk index (first chunks from all files):**
+
+```bash
+curl -X POST http://localhost:3001/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "introduction",
+    "top_k": 10,
+    "filters": {
+      "chunk_index": 0
+    }
+  }'
+```
+
+Returns all matching first chunks (index 0) from any file. Useful for finding document introductions.
+
+**3. Filter by both (specific chunk from specific file):**
+
+```bash
+curl -X POST http://localhost:3001/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "overview",
+    "top_k": 10,
+    "filters": {
+      "source_file": "guide.pdf",
+      "chunk_index": 0
+    }
+  }'
+```
+
+Returns only the first chunk from `guide.pdf` (if it matches the query).
+
+**4. Filter by custom metadata:**
+
+```bash
+curl -X POST http://localhost:3001/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "recent research",
+    "top_k": 10,
+    "filters": {
+      "author": "Alice",
+      "year": 2024,
+      "category": "AI"
+    }
+  }'
+```
+
+All filters must match (AND logic): author is "Alice" AND year is 2024 AND category is "AI".
+
+**Example Response:**
+
+```json
+{
+  "query": "machine learning",
+  "results": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "content": "Machine learning is a subset of artificial intelligence",
+      "score": 0.8234,
+      "metadata": {
+        "source_file": "textbook.pdf",
+        "chunk_index": 3,
+        "author": "John Doe"
+      }
+    }
+  ],
+  "count": 1
+}
+```
+
+**Note:** When creating documents with `source_file` and `chunk_index`, both must be provided together. However, when filtering, you can use either one independently or both together.
+
+### **4. Upload a File**
 
 ```bash
 curl -X POST http://localhost:3001/file/upload \
@@ -419,19 +523,19 @@ curl -X POST http://localhost:3001/file/upload \
 }
 ```
 
-### **4. Get Document by ID**
+### **5. Get Document by ID**
 
 ```bash
 curl http://localhost:3001/doc/550e8400-e29b-41d4-a716-446655440000
 ```
 
-### **5. Delete Document**
+### **6. Delete Document**
 
 ```bash
 curl -X DELETE http://localhost:3001/doc/550e8400-e29b-41d4-a716-446655440000
 ```
 
-### **6. Save Index to Disk**
+### **7. Save Index to Disk**
 
 ```bash
 curl -X POST http://localhost:3001/index/save
@@ -450,13 +554,13 @@ curl -X POST http://localhost:3001/index/save
 }
 ```
 
-### **7. Load Index from Disk**
+### **8. Load Index from Disk**
 
 ```bash
 curl -X POST http://localhost:3001/index/load
 ```
 
-### **8. Get Metrics**
+### **9. Get Metrics**
 
 ```bash
 curl http://localhost:3001/metrics
@@ -469,7 +573,7 @@ curl http://localhost:3001/metrics
 - Memory consumption
 - System information and uptime
 
-### **9. Health Check**
+### **10. Health Check**
 
 ```bash
 curl http://localhost:3001/health
@@ -538,7 +642,7 @@ Fill in with:
 ### Potential Enhancements:
 - [ ] Support for more file formats (DOCX, HTML, Markdown)
 - [ ] Batch document operations
-- [ ] Advanced filtering and metadata-based search
+- [ ] Advanced filtering with operators (>, <, IN, regex)
 - [ ] Hybrid search (vector + keyword)
 - [ ] Distributed deployment support
 - [ ] Custom embedding model configuration
