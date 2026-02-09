@@ -4,3 +4,14 @@ __pycache__/
 .mypy_cache/
 python/data/
 python/tests/data/
+
+# Coverage reports
+*.coverage
+.coverage
+python/.coverage
+htmlcov/
+
+# Benchmark results (keep baseline, ignore new runs)
+python/benchmarks/results/*
+!python/benchmarks/results/0001_baseline.json
+.benchmarks/
