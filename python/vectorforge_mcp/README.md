@@ -99,7 +99,7 @@ Organized into 5 categories:
 - Load index from disk
 
 **Search** (1 tool)
-- Semantic search with top-k results
+- Semantic search with top-k results and metadata filtering
 
 **System** (2 tools)
 - Get comprehensive metrics
@@ -391,16 +391,28 @@ Restore index from disk. Loads previously saved embeddings and metadata.
 ### **Search**
 
 #### `search_documents`
-Semantic search across indexed documents using embeddings. Returns top-k most similar results.
+Semantic search across indexed documents using embeddings. Returns top-k most similar results with optional metadata filtering.
 
 **Parameters:**
 - `query` (str) - Search query (natural language)
 - `top_k` (int, optional) - Number of results (default: 10, max: 100)
+- `source_file` (str, optional) - Filter by source filename
+- `chunk_index` (int, optional) - Filter by chunk index
 
-**Example:**
+**Examples:**
 ```
 "Search for 'machine learning concepts' with top 5 results"
+
+"Search for 'introduction' in file 'textbook.pdf'"
+
+"Find all first chunks containing 'overview'"
 ```
+
+**Filtering Options:**
+- Filter by `source_file` alone → returns all matching chunks from that file
+- Filter by `chunk_index` alone → returns all matching chunks at that index (any file)
+- Filter by both → returns specific chunk from specific file
+- No filters → returns all matching results
 
 ---
 
@@ -493,7 +505,28 @@ Claude: Let me search for that.
 Based on the indexed content, here are the relevant sections...
 ```
 
-### **Example 3: Monitoring and Maintenance**
+### **Example 3: Search with Filters**
+
+```
+You: Search for introductions only in textbook.pdf
+
+Claude: I'll search for introductions specifically in textbook.pdf.
+[Calls search_documents with query="introduction", source_file="textbook.pdf"]
+Found 3 results from textbook.pdf:
+- Chapter 1 Introduction (Score: 0.92)
+- Chapter 5 Introduction (Score: 0.85)
+- Appendix Introduction (Score: 0.78)
+
+You: Now find all first chunks that mention "overview"
+
+Claude: I'll search for "overview" in all first chunks.
+[Calls search_documents with query="overview", chunk_index=0]
+Found 2 results:
+- guide.pdf, chunk 0 (Score: 0.88)
+- manual.pdf, chunk 0 (Score: 0.82)
+```
+
+### **Example 4: Monitoring and Maintenance**
 
 ```
 You: Check the health of VectorForge
