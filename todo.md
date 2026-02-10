@@ -1,6 +1,6 @@
 # VectorForge Optimization Roadmap
 
-## Python Baseline (v0.9.0) ✅ COMPLETE
+## Python Baseline (v0.9.0) COMPLETE
 
 **Status:** Feature-complete Python implementation with comprehensive testing
 **Git tag:** `v0.9.0-python-baseline`
@@ -19,9 +19,9 @@
 **Goal:** Optimize performance-critical paths with C++ while maintaining Python API compatibility
 
 **Profiling insights:**
-- 🔥 **Hotspot #1:** `_cosine_similarity()` - 1.2s for 1M calls → **PRIMARY TARGET**
-- 🔥 **Hotspot #2:** Result sorting - 0.08s for 1M calls → Secondary target
-- ⏸️  **Not targeting:** Embedding generation (85% of time, requires ONNX/GPU)
+-  **Hotspot #1:** `_cosine_similarity()` - 1.2s for 1M calls → **PRIMARY TARGET**
+-  **Hotspot #2:** Result sorting - 0.08s for 1M calls → Secondary target
+-   **Not targeting:** Embedding generation (85% of time, requires ONNX/GPU)
 
 ---
 
@@ -58,11 +58,11 @@
   - Run under valgrind to detect memory leaks
 
 #### Success Criteria:
-- ✅ C++ code builds successfully with CMake
-- ✅ Python can import and call C++ functions
-- ✅ NumPy arrays can be passed to/from C++
-- ✅ All existing Python tests still pass
-- ✅ No memory leaks detected
+- C++ code builds successfully with CMake
+- Python can import and call C++ functions
+- NumPy arrays can be passed to/from C++
+- All existing Python tests still pass
+- No memory leaks detected
 
 #### Files Created:
 - `CMakeLists.txt`
@@ -123,11 +123,11 @@
   - Target: >5x speedup on 10K documents
 
 #### Success Criteria:
-- ✅ C++ batch function produces identical results to Python loop
-- ✅ All 468 Python tests pass
-- ✅ Search latency improves by >5x on 10K documents (18ms → <3.5ms)
-- ✅ No memory leaks (valgrind check)
-- ✅ Graceful fallback if C++ module not available
+- C++ batch function produces identical results to Python loop
+- All 468 Python tests pass
+- Search latency improves by >5x on 10K documents (18ms → <3.5ms)
+- No memory leaks (valgrind check)
+- Graceful fallback if C++ module not available
 
 #### Files Modified:
 - `python/vectorforge/vector_engine.py` (add C++ integration)
@@ -178,11 +178,11 @@
   - Target: <5ms search on 100K documents (vs ~1800ms linear)
 
 #### Success Criteria:
-- ✅ HNSW search produces >95% recall compared to linear scan
-- ✅ Search latency <5ms on 100K documents
-- ✅ All metadata filtering still works
-- ✅ Index can be saved/loaded from disk
-- ✅ All tests pass in both linear and HNSW modes
+- HNSW search produces >95% recall compared to linear scan
+- Search latency <5ms on 100K documents
+- All metadata filtering still works
+- Index can be saved/loaded from disk
+- All tests pass in both linear and HNSW modes
 
 #### Files Modified:
 - `python/vectorforge/vector_engine.py` (add HNSW mode)
@@ -230,11 +230,11 @@
   - Add benchmarking guide to docs
 
 #### Success Criteria:
-- ✅ Clean builds on Linux and macOS
-- ✅ CI runs tests and benchmarks automatically
-- ✅ Comprehensive error messages for all failure modes
-- ✅ README has clear C++ build/install instructions
-- ✅ Performance metrics documented and reproducible
+- Clean builds on Linux and macOS
+- CI runs tests and benchmarks automatically
+- Comprehensive error messages for all failure modes
+- README has clear C++ build/install instructions
+- Performance metrics documented and reproducible
 
 ---
 
@@ -261,10 +261,10 @@
 ## Success Metrics
 
 ### Performance Targets
-- **Phase 1:** Build system works, tests pass ✅
-- **Phase 2:** Search latency <3.5ms on 10K docs (5-10x speedup) 🎯
-- **Phase 3:** Search latency <5ms on 100K docs (100x+ speedup) 🎯
-- **Phase 4:** Production-ready CI/CD, docs, packaging ✅
+- **Phase 1:** Build system works, tests pass
+- **Phase 2:** Search latency <3.5ms on 10K docs (5-10x speedup)
+- **Phase 3:** Search latency <5ms on 100K docs (100x+ speedup)
+- **Phase 4:** Production-ready CI/CD, docs, packaging
 
 ### Quality Targets
 - All 468 Python tests pass in all modes

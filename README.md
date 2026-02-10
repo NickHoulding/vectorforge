@@ -204,7 +204,7 @@ CPU profiling (10,000 documents, 100 search queries) reveals:
 - `vector_engine.py:740` - `np.dot()` for normalized vectors
 - **C++ opportunity:** High (vectorized SIMD operations, batch processing)
 - **Expected speedup:** 5-10x with C++/Eigen or similar
-- **Status:** ⭐ **Primary target for C++/pybind11 optimization**
+- **Status:** **Primary target for C++/pybind11 optimization**
 
 **Hotspot #3: Result Sorting (0.08s for 1M calls)**
 - `vector_engine.py:390` - Python list sort with lambda
@@ -215,14 +215,14 @@ CPU profiling (10,000 documents, 100 search queries) reveals:
 ### **Performance Characteristics**
 
 **Current Algorithm:** Brute-force linear scan (O(n) per query)
-- ✅ **Best for:** <10K documents, exact k-NN results required
-- ⚠️  **Limitations:** Scales linearly, slow for >100K documents
+- **Best for:** <10K documents, exact k-NN results required
+- **Limitations:** Scales linearly, slow for >100K documents
 
 **Planned Optimization (C++ + HNSW):**
-- 🎯 **Target:** >100x speedup for 100K+ documents
-- 🔧 **Method:** Hierarchical Navigable Small World graph index
-- 📊 **Trade-off:** ~1-5% recall loss for massive speed gains
-- ⏱️  **Expected:** <5ms search on 1M documents
+- **Target:** >100x speedup for 100K+ documents
+- **Method:** Hierarchical Navigable Small World graph index
+- **Trade-off:** ~1-5% recall loss for massive speed gains
+- **Expected:** <5ms search on 1M documents
 
 ### **Benchmark Reproducibility**
 
