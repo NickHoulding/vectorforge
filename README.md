@@ -150,6 +150,112 @@ Perfect for building:
 
 ---
 
+## Performance
+
+**Baseline:** Python implementation v0.9.0 (tag: `v0.9.0-python-baseline`)
+
+VectorForge delivers sub-20ms search latency for 10K documents using pure Python and NumPy. Performance scales linearly with index size for the current brute-force cosine similarity implementation.
+
+### **Search Latency (Linear Scan)**
+
+Search performance across different index sizes (top_k=10, single query):
+
+| Index Size | Mean Latency | Median Latency | Operations/sec |
+|------------|--------------|----------------|----------------|
+| 10 docs    | 5.3 ms       | 5.2 ms         | 188 ops/sec    |
+| 100 docs   | 5.5 ms       | 5.4 ms         | 183 ops/sec    |
+| 1,000 docs | 6.8 ms       | 6.8 ms         | 147 ops/sec    |
+| 10,000 docs| 18.9 ms      | 18.8 ms        | 53 ops/sec     |
+
+**Note:** The similarity increases from 10 to 100 docs primarily due to embedding generation overhead (fixed cost). The vector similarity calculation itself scales linearly.
+
+### **Indexing Throughput**
+
+Document addition performance:
+
+| Operation | Mean Latency | Throughput |
+|-----------|--------------|------------|
+| Single document (empty index) | 5.6 ms | ~179 docs/sec |
+| Batch of 1,000 documents | 2.2 sec total | ~450 docs/sec |
+
+**Note:** Most indexing time (~85-90%) is spent in transformer model inference for embedding generation, not in vector storage operations.
+
+### **Memory Footprint**
+
+Per-document memory consumption (384-dimensional embeddings):
+
+- **Embedding vector:** ~1.5 KB (384 floats × 4 bytes)
+- **Document storage:** ~0.5-2 KB (content + metadata, varies)
+- **Index overhead:** ~0.1 KB (mappings, tracking)
+- **Total per document:** ~2-4 KB
+
+Example: 10,000 documents ≈ 20-40 MB RAM
+
+### **Profiling Insights: Optimization Hotspots**
+
+CPU profiling (10,000 documents, 100 search queries) reveals:
+
+**Hotspot #1: Embedding Generation (85% of total time)**
+- `model.encode()`: Transformer inference for query/document embedding
+- **C++ opportunity:** Limited (requires ONNX or custom GPU kernels)
+- **Status:** Not targeted for initial C++ optimization
+
+**Hotspot #2: Cosine Similarity Calculation (1.2s for 1M calls)**
+- `vector_engine.py:740` - `np.dot()` for normalized vectors
+- **C++ opportunity:** High (vectorized SIMD operations, batch processing)
+- **Expected speedup:** 5-10x with C++/Eigen or similar
+- **Status:** ⭐ **Primary target for C++/pybind11 optimization**
+
+**Hotspot #3: Result Sorting (0.08s for 1M calls)**
+- `vector_engine.py:390` - Python list sort with lambda
+- **C++ opportunity:** Medium (native sorting algorithms)
+- **Expected speedup:** 2-3x
+- **Status:** Secondary optimization target
+
+### **Performance Characteristics**
+
+**Current Algorithm:** Brute-force linear scan (O(n) per query)
+- ✅ **Best for:** <10K documents, exact k-NN results required
+- ⚠️  **Limitations:** Scales linearly, slow for >100K documents
+
+**Planned Optimization (C++ + HNSW):**
+- 🎯 **Target:** >100x speedup for 100K+ documents
+- 🔧 **Method:** Hierarchical Navigable Small World graph index
+- 📊 **Trade-off:** ~1-5% recall loss for massive speed gains
+- ⏱️  **Expected:** <5ms search on 1M documents
+
+### **Benchmark Reproducibility**
+
+All benchmarks were run on:
+- **Platform:** Linux x86_64
+- **Python:** 3.11.14
+- **NumPy:** 2.4.1
+- **Model:** sentence-transformers/all-MiniLM-L6-v2
+- **Hardware:** (varies by machine)
+
+To reproduce benchmarks on your system:
+
+```bash
+cd python
+
+# Run search latency benchmarks
+uv run pytest benchmarks/test_search_benchmarks.py::test_search_latency_tiny \
+    benchmarks/test_search_benchmarks.py::test_search_latency_small \
+    benchmarks/test_search_benchmarks.py::test_search_latency_medium \
+    benchmarks/test_search_benchmarks.py::test_search_latency_large \
+    --benchmark-only --benchmark-columns=mean,median,ops
+
+# Run all benchmarks and save baseline
+uv run pytest benchmarks/ --benchmark-only --benchmark-save=my_baseline
+
+# Compare against saved baseline
+uv run pytest benchmarks/ --benchmark-only --benchmark-compare=my_baseline
+```
+
+Full baseline data: `python/benchmarks/results/0001_baseline.json` (113 benchmarks)
+
+---
+
 ## Architecture
 
 ### **Design Patterns & Technical Decisions**
