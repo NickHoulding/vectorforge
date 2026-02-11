@@ -15,3 +15,20 @@ htmlcov/
 python/benchmarks/results/*
 !python/benchmarks/results/0001_baseline.json
 .benchmarks/
+
+# C++ build artifacts
+build/
+*.so
+*.o
+*.a
+*.dylib
+cpp/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+Makefile
+
+# Python C++ extensions
+python/vectorforge/*.so
+python/vectorforge/*.dylib
