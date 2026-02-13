@@ -30,7 +30,7 @@ ls -lh python/vectorforge/*.so
 echo ""
 echo "Testing C++ module..."
 cd python
-uv run python -c "from vectorforge.vectorforge_cpp import helloWorld; print('Module test:', helloWorld())"
+uv run python -c "from vectorforge.vectorforge_cpp import cosine_similarity_batch; import numpy as np; q = np.array([1.0, 0.0], dtype=np.float32); d = np.array([[1.0, 0.0]], dtype=np.float32); result = cosine_similarity_batch(q, d); print('Module test: cosine_similarity_batch working, result shape:', result.shape)"
 
 echo ""
 echo "C++ module is working!"

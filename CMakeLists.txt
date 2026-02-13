@@ -8,7 +8,8 @@ find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED)
 
 set(SOURCES
-    cpp/src/hello.cpp
+    cpp/src/module.cpp
+    cpp/src/similarity.cpp
 )
 
 pybind11_add_module(vectorforge_cpp ${SOURCES})

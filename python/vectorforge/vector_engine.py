@@ -14,6 +14,13 @@ from vectorforge import __version__
 from vectorforge.config import VFGConfig
 from vectorforge.models import SearchResult
 
+try:
+    from vectorforge.vectorforge_cpp import cosine_similarity_batch
+
+    _CPP_AVAILABLE: bool = True
+except ImportError:
+    _CPP_AVAILABLE = False
+
 
 @dataclass
 class EngineMetrics:
@@ -374,18 +381,31 @@ class VectorEngine:
         normalized_query_embedding: np.ndarray = query_embedding / np.linalg.norm(
             query_embedding
         )
+
         results: list[tuple[int, float]] = []
 
-        for pos, embedding in enumerate(self.embeddings):
-            doc_id: str = self.index_to_doc_id[pos]
+        if _CPP_AVAILABLE and len(self.embeddings) > 0:
+            all_embeddings: np.ndarray = np.array(self.embeddings, dtype=np.float32)
+            query_f32: np.ndarray = normalized_query_embedding.astype(np.float32)
 
-            if doc_id in self.deleted_docs:
-                continue
+            scores: np.ndarray = cosine_similarity_batch(query_f32, all_embeddings)
 
-            score: float = self._cosine_similarity(
-                embedding_a=normalized_query_embedding, embedding_b=embedding
-            )
-            results.append((pos, score))
+            results = [
+                (pos, float(scores[pos]))
+                for pos in range(len(self.embeddings))
+                if self.index_to_doc_id[pos] not in self.deleted_docs
+            ]
+        else:
+            for pos, embedding in enumerate(self.embeddings):
+                doc_id: str = self.index_to_doc_id[pos]
+
+                if doc_id in self.deleted_docs:
+                    continue
+
+                score: float = self._cosine_similarity(
+                    embedding_a=normalized_query_embedding, embedding_b=embedding
+                )
+                results.append((pos, score))
 
         results.sort(key=lambda result: result[1], reverse=True)
 
