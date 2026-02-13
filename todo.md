@@ -86,7 +86,7 @@
 **Objective:** Replace Python loop with vectorized C++ batch similarity calculation
 
 #### Tasks:
-- [ ] **Implement C++ batch cosine similarity**
+- [-] **Implement C++ batch cosine similarity**
   - File: `cpp/src/similarity.cpp`
   - Function signature:
     ```cpp
@@ -101,12 +101,12 @@
   - Optimize with loop unrolling, SIMD intrinsics (AVX2/AVX512)
   - Handle edge cases: empty arrays, dimension mismatch
 
-- [ ] **Create pybind11 bindings**
+- [x] **Create pybind11 bindings**
   - Expose `cosine_similarity_batch` to Python
   - Add docstring with usage example
   - Handle memory layout (C-contiguous vs Fortran-contiguous)
 
-- [ ] **Update vector_engine.py to use C++ function**
+- [x] **Update vector_engine.py to use C++ function**
   - Replace Python loop in `search()` (lines 379-388):
     ```python
     # Old: Python loop
@@ -120,7 +120,7 @@
     ```
   - Add fallback to Python if C++ not available (graceful degradation)
 
-- [ ] **Testing**
+- [x] **Testing**
   - Add C++ unit tests (Google Test framework)
   - Verify numerical equivalence: C++ results == Python results
   - Test edge cases: single doc, 10K docs, empty index
