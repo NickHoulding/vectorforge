@@ -12,7 +12,7 @@ __all__: list[str] = ["__version__", "VectorEngine"]
 from vectorforge.vector_engine import VectorEngine
 
 try:
-    from vectorforge import vectorforge_cpp  # type: ignore[attr-defined]
+    from vectorforge import vectorforge_cpp
 
     __all__.append("vectorforge_cpp")
 except ImportError:
