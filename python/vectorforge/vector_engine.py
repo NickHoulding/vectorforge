@@ -127,7 +127,7 @@ class VectorEngine:
         if needed.
         """
         self.documents: dict[str, dict[str, Any]] = {}
-        self.embeddings: list[np.ndarray] = []
+        self.embeddings: np.ndarray = np.empty((0, 384), dtype=np.float32)
         self.index_to_doc_id: list[str] = []
         self.doc_id_to_index: dict[str, int] = {}
         self.deleted_docs: set[str] = set()
@@ -172,16 +172,19 @@ class VectorEngine:
             if doc_id not in self.deleted_docs
         }
 
-        active_embeddings: list[np.ndarray] = []
+        active_indices = [
+            i
+            for i, doc_id in enumerate(self.index_to_doc_id)
+            if doc_id not in self.deleted_docs
+        ]
+        active_embeddings: np.ndarray = self.embeddings[active_indices]
         active_index_to_doc_id: list[str] = []
         active_doc_id_to_index: dict[str, int] = {}
 
-        for old_pos, doc_id in enumerate(self.index_to_doc_id):
-            if doc_id not in self.deleted_docs:
-                new_pos = len(active_embeddings)
-                active_embeddings.append(self.embeddings[old_pos])
-                active_index_to_doc_id.append(doc_id)
-                active_doc_id_to_index[doc_id] = new_pos
+        for new_pos, old_pos in enumerate(active_indices):
+            doc_id = self.index_to_doc_id[old_pos]
+            active_index_to_doc_id.append(doc_id)
+            active_doc_id_to_index[doc_id] = new_pos
 
         metadata: dict[str, Any] = {
             "documents": active_documents,
@@ -199,7 +202,7 @@ class VectorEngine:
             json.dump(metadata, f, indent=2)
 
         embeddings_path: str = os.path.join(directory, VFGConfig.EMBEDDINGS_FILENAME)
-        np.savez_compressed(embeddings_path, embeddings=np.array(active_embeddings))
+        np.savez_compressed(embeddings_path, embeddings=active_embeddings)
 
         metadata_size: int = os.path.getsize(metadata_path)
         metadata_size_mb: float = metadata_size / (1024**2)
@@ -264,8 +267,8 @@ class VectorEngine:
         self.compaction_threshold = metadata["compaction_threshold"]
 
         embeddings_data: dict[str, Any] = np.load(embeddings_path)
-        embeddings_array: list[np.ndarray] = embeddings_data["embeddings"]
-        self.embeddings = [embeddings_array[i] for i in range(len(embeddings_array))]
+        embeddings_array: np.ndarray = embeddings_data["embeddings"]
+        self.embeddings = embeddings_array.astype(np.float32)
 
         saved_metrics: dict[str, Any] = metadata["metrics"]
         self.metrics = EngineMetrics(
@@ -314,7 +317,7 @@ class VectorEngine:
             for doc_id, doc in self.documents.items()
             if doc_id not in self.deleted_docs
         }
-        self.embeddings = []
+        self.embeddings = np.empty((0, 384), dtype=np.float32)
         self.index_to_doc_id = []
         self.doc_id_to_index = {}
 
@@ -325,7 +328,12 @@ class VectorEngine:
             normalized_embedding: np.ndarray = embedding / np.linalg.norm(embedding)
 
             vector_index: int = len(self.embeddings)
-            self.embeddings.append(normalized_embedding)
+            self.embeddings = np.vstack(
+                [
+                    self.embeddings,
+                    normalized_embedding.astype(np.float32).reshape(1, -1),
+                ]
+            )
             self.index_to_doc_id.append(doc_id)
             self.doc_id_to_index[doc_id] = vector_index
 
@@ -364,7 +372,7 @@ class VectorEngine:
         start_time: float = time.perf_counter()
         self.metrics.total_queries += 1
 
-        if not self.embeddings:
+        if len(self.embeddings) == 0:
             elapsed_ms: float = (time.perf_counter() - start_time) * 1000
             self.metrics.total_query_time_ms += elapsed_ms
             self.metrics.last_query_at = datetime.now().isoformat()
@@ -385,10 +393,8 @@ class VectorEngine:
         results: list[tuple[int, float]] = []
 
         if _CPP_AVAILABLE and len(self.embeddings) > 0:
-            all_embeddings: np.ndarray = np.array(self.embeddings, dtype=np.float32)
             query_f32: np.ndarray = normalized_query_embedding.astype(np.float32)
-
-            scores: np.ndarray = cosine_similarity_batch(query_f32, all_embeddings)
+            scores: np.ndarray = cosine_similarity_batch(query_f32, self.embeddings)
 
             results = [
                 (pos, float(scores[pos]))
@@ -517,7 +523,9 @@ class VectorEngine:
         normalized_embedding: np.ndarray = embedding / np.linalg.norm(embedding)
         vector_index: int = len(self.embeddings)
 
-        self.embeddings.append(normalized_embedding)
+        self.embeddings = np.vstack(
+            [self.embeddings, normalized_embedding.astype(np.float32).reshape(1, -1)]
+        )
         self.index_to_doc_id.append(doc_id)
         self.doc_id_to_index[doc_id] = vector_index
 
@@ -716,7 +724,7 @@ class VectorEngine:
         Returns:
             True if compaction should be performed, False otherwise.
         """
-        if not self.embeddings:
+        if len(self.embeddings) == 0:
             return False
 
         deleted_ratio: float = len(self.deleted_docs) / len(self.embeddings)
@@ -733,18 +741,21 @@ class VectorEngine:
         if len(self.deleted_docs) == 0:
             return
 
-        new_embeddings: list[np.ndarray] = []
+        active_indices = [
+            i
+            for i, doc_id in enumerate(self.index_to_doc_id)
+            if doc_id not in self.deleted_docs
+        ]
+
+        self.embeddings = self.embeddings[active_indices]
         new_index_to_doc_id: list[str] = []
         new_doc_id_to_index: dict[str, int] = {}
 
-        for old_pos, doc_id in enumerate(self.index_to_doc_id):
-            if doc_id not in self.deleted_docs:
-                new_pos: int = len(new_embeddings)
-                new_embeddings.append(self.embeddings[old_pos])
-                new_index_to_doc_id.append(doc_id)
-                new_doc_id_to_index[doc_id] = new_pos
+        for new_pos, old_pos in enumerate(active_indices):
+            doc_id = self.index_to_doc_id[old_pos]
+            new_index_to_doc_id.append(doc_id)
+            new_doc_id_to_index[doc_id] = new_pos
 
-        self.embeddings = new_embeddings
         self.index_to_doc_id = new_index_to_doc_id
         self.doc_id_to_index = new_doc_id_to_index
 

@@ -20,7 +20,8 @@ def test_vector_engine_initialization(vector_engine):
     """Test that VectorEngine initializes with correct default values."""
 
     assert vector_engine.documents == {}
-    assert vector_engine.embeddings == []
+    assert isinstance(vector_engine.embeddings, np.ndarray)
+    assert vector_engine.embeddings.shape == (0, 384)
     assert vector_engine.index_to_doc_id == []
     assert vector_engine.doc_id_to_index == {}
     assert vector_engine.deleted_docs == set()

@@ -2,6 +2,7 @@
 
 from typing import Any, Generator
 
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
@@ -40,7 +41,7 @@ def reset_engine() -> Generator[None, Any, None]:
     Clears all documents, embeddings, and index mappings.
     """
     engine.documents.clear()
-    engine.embeddings.clear()
+    engine.embeddings = np.empty((0, 384), dtype=np.float32)
     engine.index_to_doc_id.clear()
     engine.doc_id_to_index.clear()
     engine.deleted_docs.clear()
@@ -67,7 +68,7 @@ def vector_engine(shared_model: SentenceTransformer) -> VectorEngine:
     engine_instance = VectorEngine.__new__(VectorEngine)
 
     engine_instance.documents = {}
-    engine_instance.embeddings = []
+    engine_instance.embeddings = np.empty((0, 384), dtype=np.float32)
     engine_instance.index_to_doc_id = []
     engine_instance.doc_id_to_index = {}
     engine_instance.deleted_docs = set()
