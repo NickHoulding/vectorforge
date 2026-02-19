@@ -105,7 +105,7 @@ This is **not** the same as multi-threading or multi-core processing:
 | **Multi-threading** | Multiple instruction streams sharing cores | Thread 1 does I/O while Thread 2 computes |
 | **SIMD (this guide)** | **One instruction** operates on **multiple data elements** within a single core | One multiply instruction processes 16 floats simultaneously |
 
-**Analogy:** 
+**Analogy:**
 - Multi-core: Having multiple workers
 - Multi-threading: Workers can switch between different tasks
 - SIMD: Each worker has 16 hands and can do 16 things at once
@@ -131,7 +131,7 @@ AVX512 (2017):  512-bit register = 16 × float32
 **For VectorForge:** Our embeddings are 384-dimensional `float32` arrays, so:
 - **Without SIMD:** 384 operations
 - **With SSE:** 384÷4 = 96 operations
-- **With AVX/AVX2:** 384÷8 = 48 operations  
+- **With AVX/AVX2:** 384÷8 = 48 operations
 - **With AVX512:** 384÷16 = **24 operations** ✨
 
 ---
@@ -348,14 +348,14 @@ float scalar_dot_product(float* a, float* b) {
 ```c
 float avx_dot_product(float* a, float* b) {
     __m256 sum_vec = _mm256_setzero_ps();  // Initialize to 0
-    
+
     for (int i = 0; i < 16; i += 8) {
         __m256 a_vec = _mm256_loadu_ps(&a[i]);  // Load 8 floats
         __m256 b_vec = _mm256_loadu_ps(&b[i]);  // Load 8 floats
         sum_vec = _mm256_fmadd_ps(a_vec, b_vec, sum_vec);  // FMA
     }
     // 2 iterations × 1 FMA = 2 FMA instructions
-    
+
     // Horizontal sum (add all 8 lanes together)
     // This takes a few more instructions, but still fast
     float result = horizontal_sum_avx(sum_vec);
@@ -368,10 +368,10 @@ float avx_dot_product(float* a, float* b) {
 float avx512_dot_product(float* a, float* b) {
     __m512 a_vec = _mm512_loadu_ps(a);      // Load all 16 floats
     __m512 b_vec = _mm512_loadu_ps(b);      // Load all 16 floats
-    
+
     __m512 prod = _mm512_mul_ps(a_vec, b_vec);  // Multiply all 16
     float sum = _mm512_reduce_add_ps(prod);      // Sum all 16
-    
+
     return sum;  // Total: 4 instructions!
 }
 ```
@@ -409,7 +409,7 @@ float dot_product_naive(const float* a, const float* b, int n) {
 float dot_product_unrolled(const float* a, const float* b, int n) {
     float sum = 0.0f;
     int i;
-    
+
     // Process 4 at a time
     for (i = 0; i < n - 3; i += 4) {
         sum += a[i]   * b[i];
@@ -417,12 +417,12 @@ float dot_product_unrolled(const float* a, const float* b, int n) {
         sum += a[i+2] * b[i+2];
         sum += a[i+3] * b[i+3];
     }
-    
+
     // Handle remainder
     for (; i < n; i++) {
         sum += a[i] * b[i];
     }
-    
+
     return sum;
 }
 
@@ -438,31 +438,31 @@ float dot_product_unrolled(const float* a, const float* b, int n) {
 float dot_product_avx2(const float* a, const float* b, int n) {
     __m256 sum_vec = _mm256_setzero_ps();  // 8 × float32 = 0.0
     int i;
-    
+
     // Main loop: process 8 floats per iteration
     for (i = 0; i < n - 7; i += 8) {
         __m256 a_vec = _mm256_loadu_ps(&a[i]);  // Load 8 floats from a
         __m256 b_vec = _mm256_loadu_ps(&b[i]);  // Load 8 floats from b
-        
+
         // Fused multiply-add: sum_vec = (a_vec * b_vec) + sum_vec
         sum_vec = _mm256_fmadd_ps(a_vec, b_vec, sum_vec);
     }
-    
+
     // Horizontal sum: add all 8 lanes together
     __m128 sum_high = _mm256_extractf128_ps(sum_vec, 1);  // Upper 4
     __m128 sum_low  = _mm256_castps256_ps128(sum_vec);    // Lower 4
     sum_low = _mm_add_ps(sum_low, sum_high);              // Combine
-    
+
     sum_low = _mm_hadd_ps(sum_low, sum_low);  // Horizontal add
     sum_low = _mm_hadd_ps(sum_low, sum_low);  // Horizontal add again
-    
+
     float sum = _mm_cvtss_f32(sum_low);
-    
+
     // Handle remainder (if n not divisible by 8)
     for (; i < n; i++) {
         sum += a[i] * b[i];
     }
-    
+
     return sum;
 }
 
@@ -485,24 +485,24 @@ float dot_product_avx2(const float* a, const float* b, int n) {
 float dot_product_avx512(const float* a, const float* b, int n) {
     __m512 sum_vec = _mm512_setzero_ps();  // 16 × float32 = 0.0
     int i;
-    
+
     // Main loop: process 16 floats per iteration
     for (i = 0; i < n - 15; i += 16) {
         __m512 a_vec = _mm512_loadu_ps(&a[i]);  // Load 16 floats
         __m512 b_vec = _mm512_loadu_ps(&b[i]);  // Load 16 floats
-        
+
         // Fused multiply-add: sum_vec = (a_vec * b_vec) + sum_vec
         sum_vec = _mm512_fmadd_ps(a_vec, b_vec, sum_vec);
     }
-    
+
     // Horizontal sum: AVX512 provides a single instruction!
     float sum = _mm512_reduce_add_ps(sum_vec);
-    
+
     // Handle remainder
     for (; i < n; i++) {
         sum += a[i] * b[i];
     }
-    
+
     return sum;
 }
 
@@ -526,40 +526,40 @@ float dot_product_avx512_optimized(const float* a, const float* b, int n) {
     __m512 sum1 = _mm512_setzero_ps();
     __m512 sum2 = _mm512_setzero_ps();
     __m512 sum3 = _mm512_setzero_ps();
-    
+
     int i;
-    
+
     // Process 64 floats per iteration (4 × 16)
     for (i = 0; i < n - 63; i += 64) {
         __m512 a0 = _mm512_loadu_ps(&a[i]);
         __m512 b0 = _mm512_loadu_ps(&b[i]);
         sum0 = _mm512_fmadd_ps(a0, b0, sum0);
-        
+
         __m512 a1 = _mm512_loadu_ps(&a[i + 16]);
         __m512 b1 = _mm512_loadu_ps(&b[i + 16]);
         sum1 = _mm512_fmadd_ps(a1, b1, sum1);
-        
+
         __m512 a2 = _mm512_loadu_ps(&a[i + 32]);
         __m512 b2 = _mm512_loadu_ps(&b[i + 32]);
         sum2 = _mm512_fmadd_ps(a2, b2, sum2);
-        
+
         __m512 a3 = _mm512_loadu_ps(&a[i + 48]);
         __m512 b3 = _mm512_loadu_ps(&b[i + 48]);
         sum3 = _mm512_fmadd_ps(a3, b3, sum3);
     }
-    
+
     // Combine accumulators
     sum0 = _mm512_add_ps(sum0, sum1);
     sum2 = _mm512_add_ps(sum2, sum3);
     sum0 = _mm512_add_ps(sum0, sum2);
-    
+
     float sum = _mm512_reduce_add_ps(sum0);
-    
+
     // Handle remainder
     for (; i < n; i++) {
         sum += a[i] * b[i];
     }
-    
+
     return sum;
 }
 
@@ -649,25 +649,25 @@ py::array_t<float> cosine_similarity_batch(
 ) {
     auto q = query_embedding.unchecked<1>();
     auto docs = doc_embeddings.unchecked<2>();
-    
+
     int n_docs = docs.shape(0);  // e.g., 5000
     int dim = docs.shape(1);     // 384
-    
+
     auto result = py::array_t<float>(n_docs);
     auto r = result.mutable_unchecked<1>();
-    
+
     // Compute cosine similarity for each document
     for (int i = 0; i < n_docs; i++) {
         float score = 0.0f;
-        
+
         // Dot product: this is where we spend most time!
         for (int j = 0; j < dim; j++) {
             score += q(j) * docs(i, j);
         }
-        
+
         r(i) = score;
     }
-    
+
     return result;
 }
 ```
@@ -765,14 +765,14 @@ Create a helper function to check AVX512 support:
 // Check if CPU supports AVX512F (foundation)
 inline bool has_avx512f() {
     unsigned int eax, ebx, ecx, edx;
-    
+
     // Check CPUID function 7, subfunction 0
     if (__get_cpuid_max(0, nullptr) < 7) {
         return false;
     }
-    
+
     __cpuid_count(7, 0, eax, ebx, ecx, edx);
-    
+
     // AVX512F is bit 16 of EBX
     return (ebx & (1 << 16)) != 0;
 }
@@ -780,13 +780,13 @@ inline bool has_avx512f() {
 // Check if CPU supports AVX2
 inline bool has_avx2() {
     unsigned int eax, ebx, ecx, edx;
-    
+
     if (__get_cpuid_max(0, nullptr) < 7) {
         return false;
     }
-    
+
     __cpuid_count(7, 0, eax, ebx, ecx, edx);
-    
+
     // AVX2 is bit 5 of EBX
     return (ebx & (1 << 5)) != 0;
 }
@@ -794,18 +794,18 @@ inline bool has_avx2() {
 // Check if OS supports AVX512 (OS must save/restore 512-bit registers)
 inline bool os_supports_avx512() {
     unsigned int eax, ebx, ecx, edx;
-    
+
     __cpuid_count(1, 0, eax, ebx, ecx, edx);
-    
+
     // Check OSXSAVE (bit 27 of ECX)
     if (!(ecx & (1 << 27))) {
         return false;
     }
-    
+
     // Check XCR0 register (extended control register)
     unsigned int xcr0_lo, xcr0_hi;
     __asm__("xgetbv" : "=a"(xcr0_lo), "=d"(xcr0_hi) : "c"(0));
-    
+
     // Bits 5-7 must be set for AVX512 state
     return (xcr0_lo & 0xE6) == 0xE6;
 }
@@ -839,24 +839,24 @@ py::array_t<float> cosine_similarity_batch_scalar(
 ) {
     auto q = query_embedding.unchecked<1>();
     auto docs = doc_embeddings.unchecked<2>();
-    
+
     const int n_docs = docs.shape(0);
     const int dim = docs.shape(1);
-    
+
     auto result = py::array_t<float>(n_docs);
     auto r = result.mutable_unchecked<1>();
-    
+
     // Compute dot product for each document
     for (int i = 0; i < n_docs; i++) {
         float score = 0.0f;
-        
+
         for (int j = 0; j < dim; j++) {
             score += q(j) * docs(i, j);
         }
-        
+
         r(i) = score;
     }
-    
+
     return result;
 }
 ```
@@ -880,48 +880,48 @@ inline float dot_product_avx512(const float* a, const float* b, int n) {
     __m512 sum1 = _mm512_setzero_ps();
     __m512 sum2 = _mm512_setzero_ps();
     __m512 sum3 = _mm512_setzero_ps();
-    
+
     int i = 0;
-    
+
     // Main loop: process 64 floats per iteration (4 × 16)
     for (; i + 63 < n; i += 64) {
         __m512 a0 = _mm512_loadu_ps(&a[i]);
         __m512 b0 = _mm512_loadu_ps(&b[i]);
         sum0 = _mm512_fmadd_ps(a0, b0, sum0);
-        
+
         __m512 a1 = _mm512_loadu_ps(&a[i + 16]);
         __m512 b1 = _mm512_loadu_ps(&b[i + 16]);
         sum1 = _mm512_fmadd_ps(a1, b1, sum1);
-        
+
         __m512 a2 = _mm512_loadu_ps(&a[i + 32]);
         __m512 b2 = _mm512_loadu_ps(&b[i + 32]);
         sum2 = _mm512_fmadd_ps(a2, b2, sum2);
-        
+
         __m512 a3 = _mm512_loadu_ps(&a[i + 48]);
         __m512 b3 = _mm512_loadu_ps(&b[i + 48]);
         sum3 = _mm512_fmadd_ps(a3, b3, sum3);
     }
-    
+
     // Process remaining 16-element chunks
     for (; i + 15 < n; i += 16) {
         __m512 a_vec = _mm512_loadu_ps(&a[i]);
         __m512 b_vec = _mm512_loadu_ps(&b[i]);
         sum0 = _mm512_fmadd_ps(a_vec, b_vec, sum0);
     }
-    
+
     // Combine all accumulators
     sum0 = _mm512_add_ps(sum0, sum1);
     sum2 = _mm512_add_ps(sum2, sum3);
     sum0 = _mm512_add_ps(sum0, sum2);
-    
+
     // Reduce vector to scalar
     float sum = _mm512_reduce_add_ps(sum0);
-    
+
     // Handle any remaining elements (< 16)
     for (; i < n; i++) {
         sum += a[i] * b[i];
     }
-    
+
     return sum;
 }
 ```
@@ -961,22 +961,22 @@ py::array_t<float> cosine_similarity_batch_avx512(
 ) {
     auto q = query_embedding.unchecked<1>();
     auto docs = doc_embeddings.unchecked<2>();
-    
+
     const int n_docs = docs.shape(0);
     const int dim = docs.shape(1);
-    
+
     // Get raw pointers for fast access
     const float* q_data = q.data(0);
-    
+
     auto result = py::array_t<float>(n_docs);
     auto r = result.mutable_unchecked<1>();
-    
+
     // Compute dot product for each document using AVX512
     for (int i = 0; i < n_docs; i++) {
         const float* doc_data = docs.data(i, 0);
         r(i) = dot_product_avx512(q_data, doc_data, dim);
     }
-    
+
     return result;
 }
 ```
@@ -1009,7 +1009,7 @@ py::array_t<float> cosine_similarity_batch(
     if (query_embedding.shape(0) != doc_embeddings.shape(1)) {
         throw std::runtime_error("dimension mismatch");
     }
-    
+
     // Runtime CPU detection and dispatch
     if (cpu_supports_avx512()) {
         return cosine_similarity_batch_avx512(query_embedding, doc_embeddings);
@@ -1309,14 +1309,14 @@ using namespace std::chrono;
 template<typename Func>
 double benchmark(Func f, int iterations) {
     auto start = high_resolution_clock::now();
-    
+
     for (int i = 0; i < iterations; i++) {
         f();
     }
-    
+
     auto end = high_resolution_clock::now();
     duration<double, milli> elapsed = end - start;
-    
+
     return elapsed.count() / iterations;  // ms per iteration
 }
 
@@ -1324,18 +1324,18 @@ int main() {
     const int dim = 384;
     const int n_docs = 5000;
     const int iterations = 100;
-    
+
     // Generate random data
     random_device rd;
     mt19937 gen(rd());
     uniform_real_distribution<float> dis(-1.0f, 1.0f);
-    
+
     vector<float> query(dim);
     vector<float> docs(n_docs * dim);
-    
+
     for (auto& x : query) x = dis(gen);
     for (auto& x : docs) x = dis(gen);
-    
+
     cout << "=====================================" << endl;
     cout << "VectorForge SIMD Benchmark" << endl;
     cout << "=====================================" << endl;
@@ -1343,7 +1343,7 @@ int main() {
     cout << "Documents: " << n_docs << endl;
     cout << "Iterations: " << iterations << endl;
     cout << "=====================================" << endl << endl;
-    
+
     // Benchmark scalar implementation
     vector<float> results_scalar(n_docs);
     auto scalar_bench = [&]() {
@@ -1355,42 +1355,42 @@ int main() {
             results_scalar[i] = sum;
         }
     };
-    
+
     double scalar_time = benchmark(scalar_bench, iterations);
-    cout << "Scalar implementation: " << fixed << setprecision(3) 
+    cout << "Scalar implementation: " << fixed << setprecision(3)
          << scalar_time << " ms" << endl;
-    
+
     // Benchmark AVX512 implementation (if available)
     if (cpu_supports_avx512()) {
         vector<float> results_avx512(n_docs);
-        
+
         auto avx512_bench = [&]() {
             for (int i = 0; i < n_docs; i++) {
                 results_avx512[i] = dot_product_avx512(
-                    query.data(), 
-                    &docs[i * dim], 
+                    query.data(),
+                    &docs[i * dim],
                     dim
                 );
             }
         };
-        
+
         double avx512_time = benchmark(avx512_bench, iterations);
-        cout << "AVX512 implementation: " << fixed << setprecision(3) 
+        cout << "AVX512 implementation: " << fixed << setprecision(3)
              << avx512_time << " ms" << endl;
-        
+
         double speedup = scalar_time / avx512_time;
-        cout << "Speedup: " << fixed << setprecision(2) 
+        cout << "Speedup: " << fixed << setprecision(2)
              << speedup << "x" << endl;
-        
+
         // Validate numerical accuracy
         double max_diff = 0.0;
         for (int i = 0; i < n_docs; i++) {
             double diff = abs(results_scalar[i] - results_avx512[i]);
             max_diff = max(max_diff, diff);
         }
-        cout << "Max difference: " << scientific << setprecision(2) 
+        cout << "Max difference: " << scientific << setprecision(2)
              << max_diff << endl;
-        
+
         if (max_diff < 1e-4) {
             cout << "✓ Numerical validation passed" << endl;
         } else {
@@ -1399,9 +1399,9 @@ int main() {
     } else {
         cout << "AVX512 not supported on this CPU" << endl;
     }
-    
+
     cout << endl;
-    
+
     return 0;
 }
 ```
@@ -1469,23 +1469,23 @@ from vectorforge.vectorforge_cpp import cosine_similarity_batch
 def test_avx512_matches_numpy():
     """Verify AVX512 implementation matches NumPy reference."""
     np.random.seed(42)
-    
+
     dim = 384
     n_docs = 1000
-    
+
     query = np.random.randn(dim).astype(np.float32)
     docs = np.random.randn(n_docs, dim).astype(np.float32)
-    
+
     # Normalize (as VectorForge does)
     query = query / np.linalg.norm(query)
     docs = docs / np.linalg.norm(docs, axis=1, keepdims=True)
-    
+
     # C++ implementation
     cpp_scores = cosine_similarity_batch(query, docs)
-    
+
     # NumPy reference
     numpy_scores = np.dot(docs, query)
-    
+
     # Validate
     assert np.allclose(cpp_scores, numpy_scores, rtol=1e-5, atol=1e-7), \
         f"Max diff: {np.max(np.abs(cpp_scores - numpy_scores))}"
@@ -1493,26 +1493,26 @@ def test_avx512_matches_numpy():
 
 def test_edge_cases():
     """Test edge cases: zeros, ones, negatives."""
-    
+
     # Test 1: Zero vector (edge case)
     query = np.zeros(384, dtype=np.float32)
     docs = np.random.randn(10, 384).astype(np.float32)
-    
+
     scores = cosine_similarity_batch(query, docs)
     assert np.allclose(scores, 0.0), "Zero query should give zero scores"
-    
+
     # Test 2: Identical vectors (should give 1.0 when normalized)
     query = np.random.randn(384).astype(np.float32)
     query = query / np.linalg.norm(query)
-    
+
     docs = np.tile(query, (5, 1))  # 5 copies of query
-    
+
     scores = cosine_similarity_batch(query, docs)
     assert np.allclose(scores, 1.0, atol=1e-6), "Identical vectors should give 1.0"
-    
+
     # Test 3: Opposite vectors (should give -1.0)
     docs = np.tile(-query, (5, 1))
-    
+
     scores = cosine_similarity_batch(query, docs)
     assert np.allclose(scores, -1.0, atol=1e-6), "Opposite vectors should give -1.0"
 
@@ -1521,13 +1521,13 @@ def test_large_scale():
     """Test with realistic VectorForge workload."""
     query = np.random.randn(384).astype(np.float32)
     query = query / np.linalg.norm(query)
-    
+
     docs = np.random.randn(10000, 384).astype(np.float32)
     docs = docs / np.linalg.norm(docs, axis=1, keepdims=True)
-    
+
     cpp_scores = cosine_similarity_batch(query, docs)
     numpy_scores = np.dot(docs, query)
-    
+
     assert cpp_scores.shape == (10000,)
     assert np.allclose(cpp_scores, numpy_scores, rtol=1e-5, atol=1e-7)
 
@@ -1582,12 +1582,12 @@ py::array_t<float> cosine_similarity_batch_parallel(
     py::array_t<float> doc_embeddings
 ) {
     // ... setup code ...
-    
+
     #pragma omp parallel for
     for (int i = 0; i < n_docs; i++) {
         r(i) = dot_product_avx512(q_data, docs.data(i, 0), dim);
     }
-    
+
     return result;
 }
 ```
@@ -1607,7 +1607,7 @@ for (int i = 0; i < n_docs; i++) {
         __builtin_prefetch(docs.data(i + 1, 0), 0, 3);
         // 0 = read, 3 = high temporal locality
     }
-    
+
     r(i) = dot_product_avx512(q_data, docs.data(i, 0), dim);
 }
 ```
@@ -1621,7 +1621,7 @@ Use AVX512 masks instead of scalar loop for remainder:
 ```cpp
 inline float dot_product_avx512_masked(const float* a, const float* b, int n) {
     __m512 sum = _mm512_setzero_ps();
-    
+
     int i = 0;
     // Process complete vectors
     for (; i + 15 < n; i += 16) {
@@ -1629,17 +1629,17 @@ inline float dot_product_avx512_masked(const float* a, const float* b, int n) {
         __m512 b_vec = _mm512_loadu_ps(&b[i]);
         sum = _mm512_fmadd_ps(a_vec, b_vec, sum);
     }
-    
+
     // Handle remainder with mask (no scalar loop!)
     if (i < n) {
         int remaining = n - i;
         __mmask16 mask = (1 << remaining) - 1;  // e.g., 0b0000111 for 3 elements
-        
+
         __m512 a_vec = _mm512_maskz_loadu_ps(mask, &a[i]);
         __m512 b_vec = _mm512_maskz_loadu_ps(mask, &b[i]);
         sum = _mm512_mask_fmadd_ps(sum, mask, a_vec, b_vec);
     }
-    
+
     return _mm512_reduce_add_ps(sum);
 }
 ```
@@ -1674,8 +1674,8 @@ For even larger scale, consider CUDA:
 
 ```cuda
 __global__ void cosine_similarity_kernel(
-    const float* query, 
-    const float* docs, 
+    const float* query,
+    const float* docs,
     float* results,
     int n_docs,
     int dim
@@ -1702,7 +1702,7 @@ __global__ void cosine_similarity_kernel(
 ### Concepts Mastered ✓
 
 - [x] **SIMD fundamentals**: One instruction, multiple data
-- [x] **CPU architecture**: Vector units, registers, cache hierarchy  
+- [x] **CPU architecture**: Vector units, registers, cache hierarchy
 - [x] **AVX512 specifics**: 512-bit registers, 16 float32 operations
 - [x] **Intrinsics**: `__m512`, `_mm512_loadu_ps`, `_mm512_fmadd_ps`, etc.
 - [x] **Optimization techniques**: Multiple accumulators, FMA, reduction
@@ -1792,7 +1792,7 @@ __global__ void cosine_similarity_kernel(
 
 ---
 
-**You're now ready to implement AVX512 optimization in VectorForge!** 
+**You're now ready to implement AVX512 optimization in VectorForge!**
 
 Good luck, and remember: measure, optimize, validate. Always benchmark before and after to prove your optimization actually helps!
 
