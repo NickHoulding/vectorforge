@@ -697,9 +697,10 @@ def test_file_upload_and_delete_affects_embeddings_count(
 
     after_delete = get_metrics()
     assert (
-        after_delete["index"]["deleted_documents"]
-        > initial_metrics["index"]["deleted_documents"]
+        after_delete["index"]["total_embeddings"]
+        < after_upload["index"]["total_embeddings"]
     )
+    assert after_delete["index"]["deleted_documents"] == 0
 
 
 def test_file_upload_chunk_boundaries_no_content_loss(client, upload_file):

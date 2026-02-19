@@ -4,30 +4,29 @@ from pydantic import BaseModel, Field
 
 
 class IndexMetrics(BaseModel):
-    """Index health and compaction metrics.
+    """Index health metrics.
 
-    Detailed statistics about the vector index state, including document counts,
-    deletion tracking, and compaction recommendations. Part of the comprehensive
-    metrics response.
+    Statistics about the vector index state with ChromaDB backend. Since ChromaDB
+    handles compaction automatically, compaction-related fields are not included.
 
     Attributes:
         total_documents: Active documents currently in the index.
-        total_embeddings: Total embedding vectors including deleted ones.
-        deleted_documents: Count of documents marked for deletion.
-        deleted_ratio: Percentage of deleted documents (0-1).
-        needs_compaction: Whether automatic compaction is recommended.
-        compact_threshold: Deletion ratio threshold that triggers compaction.
+        total_embeddings: Total embedding vectors in the index.
+        deleted_documents: Always 0 with ChromaDB (immediate deletion).
+        deleted_ratio: Always 0.0 with ChromaDB (immediate deletion).
+        needs_compaction: Always False (ChromaDB handles internally).
     """
 
     total_documents: int = Field(..., description="Active documents in index")
-    total_embeddings: int = Field(..., description="Total embeddings including deleted")
-    deleted_documents: int = Field(..., description="Number of deleted documents")
-    deleted_ratio: float = Field(
-        ..., ge=0, le=1, description="Ratio of deleted to total"
+    total_embeddings: int = Field(..., description="Total embeddings in index")
+    deleted_documents: int = Field(
+        ..., description="Number of deleted documents (always 0)"
     )
-    needs_compaction: bool = Field(..., description="Whether compaction is recommended")
-    compact_threshold: float = Field(
-        ..., ge=0, le=1, description="Compaction trigger threshold"
+    deleted_ratio: float = Field(
+        ..., ge=0, le=1, description="Ratio of deleted to total (always 0)"
+    )
+    needs_compaction: bool = Field(
+        ..., description="Whether compaction is recommended (always False)"
     )
 
 
@@ -68,20 +67,19 @@ class PerformanceMetrics(BaseModel):
 class UsageMetrics(BaseModel):
     """System operation and usage statistics.
 
-    Tracks the volume of various operations performed on the vector database,
-    including document additions, deletions, file uploads, and index maintenance.
+    Tracks the volume of various operations performed on the vector database.
+    With ChromaDB, compaction is handled internally so compaction counts are
+    not tracked.
 
     Attributes:
         documents_added: Total number of documents added to the index.
-        documents_deleted: Total number of documents marked for deletion.
-        compactions_performed: Count of index compaction operations.
+        documents_deleted: Total number of documents deleted from the index.
         chunks_created: Total document chunks created from file uploads.
         files_uploaded: Total number of files processed and indexed.
     """
 
     documents_added: int = Field(..., description="Total documents added")
     documents_deleted: int = Field(..., description="Total documents deleted")
-    compactions_performed: int = Field(..., description="Number of compactions")
     chunks_created: int = Field(0, description="Total chunks from file uploads")
     files_uploaded: int = Field(0, description="Total files uploaded")
 
@@ -106,14 +104,14 @@ class MemoryMetrics(BaseModel):
 class TimestampMetrics(BaseModel):
     """Event timestamps for monitoring and debugging.
 
-    Tracks when key operations occurred in the vector database lifecycle,
-    useful for troubleshooting and understanding usage patterns.
+    Tracks when key operations occurred in the vector database lifecycle.
+    With ChromaDB, compaction is handled internally so compaction timestamps
+    are not tracked.
 
     Attributes:
         engine_created_at: ISO timestamp when the engine was initialized.
         last_query_at: ISO timestamp of most recent search query (if any).
         last_document_added_at: ISO timestamp of most recent document addition (if any).
-        last_compaction_at: ISO timestamp of most recent compaction (if any).
         last_file_uploaded_at: ISO timestamp of most recent file upload (if any).
     """
 
@@ -121,9 +119,6 @@ class TimestampMetrics(BaseModel):
     last_query_at: Optional[str] = Field(None, description="Most recent query")
     last_document_added_at: Optional[str] = Field(
         None, description="Most recent addition"
-    )
-    last_compaction_at: Optional[str] = Field(
-        None, description="Most recent compaction"
     )
     last_file_uploaded_at: Optional[str] = Field(
         None, description="Most recent file upload"
@@ -176,12 +171,11 @@ class MetricsResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "index": {
-                    "total_documents": 1250,
+                    "total_documents": 1500,
                     "total_embeddings": 1500,
-                    "deleted_documents": 250,
-                    "deleted_ratio": 0.167,
+                    "deleted_documents": 0,
+                    "deleted_ratio": 0.0,
                     "needs_compaction": False,
-                    "compact_threshold": 0.3,
                 },
                 "performance": {
                     "total_queries": 5420,
@@ -196,7 +190,6 @@ class MetricsResponse(BaseModel):
                 "usage": {
                     "documents_added": 2100,
                     "documents_deleted": 850,
-                    "compactions_performed": 3,
                     "chunks_created": 1875,
                     "files_uploaded": 42,
                 },
@@ -209,7 +202,6 @@ class MetricsResponse(BaseModel):
                     "engine_created_at": "2024-01-15T10:30:00Z",
                     "last_query_at": "2024-01-15T16:45:23Z",
                     "last_document_added_at": "2024-01-15T15:20:10Z",
-                    "last_compaction_at": "2024-01-15T14:00:00Z",
                     "last_file_uploaded_at": "2024-01-15T15:15:42Z",
                 },
                 "system": {

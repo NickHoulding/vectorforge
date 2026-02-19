@@ -2,7 +2,6 @@
 
 from typing import Any, Generator
 
-import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
@@ -10,7 +9,7 @@ from sentence_transformers import SentenceTransformer
 
 from vectorforge.api import app, engine
 from vectorforge.config import VFGConfig
-from vectorforge.vector_engine import EngineMetrics, VectorEngine
+from vectorforge.vector_engine import VectorEngine
 
 # =============================================================================
 # Fixtures
@@ -38,13 +37,16 @@ def reset_engine() -> Generator[None, Any, None]:
     """Clear the engine state before each test.
 
     Automatically runs before every test to ensure a clean slate.
-    Clears all documents, embeddings, and index mappings.
+    Clears all documents from the ChromaDB collection.
     """
-    engine.documents.clear()
-    engine.embeddings = np.empty((0, 384), dtype=np.float32)
-    engine.index_to_doc_id.clear()
-    engine.doc_id_to_index.clear()
-    engine.deleted_docs.clear()
+    try:
+        all_docs = engine.collection.get()
+
+        if all_docs["ids"]:
+            engine.collection.delete(ids=all_docs["ids"])
+    except Exception:
+        pass
+
     yield
 
 
@@ -65,19 +67,16 @@ def vector_engine(shared_model: SentenceTransformer) -> VectorEngine:
     Reuses the session-scoped model to avoid expensive model reloading.
     Creates a new engine instance with clean state for test isolation.
     """
-    engine_instance = VectorEngine.__new__(VectorEngine)
-
-    engine_instance.documents = {}
-    engine_instance.embeddings = np.empty((0, 384), dtype=np.float32)
-    engine_instance.index_to_doc_id = []
-    engine_instance.doc_id_to_index = {}
-    engine_instance.deleted_docs = set()
-
-    engine_instance.model_name = VFGConfig.MODEL_NAME
+    engine_instance = VectorEngine()
     engine_instance.model = shared_model
 
-    engine_instance.metrics = EngineMetrics()
-    engine_instance.compaction_threshold = VFGConfig.COMPACTION_THRESHOLD
+    try:
+        all_docs = engine_instance.collection.get()
+
+        if all_docs["ids"]:
+            engine_instance.collection.delete(ids=all_docs["ids"])
+    except Exception:
+        pass
 
     return engine_instance
 

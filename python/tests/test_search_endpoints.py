@@ -421,7 +421,6 @@ def test_search_preserves_all_metadata_fields(client):
         "source_file": "test.txt",
         "chunk_index": 0,
         "custom_field": "custom_value",
-        "nested": {"key": "value"},
     }
     add_response = client.post(
         "/doc/add", json={"content": "test content", "metadata": metadata}

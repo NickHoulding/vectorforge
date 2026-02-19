@@ -50,7 +50,7 @@ def get_metrics() -> MetricsResponse:
     Get comprehensive system metrics
 
     Returns detailed performance, usage, and system statistics including:
-    - Index statistics (documents, embeddings, compaction status)
+    - Index statistics (documents, embeddings)
     - Performance metrics (query times, percentiles)
     - Usage statistics (operations performed)
     - Memory consumption
@@ -66,14 +66,14 @@ def get_metrics() -> MetricsResponse:
         HTTPException: 500 if metrics collection fails
     """
     metrics: dict[str, Any] = engine.get_metrics()
+    index_stats: dict[str, Any] = engine.get_index_stats()
 
     index_metrics: IndexMetrics = IndexMetrics(
         total_documents=metrics["active_documents"],
         total_embeddings=metrics["total_embeddings"],
-        deleted_documents=metrics["docs_deleted"],
+        deleted_documents=index_stats["deleted_documents"],  # Always 0 with ChromaDB
         deleted_ratio=metrics["deleted_ratio"],
         needs_compaction=metrics["needs_compaction"],
-        compact_threshold=metrics["compact_threshold"],
     )
     performance_metrics: PerformanceMetrics = PerformanceMetrics(
         total_queries=metrics["total_queries"],
@@ -88,7 +88,6 @@ def get_metrics() -> MetricsResponse:
     usage_metrics: UsageMetrics = UsageMetrics(
         documents_added=metrics["docs_added"],
         documents_deleted=metrics["docs_deleted"],
-        compactions_performed=metrics["compactions_performed"],
         chunks_created=metrics["chunks_created"],
         files_uploaded=metrics["files_uploaded"],
     )
@@ -101,7 +100,6 @@ def get_metrics() -> MetricsResponse:
         engine_created_at=metrics["created_at"],
         last_query_at=metrics["last_query_at"],
         last_document_added_at=metrics["last_doc_added_at"],
-        last_compaction_at=metrics["last_compaction_at"],
         last_file_uploaded_at=metrics["last_file_uploaded_at"],
     )
     system_info: SystemInfo = SystemInfo(

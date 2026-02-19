@@ -1,9 +1,13 @@
+# General
 __pycache__/
 .pytest_cache/
 .vscode/
 .mypy_cache/
 python/data/
 python/tests/data/
+
+# ChromaDB
+chroma_data/
 
 # Coverage reports
 *.coverage
@@ -16,8 +20,8 @@ python/benchmarks/results/*
 !python/benchmarks/results/0001_baseline.json
 .benchmarks/
 
-# C++ build artifacts
-build/
+# Old C++ build artifacts
+deprecated/build/
 *.so
 *.o
 *.a

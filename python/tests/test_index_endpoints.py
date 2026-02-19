@@ -1,10 +1,7 @@
 """Tests for index management endpoints"""
 
-import json
 import os
-import shutil
 
-import numpy as np
 import pytest
 
 from vectorforge import __version__
@@ -120,19 +117,22 @@ def test_index_stats_after_adding_documents(client):
 
 
 def test_index_stats_after_document_deletion(client, multiple_added_docs):
-    """Test that stats track deleted documents correctly."""
+    """Test that stats update correctly after document deletion.
+
+    ChromaDB deletes immediately (no lazy deletion), so deleted_documents is always 0.
+    """
     doc_id = multiple_added_docs[0]
     client.delete(f"/doc/{doc_id}")
 
     stats = client.get("/index/stats").json()
-    assert stats["total_documents"] == 20
-    assert stats["total_embeddings"] == 20
-    assert stats["deleted_documents"] == 1
-    assert stats["deleted_ratio"] > 0.0
+    assert stats["total_documents"] == 19  # ChromaDB deletes immediately
+    assert stats["total_embeddings"] == 19
+    assert stats["deleted_documents"] == 0  # No lazy deletion
+    assert stats["deleted_ratio"] == 0.0
 
 
 def test_index_stats_deleted_ratio_calculation(client):
-    """Test that deleted_ratio is calculated correctly."""
+    """Test that deleted_ratio remains 0 with ChromaDB immediate deletion."""
     doc_ids = []
     for i in range(5):
         resp = client.post("/doc/add", json={"content": f"doc {i}", "metadata": {}})
@@ -141,13 +141,16 @@ def test_index_stats_deleted_ratio_calculation(client):
     client.delete(f"/doc/{doc_ids[0]}")
 
     stats = client.get("/index/stats").json()
-    assert stats["total_embeddings"] == 5
-    assert stats["deleted_documents"] == 1
-    assert stats["deleted_ratio"] == 0.20
+    assert stats["total_embeddings"] == 4  # ChromaDB deletes immediately
+    assert stats["deleted_documents"] == 0  # No lazy deletion
+    assert stats["deleted_ratio"] == 0.0
 
 
 def test_index_stats_needs_compaction_false(client):
-    """Test that needs_compaction is False when below threshold."""
+    """Test that needs_compaction is always False with ChromaDB.
+
+    ChromaDB handles compaction internally, so this flag is always False.
+    """
     for i in range(10):
         client.post("/doc/add", json={"content": f"doc {i}", "metadata": {}})
 
@@ -155,13 +158,16 @@ def test_index_stats_needs_compaction_false(client):
     assert stats["needs_compaction"] is False
 
 
-def test_index_stats_needs_compaction_true(client, multiple_added_docs):
-    """Test that needs_compaction is True when above threshold."""
+def test_index_stats_needs_compaction_always_false(client, multiple_added_docs):
+    """Test that needs_compaction remains False even after deletions.
+
+    ChromaDB handles compaction internally and deletes immediately.
+    """
     for i in range(5):
         client.delete(f"/doc/{multiple_added_docs[i]}")
 
     stats = client.get("/index/stats").json()
-    assert stats["deleted_ratio"] == VFGConfig.COMPACTION_THRESHOLD
+    assert stats["deleted_ratio"] == 0.0  # ChromaDB deletes immediately
     assert stats["needs_compaction"] is False
 
     client.delete(f"/doc/{multiple_added_docs[5]}")
@@ -178,22 +184,28 @@ def test_index_stats_embedding_dimension_is_384(client):
     assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
 
 
-def test_index_stats_multiple_deletions_below_threshold(client, multiple_added_docs):
-    """Test stats with multiple deletions that stay below compaction threshold."""
+def test_index_stats_multiple_deletions_immediate_removal(client, multiple_added_docs):
+    """Test that multiple deletions are immediately reflected in stats.
+
+    ChromaDB deletes immediately (no lazy deletion).
+    """
     for i in range(4):
         client.delete(f"/doc/{multiple_added_docs[i]}")
 
     stats = client.get("/index/stats").json()
 
-    assert stats["total_documents"] == 20
-    assert stats["total_embeddings"] == 20
-    assert stats["deleted_documents"] == 4
-    assert stats["deleted_ratio"] == 0.20
+    assert stats["total_documents"] == 16  # 20 - 4 = 16
+    assert stats["total_embeddings"] == 16
+    assert stats["deleted_documents"] == 0  # No lazy deletion
+    assert stats["deleted_ratio"] == 0.0
     assert stats["needs_compaction"] is False
 
 
 def test_index_stats_after_manual_build(client, multiple_added_docs):
-    """Test that stats update correctly after manual index build."""
+    """Test that stats remain consistent after manual index build.
+
+    With ChromaDB, build() is a no-op since there's no lazy deletion.
+    """
     client.delete(f"/doc/{multiple_added_docs[0]}")
     client.delete(f"/doc/{multiple_added_docs[1]}")
 
@@ -202,7 +214,7 @@ def test_index_stats_after_manual_build(client, multiple_added_docs):
     stats = client.get("/index/stats").json()
     assert stats["deleted_documents"] == 0
     assert stats["deleted_ratio"] == 0.0
-    assert stats["total_documents"] == 18
+    assert stats["total_documents"] == 18  # Deleted immediately
     assert stats["total_embeddings"] == 18
     assert stats["needs_compaction"] is False
 
@@ -226,21 +238,24 @@ def test_index_build_returns_200(client):
 
 
 def test_index_build_reconstructs_index(client, multiple_added_docs):
-    """Test that building the index reconstructs it from documents."""
+    """Test that building the index works correctly with immediate deletion.
+
+    ChromaDB deletes immediately, so build() doesn't change document counts.
+    """
     for i in range(4):
         resp = client.delete(f"/doc/{multiple_added_docs[i]}")
         assert resp.status_code == 200
 
     stats_before = client.get("/index/stats").json()
-    assert stats_before["deleted_documents"] == 4
-    assert stats_before["total_embeddings"] == 20
+    assert stats_before["deleted_documents"] == 0  # ChromaDB deletes immediately
+    assert stats_before["total_embeddings"] == 16  # 20 - 4 = 16
 
     resp = client.post("/index/build")
     assert resp.status_code == 200
 
     stats_after = client.get("/index/stats").json()
     assert stats_after["deleted_documents"] == 0
-    assert stats_after["total_embeddings"] == 16
+    assert stats_after["total_embeddings"] == 16  # Same as before
     assert stats_after["total_documents"] == 16
     assert stats_after["deleted_ratio"] == 0.0
 
@@ -270,7 +285,7 @@ def test_index_build_returns_stats_in_response(client, multiple_added_docs):
 
 
 def test_index_build_returns_updated_stats(client, multiple_added_docs):
-    """Test that index build returns updated statistics."""
+    """Test that index build returns correct statistics with immediate deletion."""
     for i in range(2):
         client.delete(f"/doc/{multiple_added_docs[i]}")
 
@@ -287,11 +302,16 @@ def test_index_build_returns_updated_stats(client, multiple_added_docs):
 
     updated_stats = resp.json()
 
-    assert initial_stats["total_documents"] == updated_stats["total_documents"] + 2
-    assert initial_stats["total_embeddings"] == updated_stats["total_embeddings"] + 2
-    assert initial_stats["deleted_documents"] == 2
+    # ChromaDB deletes immediately, so stats don't change after build
+    assert (
+        initial_stats["total_documents"] == updated_stats["total_documents"]
+    )  # Both 18
+    assert (
+        initial_stats["total_embeddings"] == updated_stats["total_embeddings"]
+    )  # Both 18
+    assert initial_stats["deleted_documents"] == 0
     assert updated_stats["deleted_documents"] == 0
-    assert initial_stats["deleted_ratio"] == 0.1
+    assert initial_stats["deleted_ratio"] == 0.0
     assert updated_stats["deleted_ratio"] == 0.0
     assert initial_stats["needs_compaction"] == False
     assert updated_stats["needs_compaction"] == False
@@ -314,17 +334,22 @@ def test_index_build_returns_success_status(client):
 
 
 def test_index_build_increments_compactions_metric(client, multiple_added_docs):
-    """Test that building index increments compactions_performed metric."""
+    """Test that building index succeeds but doesn't track compaction metrics.
+
+    ChromaDB handles compaction internally, so we no longer track compactions_performed.
+    The build() method is now a no-op retained for backward compatibility.
+    """
     initial_metrics = client.get("/metrics").json()
-    initial_compactions = initial_metrics["usage"]["compactions_performed"]
+    initial_docs = initial_metrics["index"]["total_documents"]
 
     client.delete(f"/doc/{multiple_added_docs[0]}")
-    client.post("/index/build")
+    response = client.post("/index/build")
+
+    assert response.status_code == 200
 
     updated_metrics = client.get("/metrics").json()
-    updated_compactions = updated_metrics["usage"]["compactions_performed"]
-
-    assert updated_compactions == initial_compactions + 1
+    # Verify document was deleted
+    assert updated_metrics["index"]["total_documents"] == initial_docs - 1
 
 
 def test_index_build_twice_is_idempotent(client, multiple_added_docs):
@@ -435,19 +460,19 @@ def test_index_build_response_structure(client, multiple_added_docs):
         assert field in data
 
 
-def test_index_build_at_compaction_threshold(client, multiple_added_docs):
-    """Test building when deleted ratio is exactly at threshold."""
+def test_index_build_with_deletions(client, multiple_added_docs):
+    """Test building with ChromaDB's immediate deletion behavior."""
     for i in range(5):
         client.delete(f"/doc/{multiple_added_docs[i]}")
 
     stats_before = client.get("/index/stats").json()
-    assert stats_before["deleted_ratio"] == VFGConfig.COMPACTION_THRESHOLD
+    assert stats_before["deleted_ratio"] == 0.0  # ChromaDB deletes immediately
 
     response = client.post("/index/build")
     assert response.status_code == 200
 
     stats_after = client.get("/index/stats").json()
-    assert stats_after["total_documents"] == 15
+    assert stats_after["total_documents"] == 15  # 20 - 5 = 15
     assert stats_after["deleted_documents"] == 0
 
 
@@ -476,27 +501,12 @@ def test_index_build_updates_index_mappings(client, multiple_added_docs):
 
 
 def test_index_save_returns_200(client):
-    """Test that POST /index/save returns 200 status."""
+    """Test that POST /index/save returns 200 status.
+
+    ChromaDB auto-persists, so save() is informational only.
+    """
     resp = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     assert resp.status_code == 200
-
-
-def test_index_save_creates_directory_if_not_exists(client):
-    """Test that save creates the target directory if it doesn't exist."""
-    shutil.rmtree(TEST_DATA_PATH, ignore_errors=True)
-    assert not os.path.exists(TEST_DATA_PATH)
-
-    resp = client.post("/index/save", params={"directory": TEST_DATA_PATH})
-    assert resp.status_code == 200
-
-    assert os.path.exists(TEST_DATA_PATH)
-
-
-def test_index_save_persists_to_disk(save_data):
-    """Test that saving index creates files on disk."""
-    files = os.listdir(save_data["directory"])
-    assert VFGConfig.METADATA_FILENAME in files
-    assert VFGConfig.EMBEDDINGS_FILENAME in files
 
 
 def test_index_save_returns_save_metrics(save_data):
@@ -557,29 +567,33 @@ def test_index_save_empty_index(client):
 
     assert data["documents_saved"] == 0
     assert data["embeddings_saved"] == 0
-    assert os.path.exists(os.path.join(TEST_DATA_PATH, VFGConfig.METADATA_FILENAME))
 
 
 def test_index_save_excludes_deleted_documents(client, multiple_added_docs):
-    """Test that save only persists active documents, not deleted ones."""
+    """Test that save reflects immediately-deleted documents.
+
+    ChromaDB deletes immediately, so deleted docs aren't in the count.
+    """
     for i in range(5):
         client.delete(f"/doc/{multiple_added_docs[i]}")
 
     stats_before = client.get("/index/stats").json()
-    assert stats_before["deleted_documents"] == 5
+    assert stats_before["deleted_documents"] == 0  # ChromaDB deletes immediately
 
     response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     data = response.json()
+
+    assert data["documents_saved"] == 15  # 20 - 5 = 15
 
     assert data["documents_saved"] == 15
     assert data["embeddings_saved"] == 15
 
     stats_after = client.get("/index/stats").json()
-    assert stats_after["deleted_documents"] == 5
+    assert stats_after["deleted_documents"] == 0  # ChromaDB deletes immediately
 
 
 def test_index_save_after_compaction(client, multiple_added_docs):
-    """Test saving after compaction removes deleted documents from saved data."""
+    """Test saving after build operation."""
     for i in range(6):
         client.delete(f"/doc/{multiple_added_docs[i]}")
 
@@ -589,7 +603,7 @@ def test_index_save_after_compaction(client, multiple_added_docs):
     response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     data = response.json()
 
-    assert data["documents_saved"] == 14
+    assert data["documents_saved"] == 14  # 20 - 6 = 14
     assert data["embeddings_saved"] == 14
 
 
@@ -616,7 +630,7 @@ def test_index_save_total_size_equals_sum(client, multiple_added_docs):
 
 
 def test_index_save_overwrites_existing_files(client, multiple_added_docs):
-    """Test that saving twice overwrites previous save."""
+    """Test that saving twice reflects current state."""
     response1 = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     size1 = response1.json()["total_size_mb"]
 
@@ -637,61 +651,22 @@ def test_index_save_version_matches_app_version(client):
     assert data["version"] == __version__
 
 
-def test_index_save_with_default_directory(client):
-    """Test saving without specifying directory uses default."""
-    response = client.post("/index/save")
-    assert response.status_code == 200
-
-    data = response.json()
-    assert "directory" in data
-    assert data["directory"] == VFGConfig.DEFAULT_DATA_DIR
-
-
-def test_index_save_creates_valid_json_metadata(client, added_doc):
-    """Test that saved metadata.json is valid JSON."""
-    client.post("/index/save", params={"directory": TEST_DATA_PATH})
-
-    metadata_path = os.path.join(TEST_DATA_PATH, VFGConfig.METADATA_FILENAME)
-    with open(metadata_path, "r") as f:
-        metadata = json.load(f)
-
-    assert "documents" in metadata
-    assert "metrics" in metadata
-    assert "version" in metadata
-
-
-def test_index_save_creates_valid_embeddings_file(client, added_doc):
-    """Test that saved embeddings.npz is valid numpy format."""
-    client.post("/index/save", params={"directory": TEST_DATA_PATH})
-
-    embeddings_path = os.path.join(TEST_DATA_PATH, VFGConfig.EMBEDDINGS_FILENAME)
-    data = np.load(embeddings_path)
-
-    assert "embeddings" in data
-    assert len(data["embeddings"]) > 0
-
-
-def test_index_save_with_very_long_directory_path(client):
-    """Test save with directory path over the maximum length."""
-    long_dir = "a" * (VFGConfig.MAX_PATH_LEN + 1)
-
-    resp = client.post("/index/save", params={"directory": long_dir})
-    assert resp.status_code == 400
-
-
 # =============================================================================
 # Index Load Tests
 # =============================================================================
 
 
 def test_index_load_returns_200(client):
-    """Test that POST /index/load returns 200 status."""
+    """Test that POST /index/load returns 200 status.
+
+    ChromaDB auto-loads on init, so load() is informational only.
+    """
     resp = client.post("/index/load")
     assert resp.status_code == 200
 
 
 def test_index_load_restores_documents(client, multiple_added_docs):
-    """Test that loading index restores previously saved documents."""
+    """Test that documents are accessible (ChromaDB auto-loads)."""
     resp = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     assert resp.status_code == 200
 
@@ -728,9 +703,10 @@ def test_index_load_includes_embeddings_count(load_data):
 
 
 def test_index_load_includes_deleted_docs(load_data):
-    """Test that load response includes number of deleted docs."""
+    """Test that load response includes deleted_docs field."""
     assert "deleted_docs" in load_data
     assert isinstance(load_data["deleted_docs"], int)
+    assert load_data["deleted_docs"] == 0  # ChromaDB deletes immediately
 
 
 def test_index_load_includes_version(load_data):
@@ -739,33 +715,8 @@ def test_index_load_includes_version(load_data):
     assert isinstance(load_data["version"], str)
 
 
-def test_index_load_from_nonexistent_directory(client):
-    """Test that loading from nonexistent directory returns 404."""
-    resp = client.post("/index/load", params={"directory": "/path/that/does/not/exist"})
-    assert resp.status_code == 404
-    assert "not found" in resp.json()["detail"].lower()
-
-
-def test_index_load_with_missing_metadata_file(client):
-    """Test that load returns 404 when only metadata.json is missing."""
-    resp = client.post("/index/save", params={"directory": TEST_DATA_PATH})
-    os.remove(os.path.join(TEST_DATA_PATH, "metadata.json"))
-    resp = client.post("/index/load", params={"directory": TEST_DATA_PATH})
-
-    assert resp.status_code == 404
-
-
-def test_index_load_with_missing_embeddings_file(client):
-    """Test that load returns 404 when only embeddings.npz is missing."""
-    resp = client.post("/index/save", params={"directory": TEST_DATA_PATH})
-    os.remove(os.path.join(TEST_DATA_PATH, "embeddings.npz"))
-    resp = client.post("/index/load", params={"directory": TEST_DATA_PATH})
-
-    assert resp.status_code == 404
-
-
 def test_index_save_and_load_roundtrip(client, multiple_added_docs):
-    """Test that saving and loading preserves all data correctly."""
+    """Test that saving and loading preserves data (ChromaDB auto-persists)."""
     resp = client.get("/metrics")
     assert resp.status_code == 200
     initial_metrics = resp.json()
@@ -799,10 +750,6 @@ def test_index_save_and_load_roundtrip(client, multiple_added_docs):
     assert (
         loaded_metrics["index"]["needs_compaction"]
         == initial_metrics["index"]["needs_compaction"]
-    )
-    assert (
-        loaded_metrics["index"]["compact_threshold"]
-        == initial_metrics["index"]["compact_threshold"]
     )
 
     assert (
@@ -860,7 +807,10 @@ def test_index_load_excludes_deleted_documents(client, multiple_added_docs):
 
 
 def test_index_load_replaces_current_state(client, multiple_added_docs):
-    """Test that load completely replaces the current index."""
+    """Test that ChromaDB maintains current state (no file-based replacement).
+
+    ChromaDB auto-persists, so new documents remain after load.
+    """
     client.post("/index/save", params={"directory": TEST_DATA_PATH})
 
     new_doc = client.post(
@@ -873,10 +823,12 @@ def test_index_load_replaces_current_state(client, multiple_added_docs):
     client.post("/index/load", params={"directory": TEST_DATA_PATH})
 
     stats_after = client.get("/index/stats").json()
-    assert stats_after["total_documents"] == 20
+    assert (
+        stats_after["total_documents"] == 21
+    )  # Still 21 (ChromaDB keeps current state)
 
     resp = client.get(f"/doc/{new_doc['id']}")
-    assert resp.status_code == 404
+    assert resp.status_code == 200  # Document still exists
 
 
 def test_index_load_preserves_metadata(client):
@@ -978,7 +930,10 @@ def test_index_load_version_information(client):
 
 
 def test_index_load_with_custom_directory(client, multiple_added_docs):
-    """Test loading from a custom directory path."""
+    """Test load returns current ChromaDB directory (not custom path).
+
+    ChromaDB persists to its configured directory, ignoring the parameter.
+    """
     custom_dir = os.path.join(TEST_DATA_PATH, "custom_load")
 
     client.post("/index/save", params={"directory": custom_dir})
@@ -987,16 +942,18 @@ def test_index_load_with_custom_directory(client, multiple_added_docs):
     assert resp.status_code == 200
 
     data = resp.json()
-    assert data["directory"] == custom_dir
+    # ChromaDB uses its configured persist directory
+    assert "chroma_data" in data["directory"]
     assert data["documents_loaded"] == 20
 
 
 def test_index_load_with_very_long_directory_path(client):
-    """Test load with directory path over the maximum length."""
+    """Test load with very long directory path (ChromaDB ignores parameter)."""
     long_dir = "a" * (VFGConfig.MAX_PATH_LEN + 1)
 
     resp = client.post("/index/load", params={"directory": long_dir})
-    assert resp.status_code == 400
+    # ChromaDB uses its configured directory, so this succeeds
+    assert resp.status_code == 200
 
 
 def test_index_load_preserves_document_ids(client, multiple_added_docs):

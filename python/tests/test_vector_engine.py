@@ -18,19 +18,13 @@ from vectorforge.vector_engine import EngineMetrics, VectorEngine
 
 def test_vector_engine_initialization(vector_engine):
     """Test that VectorEngine initializes with correct default values."""
-
-    assert vector_engine.documents == {}
-    assert isinstance(vector_engine.embeddings, np.ndarray)
-    assert vector_engine.embeddings.shape == (0, 384)
-    assert vector_engine.index_to_doc_id == []
-    assert vector_engine.doc_id_to_index == {}
-    assert vector_engine.deleted_docs == set()
-    assert vector_engine.compaction_threshold == VFGConfig.COMPACTION_THRESHOLD
+    assert vector_engine.collection is not None
+    assert vector_engine.chroma_client is not None
+    assert vector_engine.collection.count() == 0
 
 
 def test_vector_engine_loads_model(vector_engine):
     """Test that VectorEngine loads the sentence transformer model."""
-
     assert vector_engine.model is not None
     assert vector_engine.model_name == VFGConfig.MODEL_NAME
     assert (
@@ -41,23 +35,11 @@ def test_vector_engine_loads_model(vector_engine):
 
 def test_vector_engine_initializes_empty_collections(vector_engine):
     """Test that VectorEngine starts with empty documents and embeddings."""
-
-    assert len(vector_engine.documents) == 0
-    assert len(vector_engine.embeddings) == 0
-    assert len(vector_engine.index_to_doc_id) == 0
-    assert len(vector_engine.doc_id_to_index) == 0
-
-
-def test_vector_engine_sets_default_compaction_threshold(vector_engine):
-    """Test that VectorEngine sets default compaction threshold."""
-
-    assert vector_engine.compaction_threshold == VFGConfig.COMPACTION_THRESHOLD
-    assert vector_engine.compaction_threshold == 0.25
+    assert vector_engine.collection.count() == 0
 
 
 def test_vector_engine_initializes_metrics(vector_engine):
     """Test that VectorEngine initializes metrics tracking."""
-
     assert vector_engine.metrics is not None
     assert isinstance(vector_engine.metrics, EngineMetrics)
     assert vector_engine.metrics.total_queries == 0
@@ -72,7 +54,6 @@ def test_vector_engine_initializes_metrics(vector_engine):
 
 def test_add_doc_returns_uuid(vector_engine):
     """Test that add_doc returns a valid UUID string."""
-
     doc_id = vector_engine.add_doc("Test content", {})
 
     assert isinstance(doc_id, str)
@@ -83,57 +64,55 @@ def test_add_doc_returns_uuid(vector_engine):
 def test_add_doc_stores_content(vector_engine):
     """Test that add_doc stores document content correctly."""
     content = "This is my test document"
-
     doc_id = vector_engine.add_doc(content, {})
+    result = vector_engine.collection.get(ids=[doc_id], include=["documents"])
 
-    assert doc_id in vector_engine.documents
-    assert vector_engine.documents[doc_id]["content"] == content
+    assert len(result["ids"]) == 1
+    assert result["documents"][0] == content
 
 
 def test_add_doc_stores_metadata(vector_engine):
     """Test that add_doc stores metadata correctly."""
     metadata = {"author": "John", "title": "Test Doc"}
-
     doc_id = vector_engine.add_doc("Test content", metadata)
+    result = vector_engine.collection.get(ids=[doc_id], include=["metadatas"])
 
-    assert vector_engine.documents[doc_id]["metadata"] == metadata
+    assert len(result["ids"]) == 1
+    assert result["metadatas"][0] == metadata
 
 
 def test_add_doc_creates_embedding(vector_engine):
     """Test that add_doc creates an embedding vector."""
-
     doc_id = vector_engine.add_doc("Test content", {})
+    result = vector_engine.collection.get(ids=[doc_id], include=["embeddings"])
+    assert len(result["embeddings"]) == 1
 
-    assert len(vector_engine.embeddings) == 1
-    assert isinstance(vector_engine.embeddings[0], np.ndarray)
-    assert vector_engine.embeddings[0].shape[0] == VFGConfig.EMBEDDING_DIMENSION
+    embedding = result["embeddings"][0]
+    assert isinstance(embedding, (list, np.ndarray))
+    assert len(embedding) == VFGConfig.EMBEDDING_DIMENSION
 
 
 def test_add_doc_normalizes_embedding(vector_engine):
     """Test that embeddings are normalized."""
-
     doc_id = vector_engine.add_doc("Test content", {})
-
-    embedding = vector_engine.embeddings[0]
+    result = vector_engine.collection.get(ids=[doc_id], include=["embeddings"])
+    embedding = np.array(result["embeddings"][0])
     norm = np.linalg.norm(embedding)
+
     assert np.isclose(norm, 1.0, atol=1e-6)
 
 
-def test_add_doc_updates_index_mappings(vector_engine):
-    """Test that add_doc updates index_to_doc_id and doc_id_to_index."""
+def test_add_doc_updates_collection_count(vector_engine):
+    """Test that add_doc increases the collection count."""
+    initial_count = vector_engine.collection.count()
+    vector_engine.add_doc("Test content", {})
 
-    doc_id = vector_engine.add_doc("Test content", {})
-
-    assert len(vector_engine.index_to_doc_id) == 1
-    assert vector_engine.index_to_doc_id[0] == doc_id
-    assert doc_id in vector_engine.doc_id_to_index
-    assert vector_engine.doc_id_to_index[doc_id] == 0
+    assert vector_engine.collection.count() == initial_count + 1
 
 
 def test_add_doc_increments_metrics(vector_engine):
     """Test that add_doc increments docs_added metric."""
     initial_count = vector_engine.metrics.docs_added
-
     vector_engine.add_doc("Test content", {})
 
     assert vector_engine.metrics.docs_added == initial_count + 1
@@ -141,46 +120,42 @@ def test_add_doc_increments_metrics(vector_engine):
 
 def test_add_doc_with_empty_content_raises_error(vector_engine):
     """Test that adding document with empty content raises ValueError."""
-
     with pytest.raises(ValueError, match="content cannot be empty"):
         vector_engine.add_doc("", {})
 
 
 def test_add_doc_with_null_metadata(vector_engine):
     """Test that add_doc handles None metadata correctly."""
-
     doc_id = vector_engine.add_doc("Test content", None)
+    result = vector_engine.collection.get(ids=[doc_id], include=["metadatas"])
 
-    assert doc_id in vector_engine.documents
-    assert vector_engine.documents[doc_id]["metadata"] == {}
+    assert len(result["ids"]) == 1
+    assert result["metadatas"][0] is None or result["metadatas"][0] == {}
 
 
 def test_add_doc_with_empty_metadata(vector_engine):
     """Test that add_doc handles empty dict metadata correctly."""
-
     doc_id = vector_engine.add_doc("Test content", {})
+    result = vector_engine.collection.get(ids=[doc_id], include=["metadatas"])
 
-    assert doc_id in vector_engine.documents
-    assert vector_engine.documents[doc_id]["metadata"] == {}
+    assert len(result["ids"]) == 1
+    assert result["metadatas"][0] is None or result["metadatas"][0] == {}
 
 
 def test_add_doc_with_only_source_file_raises_error(vector_engine):
     """Test that metadata with only source_file raises ValueError."""
-
     with pytest.raises(ValueError, match="both 'source_file' and 'chunk_index'"):
         vector_engine.add_doc("Test content", {"source_file": "test.txt"})
 
 
 def test_add_doc_with_only_chunk_index_raises_error(vector_engine):
     """Test that metadata with only chunk_index raises ValueError."""
-
     with pytest.raises(ValueError, match="both 'source_file' and 'chunk_index'"):
         vector_engine.add_doc("Test content", {"chunk_index": 0})
 
 
 def test_add_doc_with_invalid_source_file_type_raises_error(vector_engine):
     """Test that non-string source_file raises ValueError."""
-
     doc_id = vector_engine.add_doc(
         "Test content", {"source_file": 123, "chunk_index": 0}
     )
@@ -199,17 +174,16 @@ def test_add_doc_with_invalid_chunk_index_type_raises_error(vector_engine):
 def test_add_doc_with_valid_chunk_metadata(vector_engine):
     """Test that add_doc accepts both source_file and chunk_index."""
     metadata = {"source_file": "test.txt", "chunk_index": 1}
-
     doc_id = vector_engine.add_doc("Test content", metadata)
+    result = vector_engine.collection.get(ids=[doc_id], include=["metadatas"])
 
-    assert doc_id in vector_engine.documents
-    assert vector_engine.documents[doc_id]["metadata"] == metadata
+    assert len(result["ids"]) == 1
+    assert result["metadatas"][0] == metadata
 
 
 def test_add_doc_updates_file_metrics(vector_engine):
     """Test that add_doc updates file upload metrics when chunk_index is 0."""
     initial_files = vector_engine.metrics.files_uploaded
-
     vector_engine.add_doc("Test content", {"source_file": "test.txt", "chunk_index": 0})
 
     assert vector_engine.metrics.files_uploaded == initial_files + 1
@@ -219,7 +193,6 @@ def test_add_doc_updates_file_metrics(vector_engine):
 def test_add_doc_updates_chunk_metrics(vector_engine):
     """Test that add_doc updates chunks_created metric."""
     initial_chunks = vector_engine.metrics.chunks_created
-
     vector_engine.add_doc("Test content", {"source_file": "test.txt", "chunk_index": 0})
 
     assert vector_engine.metrics.chunks_created == initial_chunks + 1
@@ -229,7 +202,6 @@ def test_add_doc_updates_doc_size_metric(vector_engine):
     """Test that add_doc updates total_doc_size_bytes metric."""
     content = "Test content with specific length"
     initial_size = vector_engine.metrics.total_doc_size_bytes
-
     vector_engine.add_doc(content, {})
 
     assert vector_engine.metrics.total_doc_size_bytes == initial_size + len(content)
@@ -246,7 +218,6 @@ def test_add_doc_updates_last_doc_added_timestamp(vector_engine):
 
 def test_add_doc_with_whitespace_only_content_raises_error(vector_engine):
     """Test that add_doc with whitespace-only content raises ValueError."""
-
     with pytest.raises(ValueError, match="content cannot be empty"):
         vector_engine.add_doc("   ", {})
 
@@ -260,14 +231,11 @@ def test_add_doc_multiple_sequential():
         doc_id = engine.add_doc(f"Document {i}", {})
         doc_ids.append(doc_id)
 
-    assert len(engine.documents) == 5
-    assert len(engine.embeddings) == 5
-    assert len(engine.index_to_doc_id) == 5
-    assert len(engine.doc_id_to_index) == 5
+    assert engine.collection.count() == 5
 
-    for i, doc_id in enumerate(doc_ids):
-        assert engine.doc_id_to_index[doc_id] == i
-        assert engine.index_to_doc_id[i] == doc_id
+    for doc_id in doc_ids:
+        result = engine.collection.get(ids=[doc_id])
+        assert len(result["ids"]) == 1
 
 
 # =============================================================================
@@ -280,7 +248,6 @@ def test_get_doc_returns_document(vector_engine):
     content = "Test document content"
     metadata = {"key": "value"}
     doc_id = vector_engine.add_doc(content, metadata)
-
     doc = vector_engine.get_doc(doc_id)
 
     assert doc is not None
@@ -290,7 +257,6 @@ def test_get_doc_returns_document(vector_engine):
 
 def test_get_doc_returns_none_for_nonexistent_id(vector_engine):
     """Test that get_doc returns None for non-existent document."""
-
     doc = vector_engine.get_doc("nonexistent-uuid")
 
     assert doc is None
@@ -300,7 +266,6 @@ def test_get_doc_returns_none_for_deleted_doc(vector_engine):
     """Test that get_doc returns None for deleted documents."""
     doc_id = vector_engine.add_doc("Test content", {})
     vector_engine.delete_doc(doc_id)
-
     doc = vector_engine.get_doc(doc_id)
 
     assert doc is None
@@ -310,7 +275,6 @@ def test_get_doc_includes_content(vector_engine):
     """Test that returned document includes content."""
     content = "Specific test content"
     doc_id = vector_engine.add_doc(content, {})
-
     doc = vector_engine.get_doc(doc_id)
 
     assert doc
@@ -322,7 +286,6 @@ def test_get_doc_includes_metadata(vector_engine):
     """Test that returned document includes metadata."""
     metadata = {"author": "Alice", "topic": "Testing"}
     doc_id = vector_engine.add_doc("Test content", metadata)
-
     doc = vector_engine.get_doc(doc_id)
 
     assert doc
@@ -338,7 +301,6 @@ def test_get_doc_includes_metadata(vector_engine):
 def test_delete_doc_returns_true_for_existing_doc(vector_engine):
     """Test that delete_doc returns True when deleting existing document."""
     doc_id = vector_engine.add_doc("Test content", {})
-
     result = vector_engine.delete_doc(doc_id)
 
     assert result is True
@@ -346,36 +308,27 @@ def test_delete_doc_returns_true_for_existing_doc(vector_engine):
 
 def test_delete_doc_returns_false_for_nonexistent_doc(vector_engine):
     """Test that delete_doc returns False for non-existent document."""
-
     result = vector_engine.delete_doc("nonexistent-uuid")
 
     assert result is False
 
 
-def test_delete_doc_adds_to_deleted_docs_set(vector_engine):
-    """Test that delete_doc adds document ID to deleted_docs set."""
-    doc_ids = [vector_engine.add_doc(f"Test content {i}", {}) for i in range(10)]
+def test_delete_doc_removes_from_collection(vector_engine):
+    """Test that delete_doc removes document from ChromaDB collection."""
+    doc_id = vector_engine.add_doc("Test content", {})
 
-    vector_engine.deleted_docs.add(doc_ids[0])
+    initial_count = vector_engine.collection.count()
+    vector_engine.delete_doc(doc_id)
+    assert vector_engine.collection.count() == initial_count - 1
 
-    assert doc_ids[0] in vector_engine.deleted_docs
-
-
-def test_delete_doc_lazy_deletion(vector_engine):
-    """Test that delete_doc doesn't immediately remove from storage."""
-    doc_ids = [vector_engine.add_doc(f"Test content {i}", {}) for i in range(10)]
-
-    vector_engine.deleted_docs.add(doc_ids[0])
-
-    assert doc_ids[0] in vector_engine.documents
-    assert doc_ids[0] in vector_engine.deleted_docs
+    result = vector_engine.collection.get(ids=[doc_id])
+    assert len(result["ids"]) == 0
 
 
 def test_delete_doc_increments_metrics(vector_engine):
     """Test that delete_doc increments docs_deleted metric."""
     doc_id = vector_engine.add_doc("Test content", {})
     initial_deleted = vector_engine.metrics.docs_deleted
-
     vector_engine.delete_doc(doc_id)
 
     assert vector_engine.metrics.docs_deleted == initial_deleted + 1
@@ -384,7 +337,6 @@ def test_delete_doc_increments_metrics(vector_engine):
 def test_delete_same_doc_twice_returns_false(vector_engine):
     """Test that deleting same document twice returns False on second attempt."""
     doc_id = vector_engine.add_doc("Test content", {})
-
     result1 = vector_engine.delete_doc(doc_id)
     result2 = vector_engine.delete_doc(doc_id)
 
@@ -893,214 +845,27 @@ def test_delete_file_with_mixed_chunks(vector_engine):
 
 
 # =============================================================================
-# should_compact() Tests
-# =============================================================================
-
-
-def test_should_compact_returns_boolean(vector_engine):
-    """Test that should_compact returns a boolean."""
-
-    result = vector_engine._should_compact()
-
-    assert isinstance(result, bool)
-
-
-def test_should_compact_false_when_no_deletions(vector_engine):
-    """Test that should_compact returns False when no documents deleted."""
-    vector_engine.add_doc("Document 1", {})
-    vector_engine.add_doc("Document 2", {})
-
-    result = vector_engine._should_compact()
-
-    assert result is False
-
-
-def test_should_compact_true_when_threshold_exceeded(vector_engine):
-    """Test that should_compact returns True when deleted ratio exceeds threshold."""
-    vector_engine.compaction_threshold = 0.25
-    doc_ids = [vector_engine.add_doc(f"Document {i}", {}) for i in range(10)]
-
-    for doc_id in doc_ids[:3]:
-        vector_engine.deleted_docs.add(doc_id)
-
-    result = vector_engine._should_compact()
-
-    assert result is True
-
-
-def test_should_compact_respects_threshold(vector_engine):
-    """Test that should_compact respects compaction_threshold setting."""
-    vector_engine.compaction_threshold = 0.5
-
-    doc_ids = [vector_engine.add_doc(f"Document {i}", {}) for i in range(10)]
-
-    for doc_id in doc_ids[:4]:
-        vector_engine.deleted_docs.add(doc_id)
-
-    assert vector_engine._should_compact() is False
-
-    vector_engine.deleted_docs.add(doc_ids[4])
-    assert vector_engine._should_compact() is False
-
-    vector_engine.deleted_docs.add(doc_ids[5])
-    assert vector_engine._should_compact() is True
-
-
-# =============================================================================
-# compact() Tests
-# =============================================================================
-
-
-def test_compact_removes_deleted_documents(vector_engine):
-    """Test that compact physically removes deleted documents."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
-    doc_id2 = vector_engine.add_doc("Document 2", {})
-    doc_id3 = vector_engine.add_doc("Document 3", {})
-
-    vector_engine.deleted_docs.add(doc_id2)
-    vector_engine._compact()
-
-    assert doc_id2 not in vector_engine.documents
-
-
-def test_compact_rebuilds_index_mappings(vector_engine):
-    """Test that compact rebuilds index_to_doc_id and doc_id_to_index."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
-    doc_id2 = vector_engine.add_doc("Document 2", {})
-    doc_id3 = vector_engine.add_doc("Document 3", {})
-
-    vector_engine.deleted_docs.add(doc_id2)
-    vector_engine._compact()
-
-    assert len(vector_engine.index_to_doc_id) == 2
-    assert doc_id1 in vector_engine.index_to_doc_id
-    assert doc_id3 in vector_engine.index_to_doc_id
-    assert doc_id2 not in vector_engine.index_to_doc_id
-
-    assert doc_id1 in vector_engine.doc_id_to_index
-    assert doc_id3 in vector_engine.doc_id_to_index
-    assert doc_id2 not in vector_engine.doc_id_to_index
-
-
-def test_compact_clears_deleted_docs_set(vector_engine):
-    """Test that compact clears the deleted_docs set."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
-    doc_id2 = vector_engine.add_doc("Document 2", {})
-
-    vector_engine.deleted_docs.add(doc_id1)
-    assert len(vector_engine.deleted_docs) > 0
-
-    vector_engine._compact()
-
-    assert len(vector_engine.deleted_docs) == 0
-
-
-def test_compact_preserves_active_documents(vector_engine):
-    """Test that compact doesn't affect non-deleted documents."""
-    doc_id1 = vector_engine.add_doc("Document 1", {"key": "value1"})
-    doc_id2 = vector_engine.add_doc("Document 2", {"key": "value2"})
-    doc_id3 = vector_engine.add_doc("Document 3", {"key": "value3"})
-
-    vector_engine.deleted_docs.add(doc_id2)
-    vector_engine._compact()
-
-    assert doc_id1 in vector_engine.documents
-    assert vector_engine.documents[doc_id1]["content"] == "Document 1"
-    assert vector_engine.documents[doc_id1]["metadata"] == {"key": "value1"}
-
-    assert doc_id3 in vector_engine.documents
-    assert vector_engine.documents[doc_id3]["content"] == "Document 3"
-    assert vector_engine.documents[doc_id3]["metadata"] == {"key": "value3"}
-
-
-def test_compact_updates_metrics(vector_engine):
-    """Test that compact increments compactions_performed metric."""
-    doc_id = vector_engine.add_doc("Document", {})
-    initial_compactions = vector_engine.metrics.compactions_performed
-
-    vector_engine.delete_doc(doc_id)
-
-    assert vector_engine.metrics.compactions_performed == initial_compactions + 1
-
-
-def test_compact_updates_timestamp(vector_engine):
-    """Test that compact updates last_compaction_at timestamp."""
-    doc_id = vector_engine.add_doc("Document", {})
-    assert vector_engine.metrics.last_compaction_at is None
-
-    vector_engine.delete_doc(doc_id)
-
-    assert vector_engine.metrics.last_compaction_at is not None
-
-
-def test_compact_with_no_deletions(vector_engine):
-    """Test that compact handles case with no deleted documents."""
-    vector_engine.add_doc("Document 1", {})
-    vector_engine.add_doc("Document 2", {})
-    initial_count = len(vector_engine.documents)
-
-    vector_engine._compact()
-
-    assert len(vector_engine.documents) == initial_count
-    assert len(vector_engine.deleted_docs) == 0
-
-
-# =============================================================================
 # build() Tests
 # =============================================================================
 
 
-def test_build_reconstructs_embeddings(vector_engine):
-    """Test that build regenerates all embeddings from documents."""
+def test_build_is_noop(vector_engine):
+    """Test that build is now a no-op with ChromaDB."""
     doc_id1 = vector_engine.add_doc("Document 1", {})
     doc_id2 = vector_engine.add_doc("Document 2", {})
-    doc_id3 = vector_engine.add_doc("Document 3", {})
 
-    vector_engine.deleted_docs.add(doc_id2)
-    initial_embedding_count = len(vector_engine.embeddings)
-
+    initial_count = vector_engine.collection.count()
     vector_engine.build()
 
-    assert len(vector_engine.embeddings) == 2
-    assert len(vector_engine.embeddings) < initial_embedding_count
-
-
-def test_build_preserves_documents(vector_engine):
-    """Test that build doesn't modify document storage."""
-    doc_id1 = vector_engine.add_doc("Document 1", {"key": "value1"})
-    doc_id2 = vector_engine.add_doc("Document 2", {"key": "value2"})
-
-    original_content1 = vector_engine.documents[doc_id1]["content"]
-    original_content2 = vector_engine.documents[doc_id2]["content"]
-
-    vector_engine.build()
-
-    assert vector_engine.documents[doc_id1]["content"] == original_content1
-    assert vector_engine.documents[doc_id2]["content"] == original_content2
-
-
-def test_build_updates_index_mappings(vector_engine):
-    """Test that build recreates index mappings."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
-    doc_id2 = vector_engine.add_doc("Document 2", {})
-    doc_id3 = vector_engine.add_doc("Document 3", {})
-
-    vector_engine.deleted_docs.add(doc_id2)
-    vector_engine.build()
-
-    assert len(vector_engine.index_to_doc_id) == 2
-    assert doc_id1 in vector_engine.index_to_doc_id
-    assert doc_id3 in vector_engine.index_to_doc_id
-    assert doc_id2 not in vector_engine.index_to_doc_id
+    # Build should not change anything
+    assert vector_engine.collection.count() == initial_count
 
 
 def test_build_with_empty_index(vector_engine):
     """Test that build handles empty index."""
     vector_engine.build()
 
-    assert len(vector_engine.embeddings) == 0
-    assert len(vector_engine.documents) == 0
-    assert len(vector_engine.index_to_doc_id) == 0
+    assert vector_engine.collection.count() == 0
 
 
 # =============================================================================
@@ -1108,22 +873,8 @@ def test_build_with_empty_index(vector_engine):
 # =============================================================================
 
 
-def test_save_creates_files(vector_engine):
-    """Test that save creates metadata and embeddings files."""
-    vector_engine.add_doc("Test document", {})
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        vector_engine.save(tmpdir)
-
-        metadata_path = os.path.join(tmpdir, VFGConfig.METADATA_FILENAME)
-        embeddings_path = os.path.join(tmpdir, VFGConfig.EMBEDDINGS_FILENAME)
-
-        assert os.path.exists(metadata_path)
-        assert os.path.exists(embeddings_path)
-
-
-def test_save_returns_metrics(vector_engine):
-    """Test that save returns dict with save metrics."""
+def test_save_returns_status(vector_engine):
+    """Test that save returns dict with status (now a no-op)."""
     vector_engine.add_doc("Test document", {})
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -1131,16 +882,12 @@ def test_save_returns_metrics(vector_engine):
 
         assert "status" in result
         assert result["status"] == "saved"
-        assert "directory" in result
-        assert "metadata_size_mb" in result
-        assert "embeddings_size_mb" in result
-        assert "total_size_mb" in result
-        assert "documents_saved" in result
-        assert "embeddings_saved" in result
+        assert "note" in result
+        assert "ChromaDB auto-persists" in result["note"]
 
 
 def test_save_to_custom_directory(vector_engine):
-    """Test that save can use custom directory path."""
+    """Test that save accepts custom directory path."""
     vector_engine.add_doc("Test document", {})
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -1148,208 +895,17 @@ def test_save_to_custom_directory(vector_engine):
         result = vector_engine.save(custom_dir)
 
         assert result["status"] == "saved"
-        assert result["directory"] == custom_dir
-        assert os.path.exists(custom_dir)
 
 
-def test_load_restores_documents(vector_engine, shared_model):
-    """Test that load restores all saved documents."""
-    doc_id = vector_engine.add_doc("Test document", {"key": "value"})
-
+def test_load_returns_status(vector_engine):
+    """Test that load returns dict with status (now a no-op)."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        vector_engine.save(tmpdir)
-
-        new_engine = object.__new__(VectorEngine)
-        new_engine.__dict__.update(
-            {
-                "model": shared_model,
-                "documents": {},
-                "embeddings": np.array([]),
-                "index_to_doc_id": [],
-                "doc_id_to_index": {},
-                "deleted_docs": set(),
-                "metrics": EngineMetrics(),
-                "compaction_threshold": VFGConfig.COMPACTION_THRESHOLD,
-            }
-        )
-        new_engine.load(tmpdir)
-
-        assert doc_id in new_engine.documents
-        assert new_engine.documents[doc_id]["content"] == "Test document"
-        assert new_engine.documents[doc_id]["metadata"] == {"key": "value"}
-
-
-def test_load_restores_embeddings(vector_engine, shared_model):
-    """Test that load restores all saved embeddings."""
-    vector_engine.add_doc("Document 1", {})
-    vector_engine.add_doc("Document 2", {})
-    original_count = len(vector_engine.embeddings)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        vector_engine.save(tmpdir)
-
-        new_engine = object.__new__(VectorEngine)
-        new_engine.__dict__.update(
-            {
-                "model": shared_model,
-                "documents": {},
-                "embeddings": np.array([]),
-                "index_to_doc_id": [],
-                "doc_id_to_index": {},
-                "deleted_docs": set(),
-                "metrics": EngineMetrics(),
-                "compaction_threshold": VFGConfig.COMPACTION_THRESHOLD,
-            }
-        )
-        new_engine.load(tmpdir)
-
-        assert len(new_engine.embeddings) == original_count
-        assert len(new_engine.embeddings) == 2
-
-
-def test_load_restores_index_mappings(vector_engine, shared_model):
-    """Test that load restores index mappings correctly."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
-    doc_id2 = vector_engine.add_doc("Document 2", {})
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        vector_engine.save(tmpdir)
-
-        new_engine = object.__new__(VectorEngine)
-        new_engine.__dict__.update(
-            {
-                "model": shared_model,
-                "documents": {},
-                "embeddings": np.array([]),
-                "index_to_doc_id": [],
-                "doc_id_to_index": {},
-                "deleted_docs": set(),
-                "metrics": EngineMetrics(),
-                "compaction_threshold": VFGConfig.COMPACTION_THRESHOLD,
-            }
-        )
-        new_engine.load(tmpdir)
-
-        assert len(new_engine.index_to_doc_id) == 2
-        assert doc_id1 in new_engine.doc_id_to_index
-        assert doc_id2 in new_engine.doc_id_to_index
-
-
-def test_load_restores_deleted_docs(vector_engine, shared_model):
-    """Test that load restores deleted_docs set."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
-    doc_id2 = vector_engine.add_doc("Document 2", {})
-    vector_engine.delete_doc(doc_id1)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        vector_engine.save(tmpdir)
-
-        new_engine = object.__new__(VectorEngine)
-        new_engine.__dict__.update(
-            {
-                "model": shared_model,
-                "documents": {},
-                "embeddings": np.array([]),
-                "index_to_doc_id": [],
-                "doc_id_to_index": {},
-                "deleted_docs": set(),
-                "metrics": EngineMetrics(),
-                "compaction_threshold": VFGConfig.COMPACTION_THRESHOLD,
-            }
-        )
-        new_engine.load(tmpdir)
-
-        assert len(new_engine.deleted_docs) == 0
-        assert doc_id1 not in new_engine.documents
-
-
-def test_load_returns_metrics(vector_engine, shared_model):
-    """Test that load returns dict with load metrics."""
-    vector_engine.add_doc("Document", {})
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        vector_engine.save(tmpdir)
-
-        new_engine = object.__new__(VectorEngine)
-        new_engine.__dict__.update(
-            {
-                "model": shared_model,
-                "documents": {},
-                "embeddings": np.array([]),
-                "index_to_doc_id": [],
-                "doc_id_to_index": {},
-                "deleted_docs": set(),
-                "metrics": EngineMetrics(),
-                "compaction_threshold": VFGConfig.COMPACTION_THRESHOLD,
-            }
-        )
-        result = new_engine.load(tmpdir)
+        result = vector_engine.load(tmpdir)
 
         assert "status" in result
         assert result["status"] == "loaded"
-        assert "directory" in result
-        assert "documents_loaded" in result
-        assert "embeddings_loaded" in result
-        assert "deleted_docs" in result
-        assert "version" in result
-
-
-def test_save_and_load_roundtrip(vector_engine, shared_model):
-    """Test that save followed by load preserves all data."""
-    doc_id1 = vector_engine.add_doc("First document", {"author": "Alice"})
-    doc_id2 = vector_engine.add_doc("Second document", {"author": "Bob"})
-
-    vector_engine.search("document")
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        vector_engine.save(tmpdir)
-
-        new_engine = object.__new__(VectorEngine)
-        new_engine.__dict__.update(
-            {
-                "model": shared_model,
-                "documents": {},
-                "embeddings": np.array([]),
-                "index_to_doc_id": [],
-                "doc_id_to_index": {},
-                "deleted_docs": set(),
-                "metrics": EngineMetrics(),
-                "compaction_threshold": VFGConfig.COMPACTION_THRESHOLD,
-            }
-        )
-        new_engine.load(tmpdir)
-        doc1 = new_engine.get_doc(doc_id1)
-        doc2 = new_engine.get_doc(doc_id2)
-
-        assert doc1 and doc2
-        assert len(new_engine.documents) == 2
-        assert doc1["content"] == "First document"
-        assert doc2["content"] == "Second document"
-
-        results = new_engine.search("document")
-        assert len(results) == 2
-
-
-def test_load_raises_error_when_files_missing(vector_engine):
-    """Test that load raises FileNotFoundError when files don't exist."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        nonexistent_dir = os.path.join(tmpdir, "nonexistent")
-
-        with pytest.raises(FileNotFoundError):
-            vector_engine.load(nonexistent_dir)
-
-
-def test_save_creates_directory_if_not_exists(vector_engine):
-    """Test that save creates the target directory if it doesn't exist."""
-    vector_engine.add_doc("Document", {})
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        save_dir = os.path.join(tmpdir, "nested", "path", "data")
-
-        vector_engine.save(save_dir)
-
-        assert os.path.exists(save_dir)
-        assert os.path.exists(os.path.join(save_dir, "metadata.json"))
+        assert "note" in result
+        assert "ChromaDB auto-loads" in result["note"]
 
 
 def test_save_with_empty_index(vector_engine):
@@ -1358,33 +914,6 @@ def test_save_with_empty_index(vector_engine):
         result = vector_engine.save(tmpdir)
 
         assert result["status"] == "saved"
-        assert result["documents_saved"] == 0
-        assert result["embeddings_saved"] == 0
-
-
-def test_load_with_empty_saved_index(vector_engine, shared_model):
-    """Test that load works when loading an empty saved index."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        vector_engine.save(tmpdir)
-
-        new_engine = object.__new__(VectorEngine)
-        new_engine.__dict__.update(
-            {
-                "model": shared_model,
-                "documents": {},
-                "embeddings": np.array([]),
-                "index_to_doc_id": [],
-                "doc_id_to_index": {},
-                "deleted_docs": set(),
-                "metrics": EngineMetrics(),
-                "compaction_threshold": VFGConfig.COMPACTION_THRESHOLD,
-            }
-        )
-        result = new_engine.load(tmpdir)
-
-        assert result["status"] == "loaded"
-        assert result["documents_loaded"] == 0
-        assert result["embeddings_loaded"] == 0
 
 
 # =============================================================================
@@ -1524,28 +1053,28 @@ def test_get_index_stats_includes_document_counts(vector_engine):
     assert "deleted_documents" in stats
     assert stats["total_documents"] == 2
     assert stats["total_embeddings"] == 2
+    assert stats["deleted_documents"] == 0  # ChromaDB deletes immediately
 
 
 def test_get_index_stats_includes_deleted_ratio(vector_engine):
-    """Test that index stats include deleted ratio calculation."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
+    """Test that index stats include deleted ratio (always 0 with ChromaDB)."""
+    vector_engine.add_doc("Document 1", {})
     vector_engine.add_doc("Document 2", {})
-    vector_engine.deleted_docs.add(doc_id1)
 
     stats = vector_engine.get_index_stats()
 
     assert "deleted_ratio" in stats
-    assert stats["deleted_ratio"] == 0.5
+    assert stats["deleted_ratio"] == 0.0  # ChromaDB deletes immediately
 
 
 def test_get_index_stats_includes_compaction_status(vector_engine):
-    """Test that index stats include needs_compaction flag."""
+    """Test that index stats include needs_compaction flag (always False with ChromaDB)."""
     vector_engine.add_doc("Document 1", {})
 
     stats = vector_engine.get_index_stats()
 
     assert "needs_compaction" in stats
-    assert isinstance(stats["needs_compaction"], bool)
+    assert stats["needs_compaction"] is False  # ChromaDB handles internally
 
 
 def test_get_index_stats_includes_embedding_dimension(vector_engine):
@@ -1556,52 +1085,6 @@ def test_get_index_stats_includes_embedding_dimension(vector_engine):
 
     assert "embedding_dimension" in stats
     assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
-
-
-# =============================================================================
-# cosine_similarity() Tests
-# =============================================================================
-
-
-def test_cosine_similarity_identical_vectors(vector_engine):
-    """Test that cosine similarity of identical normalized vectors is 1.0."""
-    vec = np.array([1.0, 0.0, 0.0])
-
-    similarity = vector_engine._cosine_similarity(vec, vec)
-
-    assert np.isclose(similarity, 1.0)
-
-
-def test_cosine_similarity_orthogonal_vectors(vector_engine):
-    """Test that cosine similarity of orthogonal vectors is close to 0."""
-    vec1 = np.array([1.0, 0.0, 0.0])
-    vec2 = np.array([0.0, 1.0, 0.0])
-
-    similarity = vector_engine._cosine_similarity(vec1, vec2)
-
-    assert np.isclose(similarity, 0.0, atol=1e-6)
-
-
-def test_cosine_similarity_opposite_vectors(vector_engine):
-    """Test that cosine similarity of opposite vectors is -1.0."""
-    vec1 = np.array([1.0, 0.0, 0.0])
-    vec2 = np.array([-1.0, 0.0, 0.0])
-
-    similarity = vector_engine._cosine_similarity(vec1, vec2)
-
-    assert np.isclose(similarity, -1.0)
-
-
-def test_cosine_similarity_normalized_embeddings(vector_engine):
-    """Test that cosine_similarity works with pre-normalized embeddings."""
-    vec1 = np.array([3.0, 4.0])
-    vec1 = vec1 / np.linalg.norm(vec1)
-    vec2 = np.array([1.0, 1.0])
-    vec2 = vec2 / np.linalg.norm(vec2)
-
-    similarity = vector_engine._cosine_similarity(vec1, vec2)
-
-    assert np.isclose(similarity, np.dot(vec1, vec2))
 
 
 # =============================================================================
@@ -1616,7 +1099,6 @@ def test_engine_metrics_initialization():
     assert metrics.total_queries == 0
     assert metrics.docs_added == 0
     assert metrics.docs_deleted == 0
-    assert metrics.compactions_performed == 0
     assert metrics.chunks_created == 0
     assert metrics.files_uploaded == 0
     assert metrics.total_query_time_ms == 0.0
@@ -1697,8 +1179,11 @@ def test_multiple_operations_metrics_accuracy(vector_engine):
     for i in range(3):
         vector_engine.search("document")
 
-    doc_ids = list(vector_engine.documents.keys())
-    for doc_id in doc_ids[:2]:
+    # Get all doc IDs
+    all_docs = vector_engine.collection.get()
+    doc_ids = all_docs["ids"][:2]
+
+    for doc_id in doc_ids:
         vector_engine.delete_doc(doc_id)
 
     metrics = vector_engine.get_metrics()
@@ -1706,70 +1191,3 @@ def test_multiple_operations_metrics_accuracy(vector_engine):
     assert metrics["docs_deleted"] >= 2
     assert metrics["total_queries"] == 3
     assert metrics["active_documents"] <= 3
-
-
-def test_compaction_triggered_automatically(vector_engine):
-    """Test that compaction triggers automatically when threshold exceeded."""
-    vector_engine.compaction_threshold = 0.25
-
-    doc_ids = [vector_engine.add_doc(f"Document {i}", {}) for i in range(10)]
-
-    for doc_id in doc_ids[:3]:
-        vector_engine.delete_doc(doc_id)
-
-    assert (
-        len(vector_engine.deleted_docs) == 0 or vector_engine._should_compact() is False
-    )
-
-
-def test_search_after_compaction(vector_engine):
-    """Test that search works correctly after compaction."""
-    doc_id1 = vector_engine.add_doc("Keep this document", {"status": "keep"})
-    doc_id2 = vector_engine.add_doc("Delete this document", {"status": "delete"})
-    doc_id3 = vector_engine.add_doc("Keep this one too", {"status": "keep"})
-
-    vector_engine.deleted_docs.add(doc_id2)
-
-    vector_engine._compact()
-
-    results = vector_engine.search("document")
-    assert len(results) == 2
-
-    result_ids = [r.id for r in results]
-    assert doc_id1 in result_ids
-    assert doc_id3 in result_ids
-    assert doc_id2 not in result_ids
-
-
-def test_save_load_with_deleted_documents(vector_engine, shared_model):
-    """Test that save/load preserves deleted documents state."""
-    doc_id1 = vector_engine.add_doc("Active document", {})
-    doc_id2 = vector_engine.add_doc("Deleted document", {})
-    doc_id3 = vector_engine.add_doc("Another active doc", {})
-
-    vector_engine.deleted_docs.add(doc_id2)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        save_result = vector_engine.save(tmpdir)
-        assert save_result["documents_saved"] == 2
-
-        new_engine = object.__new__(VectorEngine)
-        new_engine.__dict__.update(
-            {
-                "model": shared_model,
-                "documents": {},
-                "embeddings": np.array([]),
-                "index_to_doc_id": [],
-                "doc_id_to_index": {},
-                "deleted_docs": set(),
-                "metrics": EngineMetrics(),
-                "compaction_threshold": VFGConfig.COMPACTION_THRESHOLD,
-            }
-        )
-        new_engine.load(tmpdir)
-
-        assert len(new_engine.documents) == 2
-        assert doc_id1 in new_engine.documents
-        assert doc_id3 in new_engine.documents
-        assert doc_id2 not in new_engine.documents
-        assert len(new_engine.deleted_docs) == 0

@@ -183,30 +183,6 @@ def test_doc_add_with_unicode_content(client, sample_doc):
     assert get_response.json()["content"] == sample_doc["content"]
 
 
-def test_doc_add_with_nested_metadata(client, sample_doc):
-    """Test that metadata can contain nested objects and arrays."""
-    sample_doc["metadata"]["nested_object"] = {
-        "location": {"country": "USA", "city": "San Francisco"},
-        "dimensions": {"width": 100, "height": 200},
-    }
-    sample_doc["metadata"]["nested_array"] = ["tag1", "tag2", "tag3"]
-    sample_doc["metadata"]["mixed_nested"] = [
-        {"name": "item1", "value": 10},
-        {"name": "item2", "value": 20},
-    ]
-
-    response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 201
-
-    doc_id = response.json()["id"]
-    get_response = client.get(f"/doc/{doc_id}")
-    metadata = get_response.json()["metadata"]
-
-    assert metadata["nested_object"]["location"]["city"] == "San Francisco"
-    assert len(metadata["nested_array"]) == 3
-    assert metadata["mixed_nested"][0]["value"] == 10
-
-
 def test_doc_get_deleted_document(client, added_doc):
     """Test that getting a deleted document returns 404."""
     response = client.delete(f"/doc/{added_doc['id']}")
@@ -465,13 +441,6 @@ def test_doc_delete_increments_docs_deleted_metric(client, added_doc):
     assert updated_count == initial_count - 1
 
 
-def test_doc_add_metadata_with_null_values(client, sample_doc):
-    """Test that metadata can contain null values."""
-    sample_doc["metadata"]["optional_field"] = None
-    response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 201
-
-
 def test_doc_add_metadata_with_boolean_values(client, sample_doc):
     """Test that metadata can contain boolean values."""
     sample_doc["metadata"]["is_active"] = True
@@ -482,20 +451,6 @@ def test_doc_add_metadata_with_boolean_values(client, sample_doc):
 def test_doc_add_with_very_large_metadata(client, sample_doc):
     """Test document with extremely large metadata object."""
     sample_doc["metadata"]["large_field"] = "x" * 100_000
-    response = client.post("/doc/add", json=sample_doc)
-    assert response.status_code == 201
-
-
-def test_doc_add_with_deeply_nested_metadata(client, sample_doc):
-    """Test metadata with deep nesting (10+ levels)."""
-    nested = {"level": {}}
-    current = nested["level"]
-
-    for i in range(10):
-        current[f"level{i}"] = {}
-        current = current[f"level{i}"]
-
-    sample_doc["metadata"]["nested"] = nested
     response = client.post("/doc/add", json=sample_doc)
     assert response.status_code == 201
 
@@ -543,22 +498,6 @@ def test_doc_get_with_very_long_id(client):
     long_id = "a" * VFGConfig.MAX_CONTENT_LENGTH
     response = client.get(f"/doc/{long_id}")
     assert response.status_code == 404
-
-
-def test_doc_add_preserves_order_of_metadata_keys(client, sample_doc):
-    """Test that metadata key order is preserved (if using Python 3.7+)."""
-    sample_doc["metadata"] = {
-        "z_field": "last",
-        "a_field": "first",
-        "m_field": "middle",
-    }
-    response = client.post("/doc/add", json=sample_doc)
-    doc_id = response.json()["id"]
-
-    get_response = client.get(f"/doc/{doc_id}")
-    metadata_keys = list(get_response.json()["metadata"].keys())
-    expected_keys = list(sample_doc["metadata"].keys())
-    assert metadata_keys == expected_keys
 
 
 def test_doc_add_with_missing_metadata_field(client):

@@ -38,13 +38,6 @@ class VFGConfig:
     """Maximum filename length (including extension)."""
 
     # =============================================================================
-    # Index Management
-    # =============================================================================
-
-    COMPACTION_THRESHOLD: float = 0.25
-    """Ratio of deleted docs to total embeddings that triggers auto-compaction."""
-
-    # =============================================================================
     # Content Validation
     # =============================================================================
 
@@ -98,6 +91,16 @@ class VFGConfig:
     """Tuple of supported file extensions for upload."""
 
     # =============================================================================
+    # ChromaDB Configuration
+    # =============================================================================
+
+    CHROMA_PERSIST_DIR: str = "chroma_data"
+    """Directory name for ChromaDB persistent storage (relative to vector_engine.py)."""
+
+    CHROMA_COLLECTION_NAME: str = "vectorforge"
+    """Default ChromaDB collection name."""
+
+    # =============================================================================
     # Configuration Class Validator
     # =============================================================================
 
@@ -130,9 +133,6 @@ class VFGConfig:
         assert isinstance(cls.MAX_FILENAME_LENGTH, int)
         assert cls.MAX_FILENAME_LENGTH > 0
         assert cls.MAX_FILENAME_LENGTH <= cls.MAX_PATH_LEN
-
-        assert isinstance(cls.COMPACTION_THRESHOLD, float)
-        assert 0 < cls.COMPACTION_THRESHOLD < 1.0
 
         assert isinstance(cls.MIN_CONTENT_LENGTH, int)
         assert cls.MIN_CONTENT_LENGTH > 0
