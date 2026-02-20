@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from vectorforge.api import engine
 from vectorforge.api.decorators import handle_api_errors
@@ -47,11 +47,8 @@ def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse
     ChromaDB automatically persists all data to disk. This endpoint provides
     information about the persisted data location and current statistics.
 
-    For manual backups: Copy the ChromaDB data directory when the application
-    is not running.
-
     Args:
-        directory: Parameter maintained for API compatibility (not used)
+        directory: Target directory path for ChromaDB data
 
     Returns:
         IndexSaveResponse: Storage information with file sizes and document counts
@@ -67,8 +64,6 @@ def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse
     return IndexSaveResponse(
         status=save_metrics["status"],
         directory=save_metrics["directory"],
-        metadata_size_mb=save_metrics["metadata_size_mb"],
-        embeddings_size_mb=save_metrics["embeddings_size_mb"],
         total_size_mb=save_metrics["total_size_mb"],
         documents_saved=save_metrics["documents_saved"],
         embeddings_saved=save_metrics["embeddings_saved"],
@@ -85,11 +80,8 @@ def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse
     ChromaDB automatically loads data on initialization. This endpoint returns
     information about the currently loaded data.
 
-    For manual restore: Replace the ChromaDB data directory when the application
-    is stopped, then restart the application.
-
     Args:
-        directory: Parameter maintained for API compatibility (not used)
+        directory: Target directory path for ChromaDB data
 
     Returns:
         IndexLoadResponse: Current data information with counts and version

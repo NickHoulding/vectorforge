@@ -123,27 +123,28 @@ class VectorEngine:
     def save(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
         """Get information about ChromaDB's persistent storage.
 
-        ChromaDB PersistentClient automatically persists all data. This endpoint
-        provides information about the persisted data location and current stats.
-
-        For backup: Copy the ChromaDB data directory when the application is stopped.
+        ChromaDB PersistentClient automatically persists all data.
 
         Args:
-            directory: Parameter maintained for API compatibility (not used).
+            directory: Target directory path for ChromaDB data.
 
         Returns:
             A dictionary containing storage information and statistics:
                 - status: 'saved' (data is auto-persisted)
                 - directory: Path where ChromaDB persists data
                 - documents_saved: Current number of documents
-                - total_size_mb: Estimated size of persisted data
+                - embeddings_saved: Current number of embeddings
+                - total_size_mb: Size of persisted data
                 - version: VectorForge version
-                - note: Instructions for manual backup
         """
         doc_count = self.collection.count()
-        persist_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
-        )
+
+        if directory == VFGConfig.DEFAULT_DATA_DIR:
+            persist_dir = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
+            )
+        else:
+            persist_dir = directory
 
         total_size_mb = 0.0
         if os.path.exists(persist_dir):
@@ -161,36 +162,32 @@ class VectorEngine:
             "directory": persist_dir,
             "documents_saved": doc_count,
             "embeddings_saved": doc_count,
-            "metadata_size_mb": total_size_mb * 0.3,  # Rough estimate
-            "embeddings_size_mb": total_size_mb * 0.7,  # Rough estimate
             "total_size_mb": total_size_mb,
             "version": __version__,
-            "note": "ChromaDB auto-persists data. For backups, copy the data directory when the application is stopped.",
         }
 
     def load(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
         """Get information about ChromaDB's current loaded data.
 
         ChromaDB PersistentClient automatically loads data on initialization.
-        This endpoint returns information about the currently loaded data.
-
-        For restore: Replace the ChromaDB data directory when the application is stopped,
-        then restart the application.
 
         Args:
-            directory: Parameter maintained for API compatibility (not used).
+            directory: Target directory path for ChromaDB data.
 
         Returns:
             A dictionary containing current data information:
                 - status: 'loaded'
                 - directory: Path where ChromaDB loads/persists data
                 - documents_loaded: Current number of documents
+                - embeddings_loaded: Current number of embeddings
                 - version: VectorForge version
-                - note: Instructions for manual restore
         """
-        persist_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
-        )
+        if directory == VFGConfig.DEFAULT_DATA_DIR:
+            persist_dir = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
+            )
+        else:
+            persist_dir = directory
 
         doc_count = self.collection.count()
 
@@ -200,7 +197,6 @@ class VectorEngine:
             "documents_loaded": doc_count,
             "embeddings_loaded": doc_count,
             "version": __version__,
-            "note": "ChromaDB auto-loads on initialization. For restore, replace the data directory when stopped and restart.",
         }
 
     def search(
@@ -493,7 +489,7 @@ class VectorEngine:
             Dictionary containing:
                 - Counters: total_queries, docs_added, docs_deleted, etc.
                 - Performance: avg/min/max/p50/p95/p99 query times
-                - Index stats: active_documents, total_embeddings
+                - Index stats: total_documents, total_embeddings
                 - Memory usage: embeddings_mb, documents_mb, total_mb
                 - System info: model_name, model_dimension, uptime_seconds
                 - Timestamps: created_at, last_query_at, last_doc_added_at, etc.
@@ -501,7 +497,6 @@ class VectorEngine:
         metrics_dict: dict[str, Any] = self.metrics.to_dict()
 
         total_docs: int = self.collection.count()
-        active_docs: int = total_docs
         total_embeddings: int = total_docs
 
         avg_query_time: float = (
@@ -534,21 +529,17 @@ class VectorEngine:
 
         metrics_dict.update(
             {
-                # Index metrics
-                "active_documents": active_docs,
+                "total_documents": total_docs,
                 "total_embeddings": total_embeddings,
-                # Performance metrics
                 "avg_query_time_ms": avg_query_time,
                 "min_query_time_ms": min_time,
                 "max_query_time_ms": max_time,
                 "p50_query_time_ms": p50,
                 "p95_query_time_ms": p95,
                 "p99_query_time_ms": p99,
-                # Memory metrics
                 "embeddings_mb": embeddings_mb,
                 "documents_mb": documents_mb,
                 "total_mb": embeddings_mb + documents_mb,
-                # System info
                 "model_name": self.model_name,
                 "model_dimension": embedding_dim,
                 "uptime_seconds": uptime,

@@ -858,8 +858,6 @@ def test_save_returns_status(vector_engine):
 
         assert "status" in result
         assert result["status"] == "saved"
-        assert "note" in result
-        assert "ChromaDB auto-persists" in result["note"]
 
 
 def test_save_to_custom_directory(vector_engine):
@@ -880,8 +878,6 @@ def test_load_returns_status(vector_engine):
 
         assert "status" in result
         assert result["status"] == "loaded"
-        assert "note" in result
-        assert "ChromaDB auto-loads" in result["note"]
 
 
 def test_save_with_empty_index(vector_engine):
@@ -913,7 +909,7 @@ def test_get_metrics_includes_all_categories(vector_engine):
 
     assert "total_queries" in metrics
     assert "docs_added" in metrics
-    assert "active_documents" in metrics
+    assert "total_documents" in metrics
     assert "model_name" in metrics
     assert "created_at" in metrics
 
@@ -939,10 +935,10 @@ def test_get_metrics_includes_document_stats(vector_engine):
 
     assert "docs_added" in metrics
     assert "docs_deleted" in metrics
-    assert "active_documents" in metrics
+    assert "total_documents" in metrics
     assert "total_embeddings" in metrics
     assert metrics["docs_added"] == 1
-    assert metrics["active_documents"] == 1
+    assert metrics["total_documents"] == 1
 
 
 def test_get_metrics_includes_memory_stats(vector_engine):
@@ -1143,4 +1139,4 @@ def test_multiple_operations_metrics_accuracy(vector_engine):
     assert metrics["docs_added"] == 5
     assert metrics["docs_deleted"] >= 2
     assert metrics["total_queries"] == 3
-    assert metrics["active_documents"] <= 3
+    assert metrics["total_documents"] <= 3

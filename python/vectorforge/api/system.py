@@ -69,7 +69,7 @@ def get_metrics() -> MetricsResponse:
     index_stats: dict[str, Any] = engine.get_index_stats()
 
     index_metrics: IndexMetrics = IndexMetrics(
-        total_documents=metrics["active_documents"],
+        total_documents=metrics["total_documents"],
         total_embeddings=metrics["total_embeddings"],
     )
     performance_metrics: PerformanceMetrics = PerformanceMetrics(

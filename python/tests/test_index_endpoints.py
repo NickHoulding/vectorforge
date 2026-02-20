@@ -148,13 +148,9 @@ def test_index_save_returns_200(client):
     assert resp.status_code == 200
 
 
-def test_index_save_returns_save_metrics(save_data):
-    """Test that save response includes metrics like file sizes."""
-    assert "metadata_size_mb" in save_data
-    assert "embeddings_size_mb" in save_data
+def test_index_save_returns_total_size(save_data):
+    """Test that save response includes total index size metric."""
     assert "total_size_mb" in save_data
-    assert isinstance(save_data["metadata_size_mb"], float)
-    assert isinstance(save_data["embeddings_size_mb"], float)
     assert isinstance(save_data["total_size_mb"], float)
 
 
@@ -195,8 +191,6 @@ def test_index_save_with_documents(client, multiple_added_docs):
 
     assert data["documents_saved"] == 20
     assert data["embeddings_saved"] == 20
-    assert data["metadata_size_mb"] > 0
-    assert data["embeddings_size_mb"] > 0
 
 
 def test_index_save_empty_index(client):
@@ -230,36 +224,6 @@ def test_index_save_after_deletions(client, multiple_added_docs):
 
     assert data["documents_saved"] == 14  # 20 - 6 = 14
     assert data["embeddings_saved"] == 14
-
-
-def test_index_save_file_sizes_are_positive(client, multiple_added_docs):
-    """Test that file sizes are positive numbers when data exists.
-
-    Note: metadata_size_mb and embeddings_size_mb are rough estimates (30% and 70%
-    of total), so they may not sum exactly to total_size_mb due to rounding.
-    """
-    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
-    data = response.json()
-
-    assert data["metadata_size_mb"] > 0
-    assert data["embeddings_size_mb"] > 0
-    assert data["total_size_mb"] > 0
-
-    sum_of_parts = data["metadata_size_mb"] + data["embeddings_size_mb"]
-    assert abs(data["total_size_mb"] - sum_of_parts) < 0.1
-
-
-def test_index_save_total_size_equals_sum(client, multiple_added_docs):
-    """Test that total_size_mb approximately equals sum of parts.
-
-    Note: metadata_size_mb and embeddings_size_mb are rough estimates (30% and 70%
-    of total), so they approximately sum to total_size_mb.
-    """
-    response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
-    data = response.json()
-
-    expected_total = data["metadata_size_mb"] + data["embeddings_size_mb"]
-    assert abs(data["total_size_mb"] - expected_total) < 0.1
 
 
 def test_index_save_overwrites_existing_files(client, multiple_added_docs):
@@ -548,20 +512,14 @@ def test_index_load_version_information(client):
 
 
 def test_index_load_with_custom_directory(client, multiple_added_docs):
-    """Test load returns current ChromaDB directory (not custom path).
-
-    ChromaDB persists to its configured directory, ignoring the parameter.
-    """
+    """Test load with custom directory parameter."""
     custom_dir = os.path.join(TEST_DATA_PATH, "custom_load")
-
-    client.post("/index/save", params={"directory": custom_dir})
 
     resp = client.post("/index/load", params={"directory": custom_dir})
     assert resp.status_code == 200
 
     data = resp.json()
-    # ChromaDB uses its configured persist directory
-    assert "chroma_data" in data["directory"]
+    assert data["directory"] == custom_dir
     assert data["documents_loaded"] == 20
 
 

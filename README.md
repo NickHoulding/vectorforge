@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Version](https://img.shields.io/badge/version-0.9.0-orange.svg)
 
-> A high-performance in-memory vector database with semantic search capabilities, built with FastAPI and sentence transformers.
+> A high-performance vector database with semantic search capabilities, powered by ChromaDB, built with FastAPI and sentence transformers.
 
 ---
 
@@ -34,20 +34,19 @@ Traditional keyword-based search systems struggle to understand the semantic mea
 VectorForge solves this by:
 - Converting documents into high-dimensional vector embeddings that capture semantic meaning
 - Enabling similarity-based search that finds conceptually related content regardless of exact wording
-- Providing a lightweight, embeddable vector database that doesn't require external infrastructure
+- Providing a lightweight, persistent vector database powered by ChromaDB
 - Offering real-time indexing and search with comprehensive metrics tracking
 
 ---
 
 ## What is VectorForge?
 
-VectorForge is a **production-ready, in-memory vector database** designed for semantic search applications. It combines the simplicity of a REST API with the power of transformer-based embeddings to enable intelligent document retrieval.
+VectorForge is a **production-ready vector database** designed for semantic search applications. It combines the simplicity of a REST API with the power of transformer-based embeddings and ChromaDB's persistent storage to enable intelligent document retrieval.
 
 Unlike traditional databases, VectorForge:
 - **Understands meaning** - Uses sentence transformers to encode semantic content
-- **Scales efficiently** - In-memory architecture with lazy deletion and automatic compaction
+- **Persistent by default** - ChromaDB automatically persists all data to disk
 - **Provides observability** - Comprehensive metrics tracking for performance monitoring
-- **Supports persistence** - Save and load index state to disk for quick recovery
 - **Handles documents smartly** - Automatic chunking, metadata preservation, and file processing
 
 Perfect for building:
@@ -79,6 +78,7 @@ Perfect for building:
 - **Python 3.11+** - Modern Python with type hints and performance improvements
 - **FastAPI 0.121+** - High-performance async web framework
 - **Uvicorn** - ASGI server for production deployment
+- **ChromaDB 0.5+** - High-performance embeddable vector database
 
 ### **Machine Learning & NLP**
 - **sentence-transformers 5.1+** - State-of-the-art sentence embeddings
@@ -116,7 +116,7 @@ Perfect for building:
 ### **Document Management**
 - Add individual documents with custom metadata
 - Retrieve documents by ID
-- Delete documents with lazy deletion strategy
+- Delete documents (ChromaDB handles deletion immediately)
 - Automatic embedding generation and normalization
 - Content length validation (max 10,000 characters)
 
@@ -128,18 +128,16 @@ Perfect for building:
 - **File-level Deletion** - Remove all chunks from a specific file
 
 ### **Index Management**
-- **Lazy Deletion** - Mark documents as deleted without immediate removal
-- **Automatic Compaction** - Triggered when deleted ratio exceeds threshold (default: 25%)
-- **Manual Rebuild** - Reconstruct entire index from active documents
-- **Persistence** - Save/load index to disk with metadata and embeddings
+- **Automatic Persistence** - ChromaDB automatically persists all changes to disk
 - **Index Statistics** - Real-time metrics on document counts and health
+- **Directory Management** - Save/load operations support custom directory paths
 
 ### **Comprehensive Metrics**
 - **Performance Metrics** - Query times, averages, min/max, percentiles
 - **Usage Metrics** - Documents added/deleted, files uploaded, chunks created
 - **Memory Metrics** - Embeddings size, documents size, total memory usage
 - **System Info** - Model name, embedding dimension, uptime, version
-- **Timestamps** - Track last query, document addition, compaction, file upload
+- **Timestamps** - Track last query, document addition, file upload
 
 ### **Production-Ready**
 - RESTful API with OpenAPI documentation
@@ -260,37 +258,27 @@ Full baseline data: `python/benchmarks/results/0001_baseline.json` (113 benchmar
 
 ### **Design Patterns & Technical Decisions**
 
-#### **1. In-Memory Vector Store**
-VectorForge uses an in-memory architecture for maximum performance:
-- **Documents Storage** - `dict[str, dict]` mapping doc IDs to content/metadata
-- **Embeddings Storage** - `list[np.ndarray]` of normalized 384-dimensional vectors
-- **Index Mappings** - Bidirectional mappings between positions and document IDs
-- **Deleted Documents** - `set[str]` for lazy deletion tracking
+#### **1. ChromaDB Vector Store**
+VectorForge uses ChromaDB as its persistent vector database backend:
+- **Automatic Persistence** - All data automatically saved to disk via ChromaDB's PersistentClient
+- **Efficient Storage** - ChromaDB uses SQLite for metadata and optimized storage for embeddings
+- **HNSW Indexing** - Hierarchical Navigable Small World graphs for fast similarity search
+- **Cosine Similarity** - Collection configured with cosine distance metric
 
-**Rationale**: Eliminates I/O overhead for sub-millisecond search latency.
+**Rationale**: ChromaDB provides production-ready persistence, efficient indexing, and eliminates the need for custom index management.
 
-#### **2. Lazy Deletion Strategy**
-Documents are marked as deleted rather than immediately removed:
+#### **2. Immediate Deletion**
+Documents are immediately removed from the ChromaDB collection:
 ```python
-deleted_docs.add(doc_id)  # Mark only
-# Actual removal happens during compaction
+collection.delete(ids=[doc_id])  # Immediate removal
 ```
 
 **Benefits**:
-- O(1) deletion operations
-- Batch cleanup reduces index fragmentation
-- Configurable compaction threshold (default: 25% deleted ratio)
+- Consistent state - no stale data
+- Simplified implementation - no compaction needed
+- ChromaDB handles internal cleanup and optimization
 
-#### **3. Automatic Compaction**
-The engine automatically triggers compaction when deletion threshold is exceeded:
-```python
-if len(deleted_docs) / len(embeddings) > 0.25:
-    compact()  # Rebuild index, remove deleted docs
-```
-
-**Rationale**: Balances performance with memory efficiency.
-
-#### **4. Normalized Embeddings**
+#### **3. Normalized Embeddings**
 All embeddings are L2-normalized during creation:
 ```python
 embedding = embedding / np.linalg.norm(embedding)
@@ -300,7 +288,7 @@ embedding = embedding / np.linalg.norm(embedding)
 - Cosine similarity reduces to dot product during search operations (faster)
 - Numerical stability in similarity calculations
 
-#### **5. Modular Architecture**
+#### **4. Modular Architecture**
 ```
 vectorforge/
 ├── api.py              # FastAPI endpoints (presentation layer)
@@ -316,7 +304,7 @@ vectorforge/
 
 **Rationale**: Separation of concerns enables testing and maintainability.
 
-#### **6. Comprehensive Metrics Tracking**
+#### **5. Comprehensive Metrics Tracking**
 VectorForge uses a dataclass-based metrics system:
 ```python
 @dataclass
@@ -331,7 +319,7 @@ class EngineMetrics:
 - Historical query performance analysis
 - Production debugging and optimization
 
-#### **7. Metadata Coupling Validation**
+#### **6. Metadata Coupling Validation**
 File-based documents require both `source_file` and `chunk_index`:
 ```python
 if has_source != has_chunk_index:
@@ -641,7 +629,7 @@ curl http://localhost:3001/doc/550e8400-e29b-41d4-a716-446655440000
 curl -X DELETE http://localhost:3001/doc/550e8400-e29b-41d4-a716-446655440000
 ```
 
-### **7. Save Index to Disk**
+### **7. Save Index**
 
 ```bash
 curl -X POST http://localhost:3001/index/save
@@ -651,16 +639,15 @@ curl -X POST http://localhost:3001/index/save
 ```json
 {
   "status": "saved",
-  "directory": "./data",
-  "metadata_size_mb": 0.25,
-  "embeddings_size_mb": 1.2,
+  "directory": "./data/chroma_data",
   "total_size_mb": 1.45,
   "documents_saved": 100,
-  "embeddings_saved": 100
+  "embeddings_saved": 100,
+  "version": "0.9.0"
 }
 ```
 
-### **8. Load Index from Disk**
+### **8. Load Index**
 
 ```bash
 curl -X POST http://localhost:3001/index/load
@@ -673,7 +660,7 @@ curl http://localhost:3001/metrics
 ```
 
 **Response includes:**
-- Index statistics (documents, embeddings, deleted ratio)
+- Index statistics (total documents, total embeddings)
 - Performance metrics (query times, percentiles)
 - Usage statistics (operations performed)
 - Memory consumption
