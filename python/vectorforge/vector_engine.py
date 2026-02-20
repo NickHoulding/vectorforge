@@ -121,83 +121,87 @@ class VectorEngine:
         self.metrics: EngineMetrics = EngineMetrics()
 
     def save(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
-        """Save the vector engine state to disk.
+        """Get information about ChromaDB's persistent storage.
 
-        ChromaDB PersistentClient automatically persists data. This method is
-        maintained for API compatibility and returns current state information.
+        ChromaDB PersistentClient automatically persists all data. This endpoint
+        provides information about the persisted data location and current stats.
+
+        For backup: Copy the ChromaDB data directory when the application is stopped.
 
         Args:
-            directory: Path parameter maintained for API compatibility.
-                ChromaDB data is stored in the configured persist directory.
+            directory: Parameter maintained for API compatibility (not used).
 
         Returns:
-            A dictionary containing save operation status and statistics:
-                - status: 'saved'
-                - directory: Path where ChromaDB data is persisted
-                - documents_saved: Number of documents in the collection
-                - note: Explanation that ChromaDB auto-persists
+            A dictionary containing storage information and statistics:
+                - status: 'saved' (data is auto-persisted)
+                - directory: Path where ChromaDB persists data
+                - documents_saved: Current number of documents
+                - total_size_mb: Estimated size of persisted data
+                - version: VectorForge version
+                - note: Instructions for manual backup
         """
         doc_count = self.collection.count()
+        persist_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
+        )
 
-        # Estimate file sizes based on document count
-        # These are rough estimates since ChromaDB manages persistence internally
-        # Assuming ~1KB per document for metadata and ~1.5KB per embedding (384 dims * 4 bytes)
-        metadata_size_mb = (doc_count * 1024) / (1024 * 1024)  # ~1KB per doc
-        embeddings_size_mb = (doc_count * 384 * 4) / (
-            1024 * 1024
-        )  # 384 floats * 4 bytes
+        total_size_mb = 0.0
+        if os.path.exists(persist_dir):
+            total_size_bytes = sum(
+                os.path.getsize(os.path.join(dirpath, filename))
+                for dirpath, _, filenames in os.walk(persist_dir)
+                for filename in filenames
+            )
+            total_size_mb = total_size_bytes / (1024 * 1024)
+        else:
+            total_size_mb = (doc_count * 384 * 4 + doc_count * 1024) / (1024 * 1024)
 
         return {
             "status": "saved",
-            "directory": os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
-            ),
+            "directory": persist_dir,
             "documents_saved": doc_count,
             "embeddings_saved": doc_count,
-            "metadata_size_mb": metadata_size_mb,
-            "embeddings_size_mb": embeddings_size_mb,
-            "total_size_mb": metadata_size_mb + embeddings_size_mb,
+            "metadata_size_mb": total_size_mb * 0.3,  # Rough estimate
+            "embeddings_size_mb": total_size_mb * 0.7,  # Rough estimate
+            "total_size_mb": total_size_mb,
             "version": __version__,
-            "note": "ChromaDB auto-persists data to disk",
+            "note": "ChromaDB auto-persists data. For backups, copy the data directory when the application is stopped.",
         }
 
     def load(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
-        """Load the vector engine state from disk.
+        """Get information about ChromaDB's current loaded data.
 
         ChromaDB PersistentClient automatically loads data on initialization.
-        This method is maintained for API compatibility and returns current
-        state information.
+        This endpoint returns information about the currently loaded data.
+
+        For restore: Replace the ChromaDB data directory when the application is stopped,
+        then restart the application.
 
         Args:
-            directory: Path parameter maintained for API compatibility.
-                ChromaDB data is loaded from the configured persist directory.
+            directory: Parameter maintained for API compatibility (not used).
 
         Returns:
-            A dictionary containing load operation status and statistics:
+            A dictionary containing current data information:
                 - status: 'loaded'
-                - directory: Path where ChromaDB data is persisted
-                - documents_loaded: Number of documents in the collection
-                - note: Explanation that ChromaDB auto-loads
+                - directory: Path where ChromaDB loads/persists data
+                - documents_loaded: Current number of documents
+                - version: VectorForge version
+                - note: Instructions for manual restore
         """
+        persist_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
+        )
+
+        doc_count = self.collection.count()
+
         return {
             "status": "loaded",
-            "directory": os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
-            ),
-            "documents_loaded": self.collection.count(),
-            "embeddings_loaded": self.collection.count(),
-            "deleted_docs": 0,
+            "directory": persist_dir,
+            "documents_loaded": doc_count,
+            "embeddings_loaded": doc_count,
             "version": __version__,
-            "note": "ChromaDB auto-loads data on initialization",
+            "note": "ChromaDB auto-loads on initialization. For restore, replace the data directory when stopped and restart.",
         }
-
-    def build(self) -> None:
-        """Rebuild the entire index from scratch.
-
-        ChromaDB manages its own index structure automatically. This method is
-        maintained for API compatibility but performs no operation.
-        """
-        pass
 
     def search(
         self,
@@ -489,7 +493,7 @@ class VectorEngine:
             Dictionary containing:
                 - Counters: total_queries, docs_added, docs_deleted, etc.
                 - Performance: avg/min/max/p50/p95/p99 query times
-                - Index stats: active_documents, total_embeddings, deleted_ratio
+                - Index stats: active_documents, total_embeddings
                 - Memory usage: embeddings_mb, documents_mb, total_mb
                 - System info: model_name, model_dimension, uptime_seconds
                 - Timestamps: created_at, last_query_at, last_doc_added_at, etc.
@@ -499,7 +503,6 @@ class VectorEngine:
         total_docs: int = self.collection.count()
         active_docs: int = total_docs
         total_embeddings: int = total_docs
-        deleted_ratio: float = 0.0
 
         avg_query_time: float = (
             self.metrics.total_query_time_ms / self.metrics.total_queries
@@ -532,10 +535,8 @@ class VectorEngine:
         metrics_dict.update(
             {
                 # Index metrics
-                "active_documents": active_docs,  # No lazy deletion with ChromaDB
+                "active_documents": active_docs,
                 "total_embeddings": total_embeddings,
-                "deleted_ratio": deleted_ratio,
-                "needs_compaction": False,  # ChromaDB handles compaction internally
                 # Performance metrics
                 "avg_query_time_ms": avg_query_time,
                 "min_query_time_ms": min_time,
@@ -562,24 +563,16 @@ class VectorEngine:
 
         Returns:
             Dictionary containing:
-                - total_documents: Total number of documents in storage
-                - total_embeddings: Number of embeddings in the index
-                - deleted_documents: Number of documents marked as deleted (always 0 with ChromaDB)
-                - deleted_ratio: Ratio of deleted docs to total embeddings (always 0 with ChromaDB)
-                - needs_compaction: Whether compaction is recommended (always False with ChromaDB)
+                - total_documents: Total number of documents in the collection
+                - total_embeddings: Number of embedding vectors in the index
                 - embedding_dimension: Dimensionality of embedding vectors
         """
         total_docs: int = self.collection.count()
         total_embeddings: int = total_docs
-        deleted_docs: int = 0  # ChromaDB deletes immediately
-        deleted_ratio: float = 0.0
 
         return {
             "total_documents": total_docs,
             "total_embeddings": total_embeddings,
-            "deleted_documents": deleted_docs,
-            "deleted_ratio": deleted_ratio,
-            "needs_compaction": False,  # ChromaDB handles this internally
             "embedding_dimension": self.model.get_sentence_embedding_dimension() or 0,
         }
 

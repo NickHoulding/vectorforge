@@ -19,11 +19,11 @@ def get_index_stats() -> IndexStatsResponse:
     Get quick index statistics
 
     Lightweight endpoint for checking index health and size. Returns essential
-    metrics including document counts, embedding dimension, and compaction status.
-    For comprehensive metrics, use GET /metrics instead.
+    metrics including document counts and embedding dimension. For comprehensive
+    metrics, use GET /metrics instead.
 
     Returns:
-        IndexStatsResponse: Core index statistics and health indicators
+        IndexStatsResponse: Core index statistics
 
     Raises:
         HTTPException: 500 if stats retrieval fails
@@ -34,39 +34,6 @@ def get_index_stats() -> IndexStatsResponse:
         status="success",
         total_documents=stats["total_documents"],
         total_embeddings=stats["total_embeddings"],
-        deleted_documents=stats["deleted_documents"],
-        deleted_ratio=stats["deleted_ratio"],
-        needs_compaction=stats["needs_compaction"],
-        embedding_dimension=stats["embedding_dimension"],
-    )
-
-
-@router.post("/index/build", response_model=IndexStatsResponse)
-@handle_api_errors
-def build_index() -> IndexStatsResponse:
-    """
-    Build or rebuild the vector index
-
-    Reconstructs the entire vector index from scratch. Useful for optimizing
-    search performance after many document additions/deletions. This operation
-    can be time-consuming for large indexes.
-
-    Returns:
-        IndexStatsResponse: Updated index statistics after rebuild
-
-    Raises:
-        HTTPException: 500 if index build fails
-    """
-    engine.build()
-    stats: dict[str, Any] = engine.get_index_stats()
-
-    return IndexStatsResponse(
-        status="success",
-        total_documents=stats["total_documents"],
-        total_embeddings=stats["total_embeddings"],
-        deleted_documents=stats["deleted_documents"],
-        deleted_ratio=stats["deleted_ratio"],
-        needs_compaction=stats["needs_compaction"],
         embedding_dimension=stats["embedding_dimension"],
     )
 
@@ -75,22 +42,25 @@ def build_index() -> IndexStatsResponse:
 @handle_api_errors
 def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse:
     """
-    Persist index to disk
+    Get persistent storage information
 
-    Saves the current vector index and all document metadata to the specified
-    directory. Creates persistent storage for index recovery and reduces startup time.
+    ChromaDB automatically persists all data to disk. This endpoint provides
+    information about the persisted data location and current statistics.
+
+    For manual backups: Copy the ChromaDB data directory when the application
+    is not running.
 
     Args:
-        directory (str, optional): Directory path for saving. Defaults to VFGConfig.DEFAULT_DATA_DIR
+        directory: Parameter maintained for API compatibility (not used)
 
     Returns:
-        IndexSaveResponse: Save confirmation with file sizes and document counts
+        IndexSaveResponse: Storage information with file sizes and document counts
 
     Raises:
-        HTTPException: 500 if save operation fails
+        HTTPException: 500 if operation fails
 
     Example:
-        POST /index/save?directory=/path/to/storage
+        POST /index/save
     """
     save_metrics: dict[str, Any] = engine.save(directory=directory)
 
@@ -110,17 +80,22 @@ def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse
 @handle_api_errors
 def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse:
     """
-    Load index from disk
+    Get current loaded data information
 
-    Restores a previously saved vector index from disk, including all embeddings,
-    documents, and metadata. Faster than rebuilding the index from scratch.
+    ChromaDB automatically loads data on initialization. This endpoint returns
+    information about the currently loaded data.
+
+    For manual restore: Replace the ChromaDB data directory when the application
+    is stopped, then restart the application.
+
+    Args:
+        directory: Parameter maintained for API compatibility (not used)
 
     Returns:
-        IndexLoadResponse: Load confirmation with counts and version information
+        IndexLoadResponse: Current data information with counts and version
 
     Raises:
-        HTTPException: 404 if index files not found
-        HTTPException: 500 if load operation fails
+        HTTPException: 500 if operation fails
     """
     load_metrics: dict[str, Any] = engine.load(directory=directory)
 
@@ -129,6 +104,5 @@ def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse
         directory=load_metrics["directory"],
         documents_loaded=load_metrics["documents_loaded"],
         embeddings_loaded=load_metrics["embeddings_loaded"],
-        deleted_docs=load_metrics["deleted_docs"],
         version=load_metrics["version"],
     )

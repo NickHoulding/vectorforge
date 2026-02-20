@@ -4,25 +4,17 @@ from pydantic import BaseModel, Field
 class IndexStatsResponse(BaseModel):
     """Lightweight index health and statistics.
 
-    Provides essential metrics about the current state of the vector index,
-    including document counts, deletion ratios, and compaction status. This is
-    a lightweight endpoint compared to the full metrics endpoint.
+    Provides essential metrics about the current state of the vector index.
 
     Attributes:
-        total_documents: Number of documents in storage (active + deleted).
+        total_documents: Number of active documents in the index.
         total_embeddings: Total number of embedding vectors in the index.
-        deleted_documents: Count of documents marked for deletion.
-        deleted_ratio: Ratio of deleted to total embeddings (0-1).
-        needs_compaction: Whether index cleanup is recommended.
         embedding_dimension: Dimensionality of the embedding vectors.
     """
 
     status: str = Field(..., description="Operation status")
     total_documents: int = Field(..., description="Active documents")
     total_embeddings: int = Field(..., description="Total embeddings")
-    deleted_documents: int = Field(..., description="Deleted count")
-    deleted_ratio: float = Field(..., ge=0, le=1, description="Deletion ratio")
-    needs_compaction: bool = Field(..., description="Compaction needed")
     embedding_dimension: int = Field(..., description="Embedding size")
 
     class ConfigDict:
@@ -30,10 +22,7 @@ class IndexStatsResponse(BaseModel):
             "example": {
                 "status": "success",
                 "total_documents": 1250,
-                "total_embeddings": 1500,
-                "deleted_documents": 250,
-                "deleted_ratio": 0.167,
-                "needs_compaction": False,
+                "total_embeddings": 1250,
                 "embedding_dimension": 384,
             }
         }
@@ -84,33 +73,30 @@ class IndexLoadResponse(BaseModel):
     """Response from loading a persisted index from disk.
 
     Provides confirmation and statistics after restoring the vector database
-    from persistent storage. Includes counts of loaded documents and information
-    about the index format version for compatibility checking.
+    from a backup. Includes counts of loaded documents and version information
+    for compatibility checking.
 
     Attributes:
         status: Operation result (typically 'loaded').
-        directory: File system path where data was read from.
+        directory: File system path where backup was read from.
         documents_loaded: Number of document records restored.
         embeddings_loaded: Number of embedding vectors restored.
-        deleted_docs: Count of documents marked as deleted in the loaded index.
-        version: VectorForge version that created the saved index.
+        version: VectorForge version that created the backup.
     """
 
     status: str = Field(..., description="Operation status")
     directory: str = Field(..., description="Load directory path")
     documents_loaded: int = Field(..., ge=0, description="Number of documents loaded")
     embeddings_loaded: int = Field(..., ge=0, description="Number of embeddings loaded")
-    deleted_docs: int = Field(..., ge=0, description="Number of deleted documents")
     version: str = Field(..., description="Index format version")
 
     class ConfigDict:
         json_schema_extra = {
             "example": {
                 "status": "loaded",
-                "directory": "./data",
+                "directory": "./data/chroma_data",
                 "documents_loaded": 1250,
-                "embeddings_loaded": 1500,
-                "deleted_docs": 250,
+                "embeddings_loaded": 1250,
                 "version": "1.0",
             }
         }

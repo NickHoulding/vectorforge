@@ -71,9 +71,6 @@ def get_metrics() -> MetricsResponse:
     index_metrics: IndexMetrics = IndexMetrics(
         total_documents=metrics["active_documents"],
         total_embeddings=metrics["total_embeddings"],
-        deleted_documents=index_stats["deleted_documents"],  # Always 0 with ChromaDB
-        deleted_ratio=metrics["deleted_ratio"],
-        needs_compaction=metrics["needs_compaction"],
     )
     performance_metrics: PerformanceMetrics = PerformanceMetrics(
         total_queries=metrics["total_queries"],

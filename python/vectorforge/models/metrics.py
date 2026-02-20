@@ -6,28 +6,15 @@ from pydantic import BaseModel, Field
 class IndexMetrics(BaseModel):
     """Index health metrics.
 
-    Statistics about the vector index state with ChromaDB backend. Since ChromaDB
-    handles compaction automatically, compaction-related fields are not included.
+    Statistics about the vector index state with ChromaDB backend.
 
     Attributes:
         total_documents: Active documents currently in the index.
         total_embeddings: Total embedding vectors in the index.
-        deleted_documents: Always 0 with ChromaDB (immediate deletion).
-        deleted_ratio: Always 0.0 with ChromaDB (immediate deletion).
-        needs_compaction: Always False (ChromaDB handles internally).
     """
 
     total_documents: int = Field(..., description="Active documents in index")
     total_embeddings: int = Field(..., description="Total embeddings in index")
-    deleted_documents: int = Field(
-        ..., description="Number of deleted documents (always 0)"
-    )
-    deleted_ratio: float = Field(
-        ..., ge=0, le=1, description="Ratio of deleted to total (always 0)"
-    )
-    needs_compaction: bool = Field(
-        ..., description="Whether compaction is recommended (always False)"
-    )
 
 
 class PerformanceMetrics(BaseModel):
@@ -173,9 +160,6 @@ class MetricsResponse(BaseModel):
                 "index": {
                     "total_documents": 1500,
                     "total_embeddings": 1500,
-                    "deleted_documents": 0,
-                    "deleted_ratio": 0.0,
-                    "needs_compaction": False,
                 },
                 "performance": {
                     "total_queries": 5420,

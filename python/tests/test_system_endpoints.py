@@ -179,12 +179,6 @@ def test_metrics_includes_index_metrics(metrics):
     assert isinstance(metrics["index"]["total_documents"], int)
     assert "total_embeddings" in metrics["index"]
     assert isinstance(metrics["index"]["total_embeddings"], int)
-    assert "deleted_documents" in metrics["index"]
-    assert isinstance(metrics["index"]["deleted_documents"], int)
-    assert "deleted_ratio" in metrics["index"]
-    assert isinstance(metrics["index"]["deleted_ratio"], float)
-    assert "needs_compaction" in metrics["index"]
-    assert isinstance(metrics["index"]["needs_compaction"], bool)
 
 
 def test_metrics_includes_performance_metrics(metrics):
@@ -272,10 +266,7 @@ def test_metrics_updates_after_operations(client):
 
 
 def test_metrics_after_add_delete_cycle(client, sample_doc, multiple_added_docs):
-    """Test metrics accuracy after adding and deleting documents.
-
-    ChromaDB deletes immediately, so deleted_documents stays at 0.
-    """
+    """Test metrics accuracy after adding and deleting documents."""
     initial_metrics = client.get("/metrics").json()
 
     add_resp = client.post("/doc/add", json=sample_doc)
@@ -293,9 +284,6 @@ def test_metrics_after_add_delete_cycle(client, sample_doc, multiple_added_docs)
     assert (
         after_delete["usage"]["documents_deleted"]
         == initial_metrics["usage"]["documents_deleted"] + 1
-    )
-    assert (
-        after_delete["index"]["deleted_documents"] == 0  # ChromaDB deletes immediately
     )
     assert (
         after_delete["index"]["total_embeddings"]
@@ -369,23 +357,6 @@ def test_metrics_memory_calculation_accuracy(client):
         + after_metrics["memory"]["documents_mb"]
     )
     assert abs(after_metrics["memory"]["total_mb"] - expected_total) < 0.001
-
-
-def test_metrics_index_deleted_ratio_calculation(client, multiple_added_docs):
-    """Test that deleted_ratio remains 0 with ChromaDB immediate deletion."""
-    metrics_before = client.get("/metrics").json()
-
-    client.delete(f"/doc/{multiple_added_docs[0]}")
-    client.delete(f"/doc/{multiple_added_docs[1]}")
-
-    metrics_after = client.get("/metrics").json()
-    assert (
-        metrics_after["index"]["deleted_documents"] == 0
-    )  # ChromaDB deletes immediately
-    assert (
-        metrics_after["index"]["deleted_ratio"] == 0.0
-    )  # Always 0 with immediate deletion
-    assert metrics_after["index"]["needs_compaction"] is False
 
 
 def test_metrics_uptime_increases(client):
@@ -484,24 +455,14 @@ def test_metrics_after_file_upload(client):
     assert after_metrics["timestamps"]["last_file_uploaded_at"] is not None
 
 
-def test_metrics_after_compaction(client, multiple_added_docs):
-    """Test that manual build() works but doesn't track compaction metrics.
-
-    ChromaDB handles compaction internally. The build() method is a no-op
-    retained for backward compatibility.
-    """
+def test_metrics_after_deletions(client, multiple_added_docs):
+    """Test that metrics update properly after deletions."""
     initial_metrics = client.get("/metrics").json()
 
     for i in range(6):
         client.delete(f"/doc/{multiple_added_docs[i]}")
 
-    # Manually trigger build - should succeed but do nothing
-    response = client.post("/index/build")
-    assert response.status_code == 200
-
-    # Metrics should be unchanged (no compaction tracking)
     after_metrics = client.get("/metrics").json()
-    # Just verify we can still call build without errors
     assert (
         after_metrics["index"]["total_documents"]
         < initial_metrics["index"]["total_documents"]

@@ -28,20 +28,6 @@ def get_index_stats() -> dict[str, Any]:
 
 
 @mcp.tool(
-    description="Rebuild entire vector index from scratch. Regenerates all embeddings. Optimizes search performance but time-intensive."
-)
-@handle_tool_errors
-def build_index() -> dict[str, Any]:
-    """Build or rebuild the vector index.
-
-    Returns:
-        Dictionary with updated index statistics after rebuild.
-    """
-    response: IndexStatsResponse = index.build_index()
-    return build_success_response(response)
-
-
-@mcp.tool(
     description="Persist index to disk (embeddings + metadata). Enables fast recovery and reduces startup time. Returns file sizes and counts."
 )
 @handle_tool_errors

@@ -845,30 +845,6 @@ def test_delete_file_with_mixed_chunks(vector_engine):
 
 
 # =============================================================================
-# build() Tests
-# =============================================================================
-
-
-def test_build_is_noop(vector_engine):
-    """Test that build is now a no-op with ChromaDB."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
-    doc_id2 = vector_engine.add_doc("Document 2", {})
-
-    initial_count = vector_engine.collection.count()
-    vector_engine.build()
-
-    # Build should not change anything
-    assert vector_engine.collection.count() == initial_count
-
-
-def test_build_with_empty_index(vector_engine):
-    """Test that build handles empty index."""
-    vector_engine.build()
-
-    assert vector_engine.collection.count() == 0
-
-
-# =============================================================================
 # save() and load() Tests
 # =============================================================================
 
@@ -1050,31 +1026,8 @@ def test_get_index_stats_includes_document_counts(vector_engine):
 
     assert "total_documents" in stats
     assert "total_embeddings" in stats
-    assert "deleted_documents" in stats
     assert stats["total_documents"] == 2
     assert stats["total_embeddings"] == 2
-    assert stats["deleted_documents"] == 0  # ChromaDB deletes immediately
-
-
-def test_get_index_stats_includes_deleted_ratio(vector_engine):
-    """Test that index stats include deleted ratio (always 0 with ChromaDB)."""
-    vector_engine.add_doc("Document 1", {})
-    vector_engine.add_doc("Document 2", {})
-
-    stats = vector_engine.get_index_stats()
-
-    assert "deleted_ratio" in stats
-    assert stats["deleted_ratio"] == 0.0  # ChromaDB deletes immediately
-
-
-def test_get_index_stats_includes_compaction_status(vector_engine):
-    """Test that index stats include needs_compaction flag (always False with ChromaDB)."""
-    vector_engine.add_doc("Document 1", {})
-
-    stats = vector_engine.get_index_stats()
-
-    assert "needs_compaction" in stats
-    assert stats["needs_compaction"] is False  # ChromaDB handles internally
 
 
 def test_get_index_stats_includes_embedding_dimension(vector_engine):
