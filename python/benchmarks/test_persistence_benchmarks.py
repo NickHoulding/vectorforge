@@ -166,12 +166,7 @@ def test_save_compression_ratio(engine_medium: VectorEngine, temp_save_dir: str)
     save_path = os.path.join(temp_save_dir, "compression_test")
     result = engine_medium.save(save_path)
 
-    # Get file sizes
     total_size_mb = result["total_size_mb"]
-
-    # Calculate approximate uncompressed size
-    # Each embedding is 384 floats * 4 bytes = 1536 bytes
-    # Plus metadata
     num_docs = result["documents_saved"]
     estimated_uncompressed_mb = (num_docs * 1536) / (1024 * 1024)
 
@@ -179,33 +174,7 @@ def test_save_compression_ratio(engine_medium: VectorEngine, temp_save_dir: str)
         estimated_uncompressed_mb / total_size_mb if total_size_mb > 0 else 0
     )
 
-    # This is just for information - pytest will show this in output
     assert compression_ratio > 0, f"Compression ratio: {compression_ratio:.2f}x"
-
-
-# ============================================================================
-# Build vs Compact
-# ============================================================================
-
-
-def test_build_index(benchmark, engine_medium: VectorEngine):
-    """Benchmark full index rebuild."""
-    # Delete some docs first
-    doc_ids = list(engine_medium.documents.keys())
-    for doc_id in doc_ids[:100]:
-        engine_medium.delete_doc(doc_id)
-
-    benchmark(engine_medium.build)
-
-
-def test_compact_index(benchmark, engine_medium: VectorEngine):
-    """Benchmark index compaction."""
-    # Delete enough to trigger compaction
-    doc_ids = list(engine_medium.documents.keys())
-    for doc_id in doc_ids[:300]:  # Delete 30%
-        engine_medium.deleted_docs.add(doc_id)  # Manually add to avoid auto-compact
-
-    benchmark(engine_medium._compact)
 
 
 # ============================================================================
@@ -219,7 +188,6 @@ def test_save_after_additions(
     """Benchmark save performance after adding documents."""
     save_path = os.path.join(temp_save_dir, "incremental")
 
-    # Add more documents
     new_docs = generate_documents(50)
     for doc in new_docs:
         engine_small.add_doc(doc["content"], doc["metadata"])
@@ -233,7 +201,6 @@ def test_save_after_deletions(
     """Benchmark save performance after deleting documents."""
     save_path = os.path.join(temp_save_dir, "after_deletions")
 
-    # Delete some documents
     doc_ids = list(engine_small.documents.keys())
     for doc_id in doc_ids[:30]:
         engine_small.delete_doc(doc_id)
@@ -251,10 +218,8 @@ def test_repeated_saves(benchmark, engine_small: VectorEngine, temp_save_dir: st
     save_path = os.path.join(temp_save_dir, "repeated")
 
     def save_checkpoint():
-        # Add a document
         doc = generate_document(9999)
         engine_small.add_doc(doc["content"], doc["metadata"])
-        # Save
         engine_small.save(save_path)
 
     benchmark.pedantic(save_checkpoint, iterations=5, rounds=3)
@@ -275,7 +240,6 @@ def test_cold_load_with_search(
     def cold_load_and_search():
         engine = VectorEngine()
         engine.load(save_path)
-        # Perform a search immediately after loading
         engine.search("test query", top_k=10)
 
     benchmark.pedantic(cold_load_and_search, iterations=3, rounds=3)
@@ -296,5 +260,4 @@ def test_disk_space_per_document(engine_medium: VectorEngine, temp_save_dir: str
 
     kb_per_doc = (total_size_mb * 1024) / num_docs if num_docs > 0 else 0
 
-    # This is for information
     assert kb_per_doc > 0, f"Disk space per document: {kb_per_doc:.2f} KB"

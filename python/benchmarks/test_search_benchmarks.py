@@ -164,8 +164,7 @@ def test_search_batch_100_queries(
     benchmark, engine_medium: VectorEngine, simple_queries: list[str]
 ):
     """Benchmark batch of 100 search queries."""
-    # Generate 100 queries
-    queries = simple_queries * 10  # Reuse queries
+    queries = simple_queries * 10
 
     def run_batch():
         for query in queries:
@@ -196,14 +195,14 @@ def test_search_cold_engine(benchmark, simple_queries: list[str]):
     """Benchmark first search on a new engine (cold start)."""
 
     def run_cold_search():
-        # Create fresh engine for each iteration to measure cold start
         engine = VectorEngine()
         docs = generate_documents(SCALES["small"])
+
         for doc in docs:
             engine.add_doc(doc["content"], doc["metadata"])
+
         engine.search(query=simple_queries[0], top_k=10)
 
-    # Reduced rounds for cold start test
     benchmark.pedantic(run_cold_search, iterations=3, rounds=3)
 
 
@@ -211,11 +210,9 @@ def test_search_warm_engine(
     benchmark, engine_small: VectorEngine, simple_queries: list[str]
 ):
     """Benchmark search on warm engine (model already loaded)."""
-    # First, warm up the engine with a few queries
     for _ in range(5):
         engine_small.search(query=simple_queries[0], top_k=10)
 
-    # Now benchmark
     query = simple_queries[0]
     benchmark(engine_small.search, query=query, top_k=10)
 
@@ -231,16 +228,13 @@ def test_search_throughput_qps(
     """Measure queries per second (QPS) throughput."""
     query = simple_queries[0]
 
-    # Run for a fixed number of iterations to calculate QPS
-    result = benchmark.pedantic(
+    benchmark.pedantic(
         engine_medium.search,
         args=(query,),
         kwargs={"top_k": 10},
         iterations=100,
         rounds=5,
     )
-
-    # QPS will be calculated from benchmark stats
 
 
 # ============================================================================
@@ -252,13 +246,12 @@ def test_search_after_deletions(
     benchmark, engine_medium: VectorEngine, simple_queries: list[str]
 ):
     """Benchmark search performance after deleting 25% of documents."""
-    # Delete 25% of documents
     doc_ids = list(engine_medium.documents.keys())
     delete_count = len(doc_ids) // 4
+
     for doc_id in doc_ids[:delete_count]:
         engine_medium.delete_doc(doc_id)
 
-    # Benchmark search with deleted docs
     query = simple_queries[0]
     benchmark(engine_medium.search, query=query, top_k=10)
 
@@ -267,18 +260,16 @@ def test_search_after_compaction(
     benchmark, engine_medium: VectorEngine, simple_queries: list[str]
 ):
     """Benchmark search performance after compaction."""
-    # Delete enough docs to trigger compaction
     doc_ids = list(engine_medium.documents.keys())
     delete_count = len(doc_ids) // 3  # Delete 33% to exceed 25% threshold
+
     for doc_id in doc_ids[:delete_count]:
         engine_medium.delete_doc(doc_id)
 
-    # This should have triggered compaction
     assert (
         len(engine_medium.deleted_docs) == 0
     ), "Compaction should have cleared deleted_docs"
 
-    # Benchmark search after compaction
     query = simple_queries[0]
     benchmark(engine_medium.search, query=query, top_k=10)
 
@@ -292,14 +283,12 @@ def test_search_with_filters_small_dataset(benchmark, simple_queries: list[str])
     """Benchmark filtered search on small dataset (100 docs)."""
     engine = VectorEngine()
 
-    # Add 100 documents with varied metadata (10 files, 10 chunks each)
     for file_num in range(10):
         for chunk_num in range(10):
             content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
             metadata = {"source_file": f"file_{file_num}.pdf", "chunk_index": chunk_num}
             engine.add_doc(content, metadata)
 
-    # Benchmark search with filter (should match ~10% of docs)
     query = simple_queries[0]
     filters = {"source_file": "file_5.pdf"}
     benchmark(engine.search, query=query, top_k=10, filters=filters)
@@ -310,14 +299,12 @@ def test_search_with_filters_medium_dataset(benchmark, simple_queries: list[str]
     """Benchmark filtered search on medium dataset (1,000 docs)."""
     engine = VectorEngine()
 
-    # Add 1,000 documents with varied metadata (50 files, 20 chunks each)
     for file_num in range(50):
         for chunk_num in range(20):
             content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
             metadata = {"source_file": f"file_{file_num}.pdf", "chunk_index": chunk_num}
             engine.add_doc(content, metadata)
 
-    # Benchmark search with multiple filters (should match ~2% of docs)
     query = simple_queries[0]
     filters = {"source_file": "file_25.pdf", "chunk_index": 10}
     benchmark(engine.search, query=query, top_k=10, filters=filters)
@@ -329,7 +316,6 @@ def test_search_with_filters_large_dataset(benchmark, simple_queries: list[str])
     """Benchmark filtered search on large dataset (10,000 docs)."""
     engine = VectorEngine()
 
-    # Add 10,000 documents with varied metadata (100 files, 100 chunks each)
     for file_num in range(100):
         for chunk_num in range(100):
             content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
@@ -340,7 +326,6 @@ def test_search_with_filters_large_dataset(benchmark, simple_queries: list[str])
             }
             engine.add_doc(content, metadata)
 
-    # Benchmark search with three filters (should match ~0.1% of docs)
     query = simple_queries[0]
     filters = {
         "source_file": "file_50.pdf",

@@ -36,9 +36,9 @@ from vectorforge.vector_engine import VectorEngine
 @pytest.mark.parametrize("scale", ["tiny", "small", "medium", "large"])
 def test_query_latency_scaling(benchmark, scale: str, simple_queries: list[str]):
     """Measure query latency across different index sizes."""
-    # Create engine with appropriate scale
     engine = VectorEngine()
     docs = generate_documents(SCALES[scale])
+
     for doc in docs:
         engine.add_doc(doc["content"], doc["metadata"])
 
@@ -54,13 +54,11 @@ def test_query_latency_scaling(benchmark, scale: str, simple_queries: list[str])
 @pytest.mark.parametrize("scale", ["tiny", "small", "medium"])
 def test_indexing_speed_scaling(benchmark, scale: str):
     """Measure indexing speed at different index sizes."""
-    # Pre-populate engine
     engine = VectorEngine()
     docs = generate_documents(SCALES[scale])
     for doc in docs:
         engine.add_doc(doc["content"], doc["metadata"])
 
-    # Now benchmark adding one more document
     new_doc = generate_document(99999)
 
     def add_doc():
@@ -80,14 +78,14 @@ def test_memory_scaling(benchmark, doc_count: int):
 
     def build_index_and_measure():
         process = psutil.Process(os.getpid())
-        mem_before = process.memory_info().rss / (1024 * 1024)  # MB
+        mem_before = process.memory_info().rss / (1024 * 1024)
 
         engine = VectorEngine()
         docs = generate_documents(doc_count)
         for doc in docs:
             engine.add_doc(doc["content"], doc["metadata"])
 
-        mem_after = process.memory_info().rss / (1024 * 1024)  # MB
+        mem_after = process.memory_info().rss / (1024 * 1024)
         mem_used = mem_after - mem_before
 
         return mem_used
@@ -128,7 +126,6 @@ def test_top_k_scaling(
     """Measure search performance with different top_k values."""
     query = simple_queries[0]
 
-    # Ensure we have enough documents
     if top_k > len(engine_medium.documents):
         pytest.skip(f"Not enough documents for top_k={top_k}")
 
@@ -145,24 +142,19 @@ def test_e2e_workflow_small_scale(benchmark):
     docs = generate_documents(100)
 
     def workflow():
-        # Build index
         engine = VectorEngine()
         for doc in docs:
             engine.add_doc(doc["content"], doc["metadata"])
 
-        # Perform searches
         for _ in range(10):
             engine.search("test query", top_k=10)
 
-        # Save
         with tempfile.TemporaryDirectory() as tmpdir:
             engine.save(tmpdir)
 
-            # Load
             new_engine = VectorEngine()
             new_engine.load(tmpdir)
 
-            # Search again
             new_engine.search("another query", top_k=10)
 
     benchmark.pedantic(workflow, iterations=1, rounds=3)
@@ -174,24 +166,19 @@ def test_e2e_workflow_medium_scale(benchmark):
     docs = generate_documents(1000)
 
     def workflow():
-        # Build index
         engine = VectorEngine()
         for doc in docs:
             engine.add_doc(doc["content"], doc["metadata"])
 
-        # Perform searches
         for _ in range(10):
             engine.search("test query", top_k=10)
 
-        # Save
         with tempfile.TemporaryDirectory() as tmpdir:
             engine.save(tmpdir)
 
-            # Load
             new_engine = VectorEngine()
             new_engine.load(tmpdir)
 
-            # Search again
             new_engine.search("another query", top_k=10)
 
     benchmark.pedantic(workflow, iterations=1, rounds=2)
@@ -224,7 +211,6 @@ def test_realistic_document_search_workflow(benchmark, engine_medium: VectorEngi
 def test_realistic_file_upload_workflow(benchmark, empty_engine: VectorEngine):
     """Simulate realistic file upload and processing workflow."""
 
-    # Simulate uploading 3 files with 20 chunks each
     def upload_workflow():
         for file_idx in range(3):
             filename = f"document_{file_idx}.pdf"
@@ -236,7 +222,6 @@ def test_realistic_file_upload_workflow(benchmark, empty_engine: VectorEngine):
                 )
                 empty_engine.add_doc(chunk["content"], chunk["metadata"])
 
-            # Search after each file
             empty_engine.search("test", top_k=5)
 
     benchmark.pedantic(upload_workflow, iterations=1, rounds=3)
@@ -248,28 +233,23 @@ def test_realistic_crud_workflow(benchmark):
     def crud_workflow():
         engine = VectorEngine()
 
-        # Create: Add 100 documents
         docs = generate_documents(100)
         doc_ids = []
         for doc in docs:
             doc_id = engine.add_doc(doc["content"], doc["metadata"])
             doc_ids.append(doc_id)
 
-        # Read: Search
         for _ in range(10):
             engine.search("test query", top_k=5)
 
-        # Update: Delete and re-add 10 documents
         for i in range(10):
             engine.delete_doc(doc_ids[i])
             new_doc = generate_document(1000 + i)
             engine.add_doc(new_doc["content"], new_doc["metadata"])
 
-        # Delete: Remove 20 documents
         for i in range(10, 30):
             engine.delete_doc(doc_ids[i])
 
-        # Search again
         engine.search("final query", top_k=10)
 
     benchmark.pedantic(crud_workflow, iterations=1, rounds=3)
@@ -284,12 +264,10 @@ def test_performance_before_compaction(
     benchmark, engine_medium: VectorEngine, simple_queries: list[str]
 ):
     """Measure search performance before compaction (with deleted docs)."""
-    # Delete 20% of documents (below compaction threshold)
     doc_ids = list(engine_medium.documents.keys())
+
     for doc_id in doc_ids[:200]:
-        engine_medium.deleted_docs.add(
-            doc_id
-        )  # Add to deleted set without triggering compaction
+        engine_medium.deleted_docs.add(doc_id)
 
     query = simple_queries[0]
     benchmark(engine_medium.search, query=query, top_k=10)
@@ -297,18 +275,15 @@ def test_performance_before_compaction(
 
 def test_performance_after_compaction(benchmark, simple_queries: list[str]):
     """Measure search performance after compaction."""
-    # Build index
     engine = VectorEngine()
     docs = generate_documents(SCALES["medium"])
     for doc in docs:
         engine.add_doc(doc["content"], doc["metadata"])
 
-    # Delete docs and trigger compaction
     doc_ids = list(engine.documents.keys())
     for doc_id in doc_ids[:300]:
         engine.delete_doc(doc_id)
 
-    # Compaction should have happened
     assert len(engine.deleted_docs) == 0
 
     query = simple_queries[0]
@@ -343,25 +318,20 @@ def test_long_running_session(benchmark):
     def long_session():
         engine = VectorEngine()
 
-        # Initial index build (1000 docs)
         docs = generate_documents(1000)
         for doc in docs:
             engine.add_doc(doc["content"], doc["metadata"])
 
         doc_ids = list(engine.documents.keys())
 
-        # Perform 50 mixed operations
         for i in range(50):
-            # Search
             engine.search(f"query {i}", top_k=5)
 
-            # Add a document every 5 operations
             if i % 5 == 0:
                 new_doc = generate_document(2000 + i)
                 new_id = engine.add_doc(new_doc["content"], new_doc["metadata"])
                 doc_ids.append(new_id)
 
-            # Delete a document every 10 operations
             if i % 10 == 0 and len(doc_ids) > 100:
                 engine.delete_doc(doc_ids[i])
 

@@ -34,8 +34,6 @@ def test_add_single_doc_empty_index(benchmark, empty_engine: VectorEngine):
     doc = generate_document(0)
 
     def add_doc():
-        # Note: This will keep adding docs, so engine grows
-        # For pure single-add benchmark, we accept this
         empty_engine.add_doc(doc["content"], doc["metadata"])
 
     benchmark(add_doc)
@@ -85,7 +83,6 @@ def test_batch_insert_10_docs(benchmark, empty_engine: VectorEngine):
         for doc in docs:
             empty_engine.add_doc(doc["content"], doc["metadata"])
 
-    # Use pedantic mode to reset engine between rounds
     benchmark.pedantic(batch_insert, iterations=5, rounds=5)
 
 
@@ -179,17 +176,14 @@ def test_add_doc_triggering_compaction(benchmark):
     def add_with_compaction():
         engine = VectorEngine()
 
-        # Add 100 docs
         docs = generate_documents(100)
         for doc in docs:
             engine.add_doc(doc["content"], doc["metadata"])
 
-        # Delete 30% to exceed compaction threshold (25%)
         doc_ids = list(engine.documents.keys())
         for doc_id in doc_ids[:30]:
             engine.delete_doc(doc_id)
 
-        # This addition should trigger compaction
         new_doc = generate_document(1000)
         engine.add_doc(new_doc["content"], new_doc["metadata"])
 
@@ -249,10 +243,7 @@ def test_indexing_throughput_docs_per_second(benchmark):
         for doc in docs:
             engine.add_doc(doc["content"], doc["metadata"])
 
-    result = benchmark.pedantic(index_batch, iterations=5, rounds=5)
-
-    # Docs per second = 100 docs / time_per_iteration
-    # This will be visible in benchmark stats
+    benchmark.pedantic(index_batch, iterations=5, rounds=5)
 
 
 # ============================================================================
@@ -267,7 +258,7 @@ def test_interleaved_add_search(benchmark, empty_engine: VectorEngine):
     def interleaved_ops():
         for i, doc in enumerate(docs):
             empty_engine.add_doc(doc["content"], doc["metadata"])
-            # Every 5 docs, perform a search
+
             if i % 5 == 0 and i > 0:
                 empty_engine.search("test query", top_k=5)
 

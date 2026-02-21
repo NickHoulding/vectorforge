@@ -33,7 +33,6 @@ def handle_api_errors(func: F) -> F:
             return func(*args, **kwargs)
 
         except HTTPException:
-            # Re-raise FastAPI exceptions as-is (already formatted)
             raise
 
         except FileNotFoundError as e:
@@ -54,7 +53,6 @@ def handle_api_errors(func: F) -> F:
             return await func(*args, **kwargs)
 
         except HTTPException:
-            # Re-raise FastAPI exceptions as-is (already formatted)
             raise
 
         except FileNotFoundError as e:

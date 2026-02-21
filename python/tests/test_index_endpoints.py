@@ -130,8 +130,9 @@ def test_index_after_deletions(client, multiple_added_docs):
     for i in range(5):
         client.delete(f"/doc/{multiple_added_docs[i]}")
 
+    expected_total_docs = 15
     stats = client.get("/index/stats").json()
-    assert stats["total_documents"] == 15  # 20 - 5 = 15
+    assert stats["total_documents"] == expected_total_docs
 
 
 # =============================================================================
@@ -210,8 +211,9 @@ def test_index_save_basic(client, multiple_added_docs):
     response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     data = response.json()
 
-    assert data["documents_saved"] == 15  # 20 - 5 = 15
-    assert data["embeddings_saved"] == 15
+    expected_saved = 15
+    assert data["documents_saved"] == expected_saved
+    assert data["embeddings_saved"] == expected_saved
 
 
 def test_index_save_after_deletions(client, multiple_added_docs):
@@ -222,8 +224,9 @@ def test_index_save_after_deletions(client, multiple_added_docs):
     response = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     data = response.json()
 
-    assert data["documents_saved"] == 14  # 20 - 6 = 14
-    assert data["embeddings_saved"] == 14
+    expected_saved = 14
+    assert data["documents_saved"] == expected_saved
+    assert data["embeddings_saved"] == expected_saved
 
 
 def test_index_save_overwrites_existing_files(client, multiple_added_docs):
@@ -235,7 +238,7 @@ def test_index_save_overwrites_existing_files(client, multiple_added_docs):
     """
     response1 = client.post("/index/save", params={"directory": TEST_DATA_PATH})
     docs_before = response1.json()["documents_saved"]
-    assert docs_before == 20  # multiple_added_docs fixture adds 20 docs
+    assert docs_before == 20
 
     for i in range(10):
         client.delete(f"/doc/{multiple_added_docs[i]}")
@@ -406,12 +409,10 @@ def test_index_load_replaces_current_state(client, multiple_added_docs):
     client.post("/index/load", params={"directory": TEST_DATA_PATH})
 
     stats_after = client.get("/index/stats").json()
-    assert (
-        stats_after["total_documents"] == 21
-    )  # Still 21 (ChromaDB keeps current state)
+    assert stats_after["total_documents"] == 21
 
     resp = client.get(f"/doc/{new_doc['id']}")
-    assert resp.status_code == 200  # Document still exists
+    assert resp.status_code == 200
 
 
 def test_index_load_preserves_metadata(client):
@@ -528,7 +529,6 @@ def test_index_load_with_very_long_directory_path(client):
     long_dir = "a" * (VFGConfig.MAX_PATH_LEN + 1)
 
     resp = client.post("/index/load", params={"directory": long_dir})
-    # ChromaDB uses its configured directory, so this succeeds
     assert resp.status_code == 200
 
 

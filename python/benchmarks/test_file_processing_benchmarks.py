@@ -197,9 +197,6 @@ def test_chunking_throughput(benchmark, sample_text_large: str):
     """Measure chunking throughput (chunks per second)."""
     benchmark(chunk_text, text=sample_text_large, chunk_size=500, overlap=50)
 
-    # Number of chunks will vary, but benchmark stats show time
-    # Chunks per second = len(result) / time
-
 
 # ============================================================================
 # Memory Efficiency

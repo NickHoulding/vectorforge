@@ -343,7 +343,7 @@ def test_metrics_memory_calculation_accuracy(client):
     initial_metrics = client.get("/metrics").json()
     initial_memory = initial_metrics["memory"]["total_mb"]
 
-    large_content = "x" * 10000  # 10KB of content
+    large_content = "x" * 10000
     for i in range(10):
         client.post("/doc/add", json={"content": large_content, "metadata": {}})
 

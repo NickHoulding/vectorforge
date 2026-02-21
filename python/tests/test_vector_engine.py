@@ -1128,7 +1128,6 @@ def test_multiple_operations_metrics_accuracy(vector_engine):
     for i in range(3):
         vector_engine.search("document")
 
-    # Get all doc IDs
     all_docs = vector_engine.collection.get()
     doc_ids = all_docs["ids"][:2]
 

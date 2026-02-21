@@ -86,11 +86,9 @@ Examples:
     )
 
     args = parser.parse_args()
-
-    # Build pytest command
     cmd = ["pytest", "benchmarks/", "--benchmark-only"]
 
-    # Select test files
+    # Gather test files
     test_files = []
     if args.search:
         test_files.append("test_search_benchmarks.py")
@@ -110,26 +108,21 @@ Examples:
     if not args.all:
         cmd.extend(["-m", "not slow"])
 
-    # Add benchmark options
+    # Benchmark options
     if args.save:
         cmd.append(f"--benchmark-save={args.save}")
-
     if args.compare:
         cmd.append(f"--benchmark-compare={args.compare}")
-
     if args.json:
         cmd.append(f"--benchmark-json={args.json}")
-
     if args.histogram:
         cmd.append("--benchmark-histogram")
 
-    # Add pytest options
+    # pytest options
     if args.verbose:
         cmd.append("-v")
-
     if args.k:
         cmd.extend(["-k", args.k])
-
     if args.rounds:
         cmd.append(f"--benchmark-min-rounds={args.rounds}")
 

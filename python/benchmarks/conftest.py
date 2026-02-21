@@ -50,11 +50,9 @@ def generate_document(
     Returns:
         Dictionary with 'content' and 'metadata' keys
     """
-    # Generate realistic content
     num_sentences = fake.random_int(min=3, max=15)
     content = " ".join([fake.sentence() for _ in range(num_sentences)])
 
-    # Generate metadata
     metadata = {
         "doc_id": doc_id,
         "author": fake.name(),
@@ -81,7 +79,6 @@ def generate_file_chunk(
     Returns:
         Dictionary with 'content' and 'metadata' keys
     """
-    # Generate realistic chunk content
     num_sentences = fake.random_int(min=5, max=10)
     content = " ".join([fake.sentence() for _ in range(num_sentences)])
 
@@ -137,7 +134,6 @@ def empty_engine() -> Generator[VectorEngine, None, None]:
     """
     engine = VectorEngine()
     yield engine
-    # Cleanup - engine will be garbage collected
 
 
 @pytest.fixture

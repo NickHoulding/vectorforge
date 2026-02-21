@@ -516,10 +516,8 @@ def test_search_filters_json_format(client):
 
 def test_search_filters_validation(client):
     """Test that invalid filter format is handled appropriately."""
-    # Test with null filters (should work - same as no filters)
     response = client.post("/search", json={"query": "test", "filters": None})
     assert response.status_code == 200
 
-    # Test with empty dict (should work - same as no filters)
     response = client.post("/search", json={"query": "test", "filters": {}})
     assert response.status_code == 200
