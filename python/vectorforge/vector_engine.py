@@ -88,6 +88,13 @@ class VectorEngine:
     The engine uses cosine similarity on normalized embeddings for efficient
     semantic search across documents.
 
+    Note:
+        This class is designed to be accessed through API endpoints that use the
+        @handle_api_errors decorator. Some methods explicitly raise ValueError for
+        invalid input (documented per-method). ChromaDB operations may raise
+        database-related exceptions; all exceptions are caught and handled by the
+        API layer, which converts them to appropriate HTTP responses.
+
     Attributes:
         chroma_client: ChromaDB PersistentClient for database operations.
         collection: ChromaDB collection storing documents and embeddings.
@@ -209,6 +216,9 @@ class VectorEngine:
             List of SearchResult objects sorted by similarity score in
             descending order. Returns empty list if index is empty or no
             documents match the filters.
+
+        Raises:
+            ValueError: If the query string is empty or contains only whitespace.
         """
         if not query.strip():
             raise ValueError("Search query cannot be empty")
@@ -346,6 +356,10 @@ class VectorEngine:
 
         Returns:
             Unique document ID (UUID v4) for the newly added document.
+
+        Raises:
+            ValueError: If content is empty/whitespace, or if metadata contains
+                'source_file' without 'chunk_index' (or vice versa).
         """
         if not content.strip():
             raise ValueError("Document content cannot be empty")
