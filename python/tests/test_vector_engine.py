@@ -902,7 +902,6 @@ def test_get_metrics_includes_memory_stats(vector_engine):
 
     metrics = vector_engine.get_metrics()
 
-    # Only total_doc_size_bytes is tracked (no approximations)
     assert "total_doc_size_bytes" in metrics
     assert metrics["total_doc_size_bytes"] > 0
 
@@ -1120,30 +1119,23 @@ def test_get_chromadb_disk_size_conversion(vector_engine):
     bytes_size, mb_size = vector_engine._get_chromadb_disk_size()
 
     expected_mb = bytes_size / (1024 * 1024)
-    # Check that the MB value is close (within 0.01 MB difference)
     assert abs(mb_size - expected_mb) < 0.01
 
 
 def test_get_chromadb_disk_size_increases_with_data(vector_engine):
     """Test that disk size increases when documents are added."""
-    # Get initial size
     initial_bytes, _ = vector_engine._get_chromadb_disk_size()
 
-    # Add documents
     for i in range(10):
         vector_engine.add_doc(f"Test document {i} with content " * 50, {})
 
-    # Get new size
     final_bytes, _ = vector_engine._get_chromadb_disk_size()
-
-    # Size should increase
     assert final_bytes >= initial_bytes
 
 
 def test_get_chromadb_metrics_returns_dict(vector_engine):
     """Test that get_chromadb_metrics returns a dictionary."""
     result = vector_engine.get_chromadb_metrics()
-
     assert isinstance(result, dict)
 
 
@@ -1217,7 +1209,6 @@ def test_chromadb_metrics_consistency(vector_engine):
     metrics1 = vector_engine.get_chromadb_metrics()
     metrics2 = vector_engine.get_chromadb_metrics()
 
-    # These fields should be identical
     assert metrics1["version"] == metrics2["version"]
     assert metrics1["collection_id"] == metrics2["collection_id"]
     assert metrics1["collection_name"] == metrics2["collection_name"]
@@ -1336,20 +1327,17 @@ def test_peak_document_count_updates_after_add_doc(vector_engine):
     """Test that peak increases after adding a document."""
     initial_peak = vector_engine.metrics.total_documents_peak
 
-    # Add a document
-    doc_id = vector_engine.add_doc(
+    vector_engine.add_doc(
         content="Test document for peak tracking",
         metadata={"test": "peak_tracking"},
     )
 
-    # Peak should have increased
     assert vector_engine.metrics.total_documents_peak > initial_peak
     assert vector_engine.metrics.total_documents_peak == 1
 
 
 def test_peak_document_count_increases_with_multiple_adds(vector_engine):
     """Test that peak increases correctly with multiple document additions."""
-    # Add 5 documents
     for i in range(5):
         vector_engine.add_doc(
             content=f"Test document {i} for peak tracking",
@@ -1361,7 +1349,6 @@ def test_peak_document_count_increases_with_multiple_adds(vector_engine):
 
 def test_peak_document_count_does_not_decrease_on_delete(vector_engine):
     """Test that peak does NOT decrease when documents are deleted."""
-    # Add 5 documents
     doc_ids = []
     for i in range(5):
         doc_id = vector_engine.add_doc(
@@ -1373,24 +1360,20 @@ def test_peak_document_count_does_not_decrease_on_delete(vector_engine):
     peak_after_add = vector_engine.metrics.total_documents_peak
     assert peak_after_add == 5
 
-    # Delete 3 documents
     for i in range(3):
         vector_engine.delete_doc(doc_ids[i])
 
     peak_after_delete = vector_engine.metrics.total_documents_peak
 
-    # Peak should stay the same
     assert peak_after_delete == peak_after_add
     assert peak_after_delete == 5
 
-    # But total documents should have decreased
     total_docs = vector_engine.collection.count()
     assert total_docs == 2
 
 
 def test_peak_document_count_in_get_metrics(vector_engine):
     """Test that get_metrics() includes peak document count."""
-    # Add some documents
     for i in range(3):
         vector_engine.add_doc(
             content=f"Test document {i}",

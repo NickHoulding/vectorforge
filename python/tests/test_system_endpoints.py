@@ -126,6 +126,7 @@ def test_health_ignores_query_parameters(client):
 
     assert resp1.status_code == 200
     assert resp2.status_code == 200
+
     # Compare only status and version (heartbeat will differ)
     assert resp1.json()["status"] == resp2.json()["status"]
     assert resp1.json()["version"] == resp2.json()["version"]
@@ -216,7 +217,6 @@ def test_metrics_includes_usage_metrics(metrics):
 
 def test_metrics_includes_memory_metrics(metrics):
     """Test that metrics response includes memory statistics."""
-    # Memory approximations removed - only accurate byte tracking remains
     assert "total_doc_size_bytes" in metrics["usage"]
     assert isinstance(metrics["usage"]["total_doc_size_bytes"], int)
 
@@ -342,7 +342,7 @@ def test_metrics_doc_size_tracking_accuracy(client):
     initial_size = initial_metrics["usage"]["total_doc_size_bytes"]
 
     large_content = "x" * 10000
-    for i in range(10):
+    for _ in range(10):
         client.post("/doc/add", json={"content": large_content, "metadata": {}})
 
     after_metrics = client.get("/metrics").json()
@@ -624,11 +624,9 @@ def test_chromadb_metrics_has_max_batch_size(client):
 
 def test_chromadb_metrics_disk_size_increases_with_documents(client):
     """Test that disk size increases when documents are added."""
-    # Get initial metrics
     metrics1 = client.get("/metrics").json()
     initial_disk_bytes = metrics1["chromadb"]["disk_size_bytes"]
 
-    # Add multiple documents
     for i in range(10):
         client.post(
             "/documents",
@@ -638,11 +636,9 @@ def test_chromadb_metrics_disk_size_increases_with_documents(client):
             },
         )
 
-    # Get updated metrics
     metrics2 = client.get("/metrics").json()
     final_disk_bytes = metrics2["chromadb"]["disk_size_bytes"]
 
-    # Disk size should have increased
     assert final_disk_bytes >= initial_disk_bytes
 
 
@@ -694,37 +690,27 @@ def test_peak_document_count_starts_at_zero(client):
 
 def test_peak_document_count_increases_when_documents_added(client):
     """Test that peak increases when documents are added (or stays same if already high)."""
-    # Get initial metrics (collection is cleared by reset_engine)
     metrics1 = client.get("/metrics").json()
     initial_peak = metrics1["index"]["total_documents_peak"]
     initial_total = metrics1["index"]["total_documents"]
-
-    # After reset_engine, total should be 0
     assert initial_total == 0
 
-    # Add a document
     client.post(
         "/doc/add",
         json={"content": "Test document for peak tracking", "metadata": {"test": 1}},
     )
 
-    # Get updated metrics
     metrics2 = client.get("/metrics").json()
     new_peak = metrics2["index"]["total_documents_peak"]
     new_total = metrics2["index"]["total_documents"]
 
-    # Total should have increased to 1
     assert new_total == 1
-    # Peak should be at least as high as total (could be higher from previous tests)
     assert new_peak >= new_total
-    # Peak should never decrease
     assert new_peak >= initial_peak
 
 
 def test_peak_document_count_stays_same_when_documents_deleted(client):
     """Test that peak does NOT decrease when documents are deleted."""
-    # Start fresh (reset_engine clears docs)
-    # Add multiple documents
     doc_ids = []
     for i in range(5):
         resp = client.post(
@@ -736,28 +722,21 @@ def test_peak_document_count_stays_same_when_documents_deleted(client):
         )
         doc_ids.append(resp.json()["id"])
 
-    # Get peak after additions
     metrics1 = client.get("/metrics").json()
     peak_after_add = metrics1["index"]["total_documents_peak"]
     total_after_add = metrics1["index"]["total_documents"]
 
-    # We just added 5 documents to an empty collection
     assert total_after_add == 5
-    # Peak should be at least 5 (could be higher from previous tests)
     assert peak_after_add >= 5
 
-    # Delete 3 documents
     for i in range(3):
         client.delete(f"/doc/{doc_ids[i]}")
 
-    # Get peak after deletions
     metrics2 = client.get("/metrics").json()
     peak_after_delete = metrics2["index"]["total_documents_peak"]
     total_after_delete = metrics2["index"]["total_documents"]
 
-    # Peak should stay the same or higher (never decrease)
     assert peak_after_delete >= peak_after_add
-    # Total should have decreased
     assert total_after_delete == 2
 
 
@@ -765,18 +744,13 @@ def test_peak_document_count_equals_total_when_no_deletions(
     client, multiple_added_docs
 ):
     """Test that peak is at least as high as total after only adding documents."""
-    # multiple_added_docs fixture adds 20 documents to a clean collection
-    # (reset_engine clears all docs before each test)
     assert len(multiple_added_docs) == 20
 
-    # Get metrics after fixture additions
     metrics = client.get("/metrics").json()
     index_metrics = metrics["index"]
 
     peak = index_metrics["total_documents_peak"]
     total = index_metrics["total_documents"]
 
-    # After the fixture, we should have exactly 20 documents
     assert total == 20
-    # Peak should be at least 20 (could be higher from previous tests in session)
     assert peak >= 20
