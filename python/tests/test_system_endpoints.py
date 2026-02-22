@@ -177,8 +177,6 @@ def test_metrics_includes_index_metrics(metrics):
     """Test that metrics response includes index statistics."""
     assert "total_documents" in metrics["index"]
     assert isinstance(metrics["index"]["total_documents"], int)
-    assert "total_embeddings" in metrics["index"]
-    assert isinstance(metrics["index"]["total_embeddings"], int)
 
 
 def test_metrics_includes_performance_metrics(metrics):
@@ -286,8 +284,8 @@ def test_metrics_after_add_delete_cycle(client, sample_doc, multiple_added_docs)
         == initial_metrics["usage"]["documents_deleted"] + 1
     )
     assert (
-        after_delete["index"]["total_embeddings"]
-        == after_add["index"]["total_embeddings"] - 1
+        after_delete["index"]["total_documents"]
+        == after_add["index"]["total_documents"] - 1
     )
 
 

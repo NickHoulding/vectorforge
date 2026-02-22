@@ -936,7 +936,6 @@ def test_get_metrics_includes_document_stats(vector_engine):
     assert "docs_added" in metrics
     assert "docs_deleted" in metrics
     assert "total_documents" in metrics
-    assert "total_embeddings" in metrics
     assert metrics["docs_added"] == 1
     assert metrics["total_documents"] == 1
 
@@ -1014,16 +1013,14 @@ def test_get_index_stats_returns_dict(vector_engine):
 
 
 def test_get_index_stats_includes_document_counts(vector_engine):
-    """Test that index stats include document and embedding counts."""
+    """Test that index stats include document counts."""
     vector_engine.add_doc("Document 1", {})
     vector_engine.add_doc("Document 2", {})
 
     stats = vector_engine.get_index_stats()
 
     assert "total_documents" in stats
-    assert "total_embeddings" in stats
     assert stats["total_documents"] == 2
-    assert stats["total_embeddings"] == 2
 
 
 def test_get_index_stats_includes_embedding_dimension(vector_engine):

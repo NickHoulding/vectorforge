@@ -50,7 +50,7 @@ def get_metrics() -> MetricsResponse:
     Get comprehensive system metrics
 
     Returns detailed performance, usage, and system statistics including:
-    - Index statistics (documents, embeddings)
+    - Index statistics (documents)
     - Performance metrics (query times, percentiles)
     - Usage statistics (operations performed)
     - Memory consumption
@@ -70,7 +70,6 @@ def get_metrics() -> MetricsResponse:
 
     index_metrics: IndexMetrics = IndexMetrics(
         total_documents=metrics["total_documents"],
-        total_embeddings=metrics["total_embeddings"],
     )
     performance_metrics: PerformanceMetrics = PerformanceMetrics(
         total_queries=metrics["total_queries"],

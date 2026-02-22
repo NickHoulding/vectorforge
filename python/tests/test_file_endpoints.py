@@ -678,9 +678,9 @@ def test_file_list_returns_unique_filenames(client, upload_file):
 def test_file_upload_and_delete_affects_embeddings_count(
     get_metrics, upload_file, client
 ):
-    """Test that upload increases and delete decreases embeddings count."""
+    """Test that upload increases and delete decreases document count."""
     initial_metrics = get_metrics()
-    initial_embeddings = initial_metrics["index"]["total_embeddings"]
+    initial_docs = initial_metrics["index"]["total_documents"]
 
     file_content = b"x" * (VFGConfig.DEFAULT_CHUNK_SIZE * 2)
     resp = upload_file("embeddings_test.txt", file_content)
@@ -688,17 +688,15 @@ def test_file_upload_and_delete_affects_embeddings_count(
     chunks_created = resp.json()["chunks_created"]
 
     after_upload = get_metrics()
-    assert (
-        after_upload["index"]["total_embeddings"] == initial_embeddings + chunks_created
-    )
+    assert after_upload["index"]["total_documents"] == initial_docs + chunks_created
 
     delete_resp = client.delete("/file/delete/embeddings_test.txt")
     assert delete_resp.status_code == 200
 
     after_delete = get_metrics()
     assert (
-        after_delete["index"]["total_embeddings"]
-        < after_upload["index"]["total_embeddings"]
+        after_delete["index"]["total_documents"]
+        < after_upload["index"]["total_documents"]
     )
 
 

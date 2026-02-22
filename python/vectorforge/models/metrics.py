@@ -10,11 +10,9 @@ class IndexMetrics(BaseModel):
 
     Attributes:
         total_documents: Active documents currently in the index.
-        total_embeddings: Total embedding vectors in the index.
     """
 
     total_documents: int = Field(..., description="Active documents in index")
-    total_embeddings: int = Field(..., description="Total embeddings in index")
 
 
 class PerformanceMetrics(BaseModel):
@@ -159,7 +157,6 @@ class MetricsResponse(BaseModel):
             "example": {
                 "index": {
                     "total_documents": 1500,
-                    "total_embeddings": 1500,
                 },
                 "performance": {
                     "total_queries": 5420,

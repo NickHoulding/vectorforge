@@ -62,12 +62,6 @@ def test_index_stats_returns_total_documents(stats):
     assert isinstance(stats["total_documents"], int)
 
 
-def test_index_stats_returns_total_embeddings(stats):
-    """Test that index stats includes total embeddings count."""
-    assert "total_embeddings" in stats
-    assert isinstance(stats["total_embeddings"], int)
-
-
 def test_index_stats_returns_embedding_dimension(stats):
     """Test that index stats includes embedding dimension."""
     assert "embedding_dimension" in stats
@@ -79,7 +73,6 @@ def test_index_stats_with_empty_index(client):
     stats = client.get("/index/stats").json()
 
     assert stats["total_documents"] == 0
-    assert stats["total_embeddings"] == 0
     assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
 
 
@@ -90,7 +83,6 @@ def test_index_stats_after_adding_documents(client):
 
     stats = client.get("/index/stats").json()
     assert stats["total_documents"] == 2
-    assert stats["total_embeddings"] == 2
 
 
 def test_index_stats_after_document_deletion(client, multiple_added_docs):
@@ -100,7 +92,6 @@ def test_index_stats_after_document_deletion(client, multiple_added_docs):
 
     stats = client.get("/index/stats").json()
     assert stats["total_documents"] == 19
-    assert stats["total_embeddings"] == 19
 
 
 def test_index_stats_embedding_dimension_is_384(client):
@@ -117,7 +108,6 @@ def test_index_stats_multiple_deletions_immediate_removal(client, multiple_added
     stats = client.get("/index/stats").json()
 
     assert stats["total_documents"] == 16  # 20 - 4 = 16
-    assert stats["total_embeddings"] == 16
 
 
 # =============================================================================
@@ -167,12 +157,6 @@ def test_index_save_includes_document_count(save_data):
     assert isinstance(save_data["documents_saved"], int)
 
 
-def test_index_save_includes_embeddings_count(save_data):
-    """Test that save response includes embeddings_saved count."""
-    assert "embeddings_saved" in save_data
-    assert isinstance(save_data["embeddings_saved"], int)
-
-
 def test_index_save_includes_version(save_data):
     """Test that save response includes version information."""
     assert "version" in save_data
@@ -185,7 +169,6 @@ def test_index_save_with_documents(client, multiple_added_docs):
     data = response.json()
 
     assert data["documents_saved"] == 20
-    assert data["embeddings_saved"] == 20
 
 
 def test_index_save_empty_index(client):
@@ -194,7 +177,6 @@ def test_index_save_empty_index(client):
     data = response.json()
 
     assert data["documents_saved"] == 0
-    assert data["embeddings_saved"] == 0
 
 
 def test_index_save_basic(client, multiple_added_docs):
@@ -207,7 +189,6 @@ def test_index_save_basic(client, multiple_added_docs):
 
     expected_saved = 15
     assert data["documents_saved"] == expected_saved
-    assert data["embeddings_saved"] == expected_saved
 
 
 def test_index_save_after_deletions(client, multiple_added_docs):
@@ -220,7 +201,6 @@ def test_index_save_after_deletions(client, multiple_added_docs):
 
     expected_saved = 14
     assert data["documents_saved"] == expected_saved
-    assert data["embeddings_saved"] == expected_saved
 
 
 def test_index_save_overwrites_existing_files(client, multiple_added_docs):
@@ -295,12 +275,6 @@ def test_index_load_includes_document_count(load_data):
     assert isinstance(load_data["documents_loaded"], int)
 
 
-def test_index_load_includes_embeddings_count(load_data):
-    """Test that load response includes number of embeddings loaded."""
-    assert "embeddings_loaded" in load_data
-    assert isinstance(load_data["embeddings_loaded"], int)
-
-
 def test_index_load_includes_version(load_data):
     """Test that load response includes version information."""
     assert "version" in load_data
@@ -326,10 +300,6 @@ def test_index_save_and_load_roundtrip(client, multiple_added_docs):
     assert (
         loaded_metrics["index"]["total_documents"]
         == initial_metrics["index"]["total_documents"]
-    )
-    assert (
-        loaded_metrics["index"]["total_embeddings"]
-        == initial_metrics["index"]["total_embeddings"]
     )
 
     assert (
@@ -466,11 +436,9 @@ def test_index_load_empty_index(client):
     data = resp.json()
 
     assert data["documents_loaded"] == 0
-    assert data["embeddings_loaded"] == 0
 
     stats = client.get("/index/stats").json()
     assert stats["total_documents"] == 0
-    assert stats["total_embeddings"] == 0
 
 
 def test_index_load_counts_match_save(client, multiple_added_docs):
@@ -482,7 +450,6 @@ def test_index_load_counts_match_save(client, multiple_added_docs):
     load_data = load_resp.json()
 
     assert load_data["documents_loaded"] == save_data["documents_saved"]
-    assert load_data["embeddings_loaded"] == save_data["embeddings_saved"]
 
 
 def test_index_load_multiple_times_idempotent(client, multiple_added_docs):

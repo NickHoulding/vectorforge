@@ -33,7 +33,6 @@ def get_index_stats() -> IndexStatsResponse:
     return IndexStatsResponse(
         status="success",
         total_documents=stats["total_documents"],
-        total_embeddings=stats["total_embeddings"],
         embedding_dimension=stats["embedding_dimension"],
     )
 
@@ -65,7 +64,6 @@ def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse
         status=save_metrics["status"],
         directory=save_metrics["directory"],
         documents_saved=save_metrics["documents_saved"],
-        embeddings_saved=save_metrics["embeddings_saved"],
         version=save_metrics["version"],
     )
 
@@ -94,6 +92,5 @@ def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexLoadResponse
         status=load_metrics["status"],
         directory=load_metrics["directory"],
         documents_loaded=load_metrics["documents_loaded"],
-        embeddings_loaded=load_metrics["embeddings_loaded"],
         version=load_metrics["version"],
     )

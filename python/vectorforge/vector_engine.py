@@ -140,7 +140,6 @@ class VectorEngine:
                 - status: 'saved' (data is auto-persisted)
                 - directory: Path where ChromaDB persists data
                 - documents_saved: Current number of documents
-                - embeddings_saved: Current number of embeddings
                 - version: VectorForge version
         """
         doc_count = self.collection.count()
@@ -156,7 +155,6 @@ class VectorEngine:
             "status": "saved",
             "directory": persist_dir,
             "documents_saved": doc_count,
-            "embeddings_saved": doc_count,
             "version": __version__,
         }
 
@@ -173,7 +171,6 @@ class VectorEngine:
                 - status: 'loaded'
                 - directory: Path where ChromaDB loads/persists data
                 - documents_loaded: Current number of documents
-                - embeddings_loaded: Current number of embeddings
                 - version: VectorForge version
         """
         if directory == VFGConfig.DEFAULT_DATA_DIR:
@@ -189,7 +186,6 @@ class VectorEngine:
             "status": "loaded",
             "directory": persist_dir,
             "documents_loaded": doc_count,
-            "embeddings_loaded": doc_count,
             "version": __version__,
         }
 
@@ -473,7 +469,7 @@ class VectorEngine:
             Dictionary containing:
                 - Counters: total_queries, docs_added, docs_deleted, etc.
                 - Performance: avg/min/max/p50/p95/p99 query times
-                - Index stats: total_documents, total_embeddings
+                - Index stats: total_documents
                 - Memory usage: embeddings_mb, documents_mb, total_mb
                 - System info: model_name, model_dimension, uptime_seconds
                 - Timestamps: created_at, last_query_at, last_doc_added_at, etc.
@@ -481,7 +477,6 @@ class VectorEngine:
         metrics_dict: dict[str, Any] = self.metrics.to_dict()
 
         total_docs: int = self.collection.count()
-        total_embeddings: int = total_docs
 
         avg_query_time: float = (
             self.metrics.total_query_time_ms / self.metrics.total_queries
@@ -505,7 +500,7 @@ class VectorEngine:
         max_time: float | None = max(sorted_times) if sorted_times else None
 
         embedding_dim: int = self.model.get_sentence_embedding_dimension() or 0
-        embeddings_mb: float = (total_embeddings * embedding_dim * 4) / (1024 * 1024)
+        embeddings_mb: float = (total_docs * embedding_dim * 4) / (1024 * 1024)
         documents_mb: float = self.metrics.total_doc_size_bytes / (1024 * 1024)
 
         created: datetime = datetime.fromisoformat(self.metrics.created_at)
@@ -515,7 +510,6 @@ class VectorEngine:
             {
                 # Index metrics
                 "total_documents": total_docs,
-                "total_embeddings": total_embeddings,
                 # Performance metrics
                 "avg_query_time_ms": avg_query_time,
                 "min_query_time_ms": min_time,
@@ -543,15 +537,12 @@ class VectorEngine:
         Returns:
             Dictionary containing:
                 - total_documents: Total number of documents in the collection
-                - total_embeddings: Number of embedding vectors in the index
                 - embedding_dimension: Dimensionality of embedding vectors
         """
         total_docs: int = self.collection.count()
-        total_embeddings: int = total_docs
 
         return {
             "total_documents": total_docs,
-            "total_embeddings": total_embeddings,
             "embedding_dimension": self.model.get_sentence_embedding_dimension() or 0,
         }
 
