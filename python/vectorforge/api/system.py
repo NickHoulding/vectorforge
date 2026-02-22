@@ -9,7 +9,6 @@ from vectorforge.api import engine
 from vectorforge.api.decorators import handle_api_errors
 from vectorforge.models import (
     IndexMetrics,
-    MemoryMetrics,
     MetricsResponse,
     PerformanceMetrics,
     SystemInfo,
@@ -52,8 +51,7 @@ def get_metrics() -> MetricsResponse:
     Returns detailed performance, usage, and system statistics including:
     - Index statistics (documents)
     - Performance metrics (query times, percentiles)
-    - Usage statistics (operations performed)
-    - Memory consumption
+    - Usage statistics (operations performed, document sizes)
     - System information and uptime
 
     This endpoint provides complete observability into the vector engine's state
@@ -86,11 +84,7 @@ def get_metrics() -> MetricsResponse:
         documents_deleted=metrics["docs_deleted"],
         chunks_created=metrics["chunks_created"],
         files_uploaded=metrics["files_uploaded"],
-    )
-    memory_metrics: MemoryMetrics = MemoryMetrics(
-        embeddings_mb=metrics["embeddings_mb"],
-        documents_mb=metrics["documents_mb"],
-        total_mb=metrics["total_mb"],
+        total_doc_size_bytes=metrics["total_doc_size_bytes"],
     )
     timestamp_metrics: TimestampMetrics = TimestampMetrics(
         engine_created_at=metrics["created_at"],
@@ -109,7 +103,6 @@ def get_metrics() -> MetricsResponse:
         index=index_metrics,
         performance=performance_metrics,
         usage=usage_metrics,
-        memory=memory_metrics,
         timestamps=timestamp_metrics,
         system=system_info,
     )

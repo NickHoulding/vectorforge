@@ -168,7 +168,6 @@ def test_metrics_returns_comprehensive_data(metrics):
     assert "index" in metrics
     assert "performance" in metrics
     assert "usage" in metrics
-    assert "memory" in metrics
     assert "timestamps" in metrics
     assert "system" in metrics
 
@@ -213,12 +212,9 @@ def test_metrics_includes_usage_metrics(metrics):
 
 def test_metrics_includes_memory_metrics(metrics):
     """Test that metrics response includes memory statistics."""
-    assert "embeddings_mb" in metrics["memory"]
-    assert isinstance(metrics["memory"]["embeddings_mb"], float)
-    assert "documents_mb" in metrics["memory"]
-    assert isinstance(metrics["memory"]["documents_mb"], float)
-    assert "total_mb" in metrics["memory"]
-    assert isinstance(metrics["memory"]["total_mb"], float)
+    # Memory approximations removed - only accurate byte tracking remains
+    assert "total_doc_size_bytes" in metrics["usage"]
+    assert isinstance(metrics["usage"]["total_doc_size_bytes"], int)
 
 
 def test_metrics_includes_timestamp_metrics(metrics):
@@ -336,25 +332,20 @@ def test_metrics_performance_percentiles_calculation(client, multiple_added_docs
     )
 
 
-def test_metrics_memory_calculation_accuracy(client):
-    """Test that memory metrics accurately reflect storage usage."""
+def test_metrics_doc_size_tracking_accuracy(client):
+    """Test that document size tracking accurately reflects storage usage."""
     initial_metrics = client.get("/metrics").json()
-    initial_memory = initial_metrics["memory"]["total_mb"]
+    initial_size = initial_metrics["usage"]["total_doc_size_bytes"]
 
     large_content = "x" * 10000
     for i in range(10):
         client.post("/doc/add", json={"content": large_content, "metadata": {}})
 
     after_metrics = client.get("/metrics").json()
-    assert after_metrics["memory"]["total_mb"] > initial_memory
-    assert after_metrics["memory"]["documents_mb"] > 0
-    assert after_metrics["memory"]["embeddings_mb"] > 0
+    expected_increase = len(large_content) * 10
+    actual_increase = after_metrics["usage"]["total_doc_size_bytes"] - initial_size
 
-    expected_total = (
-        after_metrics["memory"]["embeddings_mb"]
-        + after_metrics["memory"]["documents_mb"]
-    )
-    assert abs(after_metrics["memory"]["total_mb"] - expected_total) < 0.001
+    assert actual_increase == expected_increase
 
 
 def test_metrics_uptime_increases(client):
@@ -407,7 +398,6 @@ def test_metrics_response_has_no_extra_fields(client):
         "index",
         "performance",
         "usage",
-        "memory",
         "timestamps",
         "system",
     }
@@ -467,12 +457,10 @@ def test_metrics_after_deletions(client, multiple_added_docs):
     )
 
 
-def test_metrics_memory_values_are_non_negative(client):
-    """Test that all memory metrics are non-negative."""
+def test_metrics_doc_size_values_are_non_negative(client):
+    """Test that document size metric is non-negative."""
     metrics = client.get("/metrics").json()
-    assert metrics["memory"]["embeddings_mb"] >= 0
-    assert metrics["memory"]["documents_mb"] >= 0
-    assert metrics["memory"]["total_mb"] >= 0
+    assert metrics["usage"]["total_doc_size_bytes"] >= 0
 
 
 def test_metrics_performance_percentiles_none_when_no_queries(client):
@@ -516,18 +504,6 @@ def test_metrics_average_query_time_calculation(client, multiple_added_docs):
     if total_queries > 0:
         expected_avg = total_time / total_queries
         assert abs(avg_time - expected_avg) < 0.001
-
-
-def test_metrics_total_memory_equals_sum(client, added_doc):
-    """Test that total_mb equals sum of embeddings_mb and documents_mb."""
-    metrics = client.get("/metrics").json()
-
-    embeddings_mb = metrics["memory"]["embeddings_mb"]
-    documents_mb = metrics["memory"]["documents_mb"]
-    total_mb = metrics["memory"]["total_mb"]
-
-    expected_total = embeddings_mb + documents_mb
-    assert abs(total_mb - expected_total) < 0.001
 
 
 def test_metrics_usage_counters_are_cumulative(client):

@@ -11,7 +11,6 @@ from .index import IndexStatsResponse
 from .metadata import StandardMetadata, create_metadata
 from .metrics import (
     IndexMetrics,
-    MemoryMetrics,
     MetricsResponse,
     PerformanceMetrics,
     SystemInfo,
@@ -41,7 +40,6 @@ __all__: list[str] = [
     "IndexMetrics",
     "PerformanceMetrics",
     "UsageMetrics",
-    "MemoryMetrics",
     "TimestampMetrics",
     "SystemInfo",
     "MetricsResponse",

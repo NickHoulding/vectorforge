@@ -902,9 +902,7 @@ def test_get_metrics_includes_memory_stats(vector_engine):
 
     metrics = vector_engine.get_metrics()
 
-    assert "embeddings_mb" in metrics
-    assert "documents_mb" in metrics
-    assert "total_mb" in metrics
+    # Only total_doc_size_bytes is tracked (no approximations)
     assert "total_doc_size_bytes" in metrics
     assert metrics["total_doc_size_bytes"] > 0
 

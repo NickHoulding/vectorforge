@@ -61,29 +61,16 @@ class UsageMetrics(BaseModel):
         documents_deleted: Total number of documents deleted from the index.
         chunks_created: Total document chunks created from file uploads.
         files_uploaded: Total number of files processed and indexed.
+        total_doc_size_bytes: Total size of all document content in bytes.
     """
 
     documents_added: int = Field(..., description="Total documents added")
     documents_deleted: int = Field(..., description="Total documents deleted")
     chunks_created: int = Field(0, description="Total chunks from file uploads")
     files_uploaded: int = Field(0, description="Total files uploaded")
-
-
-class MemoryMetrics(BaseModel):
-    """Memory consumption estimates.
-
-    Provides approximate memory usage for the vector database components,
-    useful for capacity planning and resource monitoring.
-
-    Attributes:
-        embeddings_mb: Estimated memory used by embedding vectors in megabytes.
-        documents_mb: Estimated memory used by document content in megabytes.
-        total_mb: Combined estimated memory usage in megabytes.
-    """
-
-    embeddings_mb: float = Field(..., ge=0, description="Memory used by embeddings")
-    documents_mb: float = Field(..., ge=0, description="Memory used by documents")
-    total_mb: float = Field(..., ge=0, description="Total memory usage")
+    total_doc_size_bytes: int = Field(
+        0, ge=0, description="Total document content size"
+    )
 
 
 class TimestampMetrics(BaseModel):
@@ -140,7 +127,6 @@ class MetricsResponse(BaseModel):
         index: Index health and compaction metrics.
         performance: Query execution performance statistics.
         usage: Operation counts and usage patterns.
-        memory: Memory consumption estimates.
         timestamps: Event timing information.
         system: System configuration and version details.
     """
@@ -148,7 +134,6 @@ class MetricsResponse(BaseModel):
     index: IndexMetrics
     performance: PerformanceMetrics
     usage: UsageMetrics
-    memory: MemoryMetrics
     timestamps: TimestampMetrics
     system: SystemInfo
 
@@ -173,11 +158,7 @@ class MetricsResponse(BaseModel):
                     "documents_deleted": 850,
                     "chunks_created": 1875,
                     "files_uploaded": 42,
-                },
-                "memory": {
-                    "embeddings_mb": 2.304,
-                    "documents_mb": 0.512,
-                    "total_mb": 2.816,
+                    "total_doc_size_bytes": 524288,
                 },
                 "timestamps": {
                     "engine_created_at": "2024-01-15T10:30:00Z",

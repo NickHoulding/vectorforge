@@ -421,7 +421,6 @@ class VectorEngine:
                 - Counters: total_queries, docs_added, docs_deleted, etc.
                 - Performance: avg/min/max/p50/p95/p99 query times
                 - Index stats: total_documents
-                - Memory usage: embeddings_mb, documents_mb, total_mb
                 - System info: model_name, model_dimension, uptime_seconds
                 - Timestamps: created_at, last_query_at, last_doc_added_at, etc.
         """
@@ -451,8 +450,6 @@ class VectorEngine:
         max_time: float | None = max(sorted_times) if sorted_times else None
 
         embedding_dim: int = self.model.get_sentence_embedding_dimension() or 0
-        embeddings_mb: float = (total_docs * embedding_dim * 4) / (1024 * 1024)
-        documents_mb: float = self.metrics.total_doc_size_bytes / (1024 * 1024)
 
         created: datetime = datetime.fromisoformat(self.metrics.created_at)
         uptime: float = (datetime.now() - created).total_seconds()
@@ -468,10 +465,6 @@ class VectorEngine:
                 "p50_query_time_ms": p50,
                 "p95_query_time_ms": p95,
                 "p99_query_time_ms": p99,
-                # Memory metrics
-                "embeddings_mb": embeddings_mb,
-                "documents_mb": documents_mb,
-                "total_mb": embeddings_mb + documents_mb,
                 # System metrics
                 "model_name": self.model_name,
                 "model_dimension": embedding_dim,
