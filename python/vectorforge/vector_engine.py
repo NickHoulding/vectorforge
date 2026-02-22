@@ -23,6 +23,17 @@ class EngineMetrics:
     and analysis. This class maintains counters, performance metrics, storage
     statistics, and timestamps for various engine operations.
 
+    Note:
+        Metrics are SESSION-SCOPED and reset when the VectorEngine is reinitialized.
+        Only `total_documents` (retrieved from ChromaDB) persists across engine
+        restarts. All counters, timestamps, and performance history represent
+        activity during the current session.
+
+        This means:
+        - `docs_added` tracks documents added in this session (resets to 0)
+        - `total_documents` tracks all documents in ChromaDB (persists)
+        - After restart: `total_documents` may exceed `docs_added`
+
     Attributes:
         total_queries: Total number of search queries executed.
         docs_added: Total number of documents added to the index.
@@ -351,7 +362,10 @@ class VectorEngine:
 
         if ids and documents and len(ids) > 0:
             doc_content = documents[0]
-            self.metrics.total_doc_size_bytes -= len(doc_content)
+            size_to_subtract = len(doc_content)
+            self.metrics.total_doc_size_bytes = max(
+                0, self.metrics.total_doc_size_bytes - size_to_subtract
+            )
             self.collection.delete(ids=[doc_id])
             self.metrics.docs_deleted += 1
             success = True
