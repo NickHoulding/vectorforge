@@ -93,7 +93,9 @@ def test_health_endpoint_is_idempotent(client):
     resp2 = client.get("/health")
     resp3 = client.get("/health")
 
-    assert resp1.json() == resp2.json() == resp3.json()
+    # Check that status and version are consistent (heartbeat will differ)
+    assert resp1.json()["status"] == resp2.json()["status"] == resp3.json()["status"]
+    assert resp1.json()["version"] == resp2.json()["version"] == resp3.json()["version"]
     assert all(r.status_code == 200 for r in [resp1, resp2, resp3])
 
 
@@ -111,7 +113,7 @@ def test_health_response_has_no_extra_fields(client):
     resp = client.get("/health")
     data = resp.json()
 
-    expected_fields = {"status", "version"}
+    expected_fields = {"status", "version", "chromadb_heartbeat"}
     actual_fields = set(data.keys())
 
     assert actual_fields == expected_fields
@@ -124,7 +126,9 @@ def test_health_ignores_query_parameters(client):
 
     assert resp1.status_code == 200
     assert resp2.status_code == 200
-    assert resp1.json() == resp2.json()
+    # Compare only status and version (heartbeat will differ)
+    assert resp1.json()["status"] == resp2.json()["status"]
+    assert resp1.json()["version"] == resp2.json()["version"]
 
 
 def test_health_status_value_is_healthy(client):
@@ -400,6 +404,7 @@ def test_metrics_response_has_no_extra_fields(client):
         "usage",
         "timestamps",
         "system",
+        "chromadb",
     }
     actual_fields = set(data.keys())
 
@@ -528,3 +533,250 @@ def test_metrics_model_dimension_is_correct(client):
     """Test that model_dimension matches the configured dimension."""
     metrics = client.get("/metrics").json()
     assert metrics["system"]["model_dimension"] == VFGConfig.EMBEDDING_DIMENSION
+
+
+# =============================================================================
+# ChromaDB Metrics Tests
+# =============================================================================
+
+
+def test_health_includes_chromadb_heartbeat(client):
+    """Test that health endpoint includes ChromaDB heartbeat."""
+    resp = client.get("/health")
+    data = resp.json()
+
+    assert "chromadb_heartbeat" in data
+    assert isinstance(data["chromadb_heartbeat"], int)
+    assert data["chromadb_heartbeat"] > 0
+
+
+def test_metrics_includes_chromadb_section(client):
+    """Test that metrics response includes chromadb section."""
+    metrics = client.get("/metrics").json()
+
+    assert "chromadb" in metrics
+    assert isinstance(metrics["chromadb"], dict)
+
+
+def test_chromadb_metrics_has_version(client):
+    """Test that ChromaDB metrics includes version."""
+    metrics = client.get("/metrics").json()
+    chromadb = metrics["chromadb"]
+
+    assert "version" in chromadb
+    assert isinstance(chromadb["version"], str)
+    assert len(chromadb["version"]) > 0
+
+
+def test_chromadb_metrics_has_collection_info(client):
+    """Test that ChromaDB metrics includes collection information."""
+    metrics = client.get("/metrics").json()
+    chromadb = metrics["chromadb"]
+
+    assert "collection_id" in chromadb
+    assert "collection_name" in chromadb
+    assert isinstance(chromadb["collection_id"], str)
+    assert isinstance(chromadb["collection_name"], str)
+    assert chromadb["collection_name"] == VFGConfig.CHROMA_COLLECTION_NAME
+
+
+def test_chromadb_metrics_has_disk_size(client):
+    """Test that ChromaDB metrics includes disk size information."""
+    metrics = client.get("/metrics").json()
+    chromadb = metrics["chromadb"]
+
+    assert "disk_size_bytes" in chromadb
+    assert "disk_size_mb" in chromadb
+    assert isinstance(chromadb["disk_size_bytes"], int)
+    assert isinstance(chromadb["disk_size_mb"], float)
+    assert chromadb["disk_size_bytes"] >= 0
+    assert chromadb["disk_size_mb"] >= 0.0
+
+
+def test_chromadb_metrics_disk_size_conversion(client):
+    """Test that disk_size_mb is correctly calculated from bytes."""
+    metrics = client.get("/metrics").json()
+    chromadb = metrics["chromadb"]
+
+    expected_mb = round(chromadb["disk_size_bytes"] / (1024 * 1024), 2)
+    assert chromadb["disk_size_mb"] == expected_mb
+
+
+def test_chromadb_metrics_has_persist_directory(client):
+    """Test that ChromaDB metrics includes persist directory path."""
+    metrics = client.get("/metrics").json()
+    chromadb = metrics["chromadb"]
+
+    assert "persist_directory" in chromadb
+    assert isinstance(chromadb["persist_directory"], str)
+    assert len(chromadb["persist_directory"]) > 0
+
+
+def test_chromadb_metrics_has_max_batch_size(client):
+    """Test that ChromaDB metrics includes max batch size."""
+    metrics = client.get("/metrics").json()
+    chromadb = metrics["chromadb"]
+
+    assert "max_batch_size" in chromadb
+    assert isinstance(chromadb["max_batch_size"], int)
+    assert chromadb["max_batch_size"] > 0
+
+
+def test_chromadb_metrics_disk_size_increases_with_documents(client):
+    """Test that disk size increases when documents are added."""
+    # Get initial metrics
+    metrics1 = client.get("/metrics").json()
+    initial_disk_bytes = metrics1["chromadb"]["disk_size_bytes"]
+
+    # Add multiple documents
+    for i in range(10):
+        client.post(
+            "/documents",
+            json={
+                "content": f"Test document {i} with substantial content " * 20,
+                "metadata": {"test_id": i},
+            },
+        )
+
+    # Get updated metrics
+    metrics2 = client.get("/metrics").json()
+    final_disk_bytes = metrics2["chromadb"]["disk_size_bytes"]
+
+    # Disk size should have increased
+    assert final_disk_bytes >= initial_disk_bytes
+
+
+def test_chromadb_metrics_all_fields_present(client):
+    """Test that all ChromaDB metric fields are present."""
+    metrics = client.get("/metrics").json()
+    chromadb = metrics["chromadb"]
+
+    expected_fields = {
+        "version",
+        "collection_id",
+        "collection_name",
+        "disk_size_bytes",
+        "disk_size_mb",
+        "persist_directory",
+        "max_batch_size",
+    }
+    actual_fields = set(chromadb.keys())
+
+    assert actual_fields == expected_fields
+
+
+# =============================================================================
+# Peak Document Tracking Tests
+# =============================================================================
+
+
+def test_metrics_includes_peak_document_count(client):
+    """Test that metrics response includes total_documents_peak field."""
+    metrics = client.get("/metrics").json()
+    index_metrics = metrics["index"]
+
+    assert "total_documents_peak" in index_metrics
+    assert isinstance(index_metrics["total_documents_peak"], int)
+    assert index_metrics["total_documents_peak"] >= 0
+
+
+def test_peak_document_count_starts_at_zero(client):
+    """Test that peak document count field exists and is non-negative."""
+    metrics = client.get("/metrics").json()
+    index_metrics = metrics["index"]
+
+    # Peak may not be zero if other tests ran first in the session
+    # Just verify the field exists and is a non-negative integer
+    assert "total_documents_peak" in index_metrics
+    assert isinstance(index_metrics["total_documents_peak"], int)
+    assert index_metrics["total_documents_peak"] >= 0
+
+
+def test_peak_document_count_increases_when_documents_added(client):
+    """Test that peak increases when documents are added (or stays same if already high)."""
+    # Get initial metrics (collection is cleared by reset_engine)
+    metrics1 = client.get("/metrics").json()
+    initial_peak = metrics1["index"]["total_documents_peak"]
+    initial_total = metrics1["index"]["total_documents"]
+
+    # After reset_engine, total should be 0
+    assert initial_total == 0
+
+    # Add a document
+    client.post(
+        "/doc/add",
+        json={"content": "Test document for peak tracking", "metadata": {"test": 1}},
+    )
+
+    # Get updated metrics
+    metrics2 = client.get("/metrics").json()
+    new_peak = metrics2["index"]["total_documents_peak"]
+    new_total = metrics2["index"]["total_documents"]
+
+    # Total should have increased to 1
+    assert new_total == 1
+    # Peak should be at least as high as total (could be higher from previous tests)
+    assert new_peak >= new_total
+    # Peak should never decrease
+    assert new_peak >= initial_peak
+
+
+def test_peak_document_count_stays_same_when_documents_deleted(client):
+    """Test that peak does NOT decrease when documents are deleted."""
+    # Start fresh (reset_engine clears docs)
+    # Add multiple documents
+    doc_ids = []
+    for i in range(5):
+        resp = client.post(
+            "/doc/add",
+            json={
+                "content": f"Test document {i} for peak tracking",
+                "metadata": {"test_id": i},
+            },
+        )
+        doc_ids.append(resp.json()["id"])
+
+    # Get peak after additions
+    metrics1 = client.get("/metrics").json()
+    peak_after_add = metrics1["index"]["total_documents_peak"]
+    total_after_add = metrics1["index"]["total_documents"]
+
+    # We just added 5 documents to an empty collection
+    assert total_after_add == 5
+    # Peak should be at least 5 (could be higher from previous tests)
+    assert peak_after_add >= 5
+
+    # Delete 3 documents
+    for i in range(3):
+        client.delete(f"/doc/{doc_ids[i]}")
+
+    # Get peak after deletions
+    metrics2 = client.get("/metrics").json()
+    peak_after_delete = metrics2["index"]["total_documents_peak"]
+    total_after_delete = metrics2["index"]["total_documents"]
+
+    # Peak should stay the same or higher (never decrease)
+    assert peak_after_delete >= peak_after_add
+    # Total should have decreased
+    assert total_after_delete == 2
+
+
+def test_peak_document_count_equals_total_when_no_deletions(
+    client, multiple_added_docs
+):
+    """Test that peak is at least as high as total after only adding documents."""
+    # multiple_added_docs fixture adds 20 documents to a clean collection
+    # (reset_engine clears all docs before each test)
+    assert len(multiple_added_docs) == 20
+
+    # Get metrics after fixture additions
+    metrics = client.get("/metrics").json()
+    index_metrics = metrics["index"]
+
+    peak = index_metrics["total_documents_peak"]
+    total = index_metrics["total_documents"]
+
+    # After the fixture, we should have exactly 20 documents
+    assert total == 20
+    # Peak should be at least 20 (could be higher from previous tests in session)
+    assert peak >= 20

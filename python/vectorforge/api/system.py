@@ -8,6 +8,7 @@ from vectorforge import __version__
 from vectorforge.api import engine
 from vectorforge.api.decorators import handle_api_errors
 from vectorforge.models import (
+    ChromaDBMetrics,
     IndexMetrics,
     MetricsResponse,
     PerformanceMetrics,
@@ -35,11 +36,17 @@ def check_health() -> dict[str, Any]:
         ```json
         {
             "status": "healthy",
-            "version": "0.9.0"
+            "version": "0.9.0",
+            "chromadb_heartbeat": 1234567890
         }
         ```
     """
-    return {"status": "healthy", "version": __version__}
+    heartbeat = engine.chroma_client.heartbeat()
+    return {
+        "status": "healthy",
+        "version": __version__,
+        "chromadb_heartbeat": heartbeat,
+    }
 
 
 @router.get("/metrics", response_model=MetricsResponse)
@@ -53,6 +60,7 @@ def get_metrics() -> MetricsResponse:
     - Performance metrics (query times, percentiles)
     - Usage statistics (operations performed, document sizes)
     - System information and uptime
+    - ChromaDB statistics (version, storage, collection info)
 
     This endpoint provides complete observability into the vector engine's state
     and performance characteristics.
@@ -65,9 +73,11 @@ def get_metrics() -> MetricsResponse:
     """
     metrics: dict[str, Any] = engine.get_metrics()
     index_stats: dict[str, Any] = engine.get_index_stats()
+    chromadb_metrics_dict: dict[str, Any] = engine.get_chromadb_metrics()
 
     index_metrics: IndexMetrics = IndexMetrics(
         total_documents=metrics["total_documents"],
+        total_documents_peak=metrics["total_documents_peak"],
     )
     performance_metrics: PerformanceMetrics = PerformanceMetrics(
         total_queries=metrics["total_queries"],
@@ -98,6 +108,15 @@ def get_metrics() -> MetricsResponse:
         uptime_seconds=metrics["uptime_seconds"],
         version=metrics["version"],
     )
+    chromadb_metrics: ChromaDBMetrics = ChromaDBMetrics(
+        version=chromadb_metrics_dict["version"],
+        collection_id=chromadb_metrics_dict["collection_id"],
+        collection_name=chromadb_metrics_dict["collection_name"],
+        disk_size_bytes=chromadb_metrics_dict["disk_size_bytes"],
+        disk_size_mb=chromadb_metrics_dict["disk_size_mb"],
+        persist_directory=chromadb_metrics_dict["persist_directory"],
+        max_batch_size=chromadb_metrics_dict["max_batch_size"],
+    )
 
     return MetricsResponse(
         index=index_metrics,
@@ -105,4 +124,5 @@ def get_metrics() -> MetricsResponse:
         usage=usage_metrics,
         timestamps=timestamp_metrics,
         system=system_info,
+        chromadb=chromadb_metrics,
     )

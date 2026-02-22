@@ -10,9 +10,13 @@ class IndexMetrics(BaseModel):
 
     Attributes:
         total_documents: Active documents currently in the index.
+        total_documents_peak: Maximum document count reached during this session.
     """
 
     total_documents: int = Field(..., description="Active documents in index")
+    total_documents_peak: int = Field(
+        ..., ge=0, description="Peak document count this session"
+    )
 
 
 class PerformanceMetrics(BaseModel):
@@ -116,6 +120,31 @@ class SystemInfo(BaseModel):
     version: str = Field(..., description="vectorforge version")
 
 
+class ChromaDBMetrics(BaseModel):
+    """ChromaDB-specific operational metrics.
+
+    Provides visibility into ChromaDB version, storage, collection info,
+    and operational limits for monitoring and capacity planning.
+
+    Attributes:
+        version: ChromaDB library version (e.g., "0.4.22").
+        collection_id: Unique UUID for the collection.
+        collection_name: Name of the collection (e.g., "vectorforge").
+        disk_size_bytes: Total storage used by ChromaDB directory.
+        disk_size_mb: Storage in megabytes for readability.
+        persist_directory: Filesystem path to ChromaDB data.
+        max_batch_size: Maximum documents per batch operation.
+    """
+
+    version: str = Field(..., description="ChromaDB version")
+    collection_id: str = Field(..., description="Unique collection UUID")
+    collection_name: str = Field(..., description="Collection name")
+    disk_size_bytes: int = Field(..., ge=0, description="Storage in bytes")
+    disk_size_mb: float = Field(..., ge=0, description="Storage in MB")
+    persist_directory: str = Field(..., description="Data directory path")
+    max_batch_size: int = Field(..., gt=0, description="Max batch size")
+
+
 class MetricsResponse(BaseModel):
     """Comprehensive metrics response with all system statistics.
 
@@ -129,6 +158,7 @@ class MetricsResponse(BaseModel):
         usage: Operation counts and usage patterns.
         timestamps: Event timing information.
         system: System configuration and version details.
+        chromadb: ChromaDB-specific operational metrics.
     """
 
     index: IndexMetrics
@@ -136,6 +166,7 @@ class MetricsResponse(BaseModel):
     usage: UsageMetrics
     timestamps: TimestampMetrics
     system: SystemInfo
+    chromadb: ChromaDBMetrics
 
     class ConfigDict:
         json_schema_extra = {
@@ -171,6 +202,15 @@ class MetricsResponse(BaseModel):
                     "model_dimension": 384,
                     "uptime_seconds": 22523.45,
                     "version": "0.9.0",
+                },
+                "chromadb": {
+                    "version": "0.4.22",
+                    "collection_id": "7029ba34-0788-4798-b82c-512bf3037c99",
+                    "collection_name": "vectorforge",
+                    "disk_size_bytes": 1990656,
+                    "disk_size_mb": 1.9,
+                    "persist_directory": "/path/to/chroma_data",
+                    "max_batch_size": 5461,
                 },
             }
         }

@@ -42,6 +42,7 @@ class EngineMetrics:
         files_uploaded: Total number of files uploaded and processed.
         total_query_time_ms: Cumulative time spent on all queries in milliseconds.
         total_doc_size_bytes: Total size of all document content in bytes.
+        total_documents_peak: Maximum number of documents reached during this session.
         created_at: ISO timestamp when the engine was initialized.
         last_query_at: ISO timestamp of the most recent query, or None.
         last_doc_added_at: ISO timestamp of the most recent document addition, or None.
@@ -62,6 +63,7 @@ class EngineMetrics:
 
     # Storage tracking
     total_doc_size_bytes: int = 0
+    total_documents_peak: int = 0
 
     # Timestamps
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -334,6 +336,11 @@ class VectorEngine:
         self.metrics.total_doc_size_bytes += len(content)
         self.metrics.last_doc_added_at = datetime.now().isoformat()
 
+        # Update peak document count
+        current_count = self.collection.count()
+        if current_count > self.metrics.total_documents_peak:
+            self.metrics.total_documents_peak = current_count
+
         if metadata and metadata.get("source_file"):
             if metadata.get("chunk_index") == 0:
                 self.metrics.files_uploaded += 1
@@ -498,3 +505,103 @@ class VectorEngine:
 
         if len(self.metrics.query_times) > self.metrics.max_query_history:
             self.metrics.query_times.popleft()
+
+    def _get_chromadb_disk_size(self) -> tuple[int, float]:
+        """Calculate total disk usage of ChromaDB data directory.
+
+        Walks the entire chroma_data directory tree and sums file sizes.
+        Called on every metrics request per user requirement.
+
+        Returns:
+            Tuple of (bytes, megabytes) for storage usage.
+
+        Raises:
+            FileNotFoundError: If the ChromaDB persist directory does not exist.
+            OSError: If there's an error accessing the directory or files.
+        """
+        chroma_path = os.path.join(
+            os.path.dirname(__file__), VFGConfig.CHROMA_PERSIST_DIR
+        )
+
+        if not os.path.exists(chroma_path):
+            raise FileNotFoundError(
+                f"ChromaDB persist directory not found: {chroma_path}"
+            )
+
+        total_bytes = 0
+        try:
+            for dirpath, dirnames, filenames in os.walk(chroma_path):
+                for filename in filenames:
+                    filepath = os.path.join(dirpath, filename)
+                    if os.path.exists(filepath):
+                        total_bytes += os.path.getsize(filepath)
+        except OSError as e:
+            raise OSError(f"Error calculating ChromaDB disk size: {e}") from e
+
+        total_mb = total_bytes / (1024 * 1024)
+        return total_bytes, total_mb
+
+    def get_chromadb_metrics(self) -> dict[str, Any]:
+        """Get ChromaDB-specific operational metrics.
+
+        Returns:
+            Dictionary containing:
+                - version: ChromaDB library version
+                - collection_id: Unique UUID for the collection
+                - collection_name: Name of the collection
+                - disk_size_bytes: Total storage in bytes
+                - disk_size_mb: Total storage in megabytes (rounded to 2 decimals)
+                - persist_directory: Absolute path to ChromaDB data
+                - max_batch_size: Maximum documents per batch operation
+
+        Raises:
+            FileNotFoundError: If ChromaDB persist directory doesn't exist.
+            OSError: If there's an error accessing disk or ChromaDB client.
+        """
+        disk_bytes, disk_mb = self._get_chromadb_disk_size()
+
+        return {
+            "version": chromadb.__version__,
+            "collection_id": str(self.collection.id),
+            "collection_name": self.collection.name,
+            "disk_size_bytes": disk_bytes,
+            "disk_size_mb": round(disk_mb, 2),
+            "persist_directory": os.path.abspath(
+                os.path.join(os.path.dirname(__file__), VFGConfig.CHROMA_PERSIST_DIR)
+            ),
+            "max_batch_size": self.chroma_client.get_max_batch_size(),
+        }
+
+    def get_hnsw_config(self) -> dict[str, Any]:
+        """Get HNSW index configuration parameters.
+
+        Extracts the Hierarchical Navigable Small World (HNSW) index configuration
+        from the ChromaDB collection. These parameters control the behavior of the
+        approximate nearest neighbor search algorithm.
+
+        Returns:
+            dict: HNSW configuration with the following keys:
+                - space: Distance metric (e.g., 'cosine', 'l2', 'ip')
+                - ef_construction: Construction-time search parameter
+                - ef_search: Query-time search parameter
+                - max_neighbors: Maximum connections per node
+                - resize_factor: Index growth factor
+                - sync_threshold: Persistence threshold
+
+        Raises:
+            KeyError: If HNSW configuration is not found in collection.
+        """
+        config = self.collection.configuration
+        hnsw_config = config.get("hnsw")
+
+        if not hnsw_config:
+            raise KeyError("HNSW configuration not found in collection")
+
+        return {
+            "space": str(hnsw_config.get("space", "cosine")),
+            "ef_construction": int(hnsw_config.get("ef_construction", 100)),
+            "ef_search": int(hnsw_config.get("ef_search", 100)),
+            "max_neighbors": int(hnsw_config.get("max_neighbors", 16)),
+            "resize_factor": float(hnsw_config.get("resize_factor", 1.2)),
+            "sync_threshold": int(hnsw_config.get("sync_threshold", 1000)),
+        }

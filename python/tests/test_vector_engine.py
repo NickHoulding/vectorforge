@@ -1090,3 +1090,351 @@ def test_multiple_operations_metrics_accuracy(vector_engine):
     assert metrics["docs_deleted"] >= 2
     assert metrics["total_queries"] == 3
     assert metrics["total_documents"] <= 3
+
+
+# =============================================================================
+# ChromaDB Metrics Tests
+# =============================================================================
+
+
+def test_get_chromadb_disk_size_returns_tuple(vector_engine):
+    """Test that _get_chromadb_disk_size returns a tuple of (bytes, mb)."""
+    result = vector_engine._get_chromadb_disk_size()
+
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    assert isinstance(result[0], int)  # bytes
+    assert isinstance(result[1], float)  # mb
+
+
+def test_get_chromadb_disk_size_values_non_negative(vector_engine):
+    """Test that disk size values are non-negative."""
+    bytes_size, mb_size = vector_engine._get_chromadb_disk_size()
+
+    assert bytes_size >= 0
+    assert mb_size >= 0.0
+
+
+def test_get_chromadb_disk_size_conversion(vector_engine):
+    """Test that MB conversion is accurate."""
+    bytes_size, mb_size = vector_engine._get_chromadb_disk_size()
+
+    expected_mb = bytes_size / (1024 * 1024)
+    # Check that the MB value is close (within 0.01 MB difference)
+    assert abs(mb_size - expected_mb) < 0.01
+
+
+def test_get_chromadb_disk_size_increases_with_data(vector_engine):
+    """Test that disk size increases when documents are added."""
+    # Get initial size
+    initial_bytes, _ = vector_engine._get_chromadb_disk_size()
+
+    # Add documents
+    for i in range(10):
+        vector_engine.add_doc(f"Test document {i} with content " * 50, {})
+
+    # Get new size
+    final_bytes, _ = vector_engine._get_chromadb_disk_size()
+
+    # Size should increase
+    assert final_bytes >= initial_bytes
+
+
+def test_get_chromadb_metrics_returns_dict(vector_engine):
+    """Test that get_chromadb_metrics returns a dictionary."""
+    result = vector_engine.get_chromadb_metrics()
+
+    assert isinstance(result, dict)
+
+
+def test_get_chromadb_metrics_has_all_required_fields(vector_engine):
+    """Test that get_chromadb_metrics returns all expected fields."""
+    metrics = vector_engine.get_chromadb_metrics()
+
+    required_fields = {
+        "version",
+        "collection_id",
+        "collection_name",
+        "disk_size_bytes",
+        "disk_size_mb",
+        "persist_directory",
+        "max_batch_size",
+    }
+
+    assert set(metrics.keys()) == required_fields
+
+
+def test_get_chromadb_metrics_version_is_string(vector_engine):
+    """Test that ChromaDB version is a string."""
+    metrics = vector_engine.get_chromadb_metrics()
+
+    assert isinstance(metrics["version"], str)
+    assert len(metrics["version"]) > 0
+
+
+def test_get_chromadb_metrics_collection_info(vector_engine):
+    """Test that collection information is correct."""
+    metrics = vector_engine.get_chromadb_metrics()
+
+    assert isinstance(metrics["collection_id"], str)
+    assert isinstance(metrics["collection_name"], str)
+    assert len(metrics["collection_id"]) > 0
+    assert metrics["collection_name"] == vector_engine.collection.name
+
+
+def test_get_chromadb_metrics_disk_sizes(vector_engine):
+    """Test that disk size metrics are correct types and values."""
+    metrics = vector_engine.get_chromadb_metrics()
+
+    assert isinstance(metrics["disk_size_bytes"], int)
+    assert isinstance(metrics["disk_size_mb"], float)
+    assert metrics["disk_size_bytes"] >= 0
+    assert metrics["disk_size_mb"] >= 0.0
+
+    # Verify conversion
+    expected_mb = round(metrics["disk_size_bytes"] / (1024 * 1024), 2)
+    assert metrics["disk_size_mb"] == expected_mb
+
+
+def test_get_chromadb_metrics_persist_directory(vector_engine):
+    """Test that persist directory is a valid path."""
+    metrics = vector_engine.get_chromadb_metrics()
+
+    assert isinstance(metrics["persist_directory"], str)
+    assert len(metrics["persist_directory"]) > 0
+
+
+def test_get_chromadb_metrics_max_batch_size(vector_engine):
+    """Test that max_batch_size is a positive integer."""
+    metrics = vector_engine.get_chromadb_metrics()
+
+    assert isinstance(metrics["max_batch_size"], int)
+    assert metrics["max_batch_size"] > 0
+
+
+def test_chromadb_metrics_consistency(vector_engine):
+    """Test that ChromaDB metrics are consistent across calls."""
+    metrics1 = vector_engine.get_chromadb_metrics()
+    metrics2 = vector_engine.get_chromadb_metrics()
+
+    # These fields should be identical
+    assert metrics1["version"] == metrics2["version"]
+    assert metrics1["collection_id"] == metrics2["collection_id"]
+    assert metrics1["collection_name"] == metrics2["collection_name"]
+    assert metrics1["persist_directory"] == metrics2["persist_directory"]
+    assert metrics1["max_batch_size"] == metrics2["max_batch_size"]
+
+
+# =============================================================================
+# HNSW Configuration Tests
+# =============================================================================
+
+
+def test_get_hnsw_config_returns_dict(vector_engine):
+    """Test that get_hnsw_config returns a dictionary."""
+    result = vector_engine.get_hnsw_config()
+
+    assert isinstance(result, dict)
+
+
+def test_get_hnsw_config_has_all_required_fields(vector_engine):
+    """Test that get_hnsw_config returns all expected fields."""
+    config = vector_engine.get_hnsw_config()
+
+    required_fields = {
+        "space",
+        "ef_construction",
+        "ef_search",
+        "max_neighbors",
+        "resize_factor",
+        "sync_threshold",
+    }
+
+    assert set(config.keys()) == required_fields
+
+
+def test_get_hnsw_config_space_is_string(vector_engine):
+    """Test that space parameter is a valid string."""
+    config = vector_engine.get_hnsw_config()
+
+    assert isinstance(config["space"], str)
+    assert config["space"] in ["cosine", "l2", "ip"]
+
+
+def test_get_hnsw_config_ef_construction_is_positive(vector_engine):
+    """Test that ef_construction is a positive integer."""
+    config = vector_engine.get_hnsw_config()
+
+    assert isinstance(config["ef_construction"], int)
+    assert config["ef_construction"] > 0
+
+
+def test_get_hnsw_config_ef_search_is_positive(vector_engine):
+    """Test that ef_search is a positive integer."""
+    config = vector_engine.get_hnsw_config()
+
+    assert isinstance(config["ef_search"], int)
+    assert config["ef_search"] > 0
+
+
+def test_get_hnsw_config_max_neighbors_is_positive(vector_engine):
+    """Test that max_neighbors is a positive integer."""
+    config = vector_engine.get_hnsw_config()
+
+    assert isinstance(config["max_neighbors"], int)
+    assert config["max_neighbors"] > 0
+
+
+def test_get_hnsw_config_resize_factor_is_valid(vector_engine):
+    """Test that resize_factor is a float greater than 1.0."""
+    config = vector_engine.get_hnsw_config()
+
+    assert isinstance(config["resize_factor"], float)
+    assert config["resize_factor"] > 1.0
+
+
+def test_get_hnsw_config_sync_threshold_is_positive(vector_engine):
+    """Test that sync_threshold is a positive integer."""
+    config = vector_engine.get_hnsw_config()
+
+    assert isinstance(config["sync_threshold"], int)
+    assert config["sync_threshold"] > 0
+
+
+def test_get_hnsw_config_default_values(vector_engine):
+    """Test that HNSW config returns expected default values."""
+    config = vector_engine.get_hnsw_config()
+
+    # ChromaDB default values
+    assert config["space"] == "cosine"
+    assert config["ef_construction"] == 100
+    assert config["ef_search"] == 100
+    assert config["max_neighbors"] == 16
+    assert config["resize_factor"] == 1.2
+    assert config["sync_threshold"] == 1000
+
+
+def test_get_hnsw_config_consistency(vector_engine):
+    """Test that HNSW config is consistent across calls."""
+    config1 = vector_engine.get_hnsw_config()
+    config2 = vector_engine.get_hnsw_config()
+
+    assert config1 == config2
+
+
+# =============================================================================
+# Peak Document Tracking Tests
+# =============================================================================
+
+
+def test_peak_document_count_initializes_to_zero(vector_engine):
+    """Test that peak document count starts at zero."""
+    assert vector_engine.metrics.total_documents_peak == 0
+
+
+def test_peak_document_count_updates_after_add_doc(vector_engine):
+    """Test that peak increases after adding a document."""
+    initial_peak = vector_engine.metrics.total_documents_peak
+
+    # Add a document
+    doc_id = vector_engine.add_doc(
+        content="Test document for peak tracking",
+        metadata={"test": "peak_tracking"},
+    )
+
+    # Peak should have increased
+    assert vector_engine.metrics.total_documents_peak > initial_peak
+    assert vector_engine.metrics.total_documents_peak == 1
+
+
+def test_peak_document_count_increases_with_multiple_adds(vector_engine):
+    """Test that peak increases correctly with multiple document additions."""
+    # Add 5 documents
+    for i in range(5):
+        vector_engine.add_doc(
+            content=f"Test document {i} for peak tracking",
+            metadata={"test_id": i},
+        )
+
+    assert vector_engine.metrics.total_documents_peak == 5
+
+
+def test_peak_document_count_does_not_decrease_on_delete(vector_engine):
+    """Test that peak does NOT decrease when documents are deleted."""
+    # Add 5 documents
+    doc_ids = []
+    for i in range(5):
+        doc_id = vector_engine.add_doc(
+            content=f"Test document {i} for peak tracking",
+            metadata={"test_id": i},
+        )
+        doc_ids.append(doc_id)
+
+    peak_after_add = vector_engine.metrics.total_documents_peak
+    assert peak_after_add == 5
+
+    # Delete 3 documents
+    for i in range(3):
+        vector_engine.delete_doc(doc_ids[i])
+
+    peak_after_delete = vector_engine.metrics.total_documents_peak
+
+    # Peak should stay the same
+    assert peak_after_delete == peak_after_add
+    assert peak_after_delete == 5
+
+    # But total documents should have decreased
+    total_docs = vector_engine.collection.count()
+    assert total_docs == 2
+
+
+def test_peak_document_count_in_get_metrics(vector_engine):
+    """Test that get_metrics() includes peak document count."""
+    # Add some documents
+    for i in range(3):
+        vector_engine.add_doc(
+            content=f"Test document {i}",
+            metadata={"test_id": i},
+        )
+
+    metrics = vector_engine.get_metrics()
+
+    assert "total_documents_peak" in metrics
+    assert metrics["total_documents_peak"] == 3
+    assert metrics["total_documents_peak"] == metrics["total_documents"]
+
+
+def test_peak_document_count_after_add_delete_cycles(vector_engine):
+    """Test that peak correctly tracks maximum across add/delete cycles."""
+    # Add 5 documents
+    doc_ids = []
+    for i in range(5):
+        doc_id = vector_engine.add_doc(
+            content=f"Test document {i}",
+            metadata={"test_id": i},
+        )
+        doc_ids.append(doc_id)
+
+    assert vector_engine.metrics.total_documents_peak == 5
+
+    # Delete 3 documents (down to 2)
+    for i in range(3):
+        vector_engine.delete_doc(doc_ids[i])
+
+    assert vector_engine.metrics.total_documents_peak == 5
+    assert vector_engine.collection.count() == 2
+
+    # Add 2 more documents (up to 4, but peak should stay at 5)
+    vector_engine.add_doc(content="New doc 1", metadata={"new": 1})
+    assert vector_engine.metrics.total_documents_peak == 5
+
+    vector_engine.add_doc(content="New doc 2", metadata={"new": 2})
+    assert vector_engine.metrics.total_documents_peak == 5
+    assert vector_engine.collection.count() == 4
+
+    # Add 2 more to exceed previous peak (up to 6)
+    vector_engine.add_doc(content="New doc 3", metadata={"new": 3})
+    vector_engine.add_doc(content="New doc 4", metadata={"new": 4})
+
+    assert vector_engine.metrics.total_documents_peak == 6
+    assert vector_engine.collection.count() == 6

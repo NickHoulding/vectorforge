@@ -7,9 +7,10 @@ All models are re-exported here for backward compatibility.
 
 from .documents import DocumentDetail, DocumentInput, DocumentResponse
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
-from .index import IndexStatsResponse
+from .index import HNSWConfig, IndexStatsResponse
 from .metadata import StandardMetadata, create_metadata
 from .metrics import (
+    ChromaDBMetrics,
     IndexMetrics,
     MetricsResponse,
     PerformanceMetrics,
@@ -33,6 +34,7 @@ __all__: list[str] = [
     "SearchResponse",
     # Index
     "IndexStatsResponse",
+    "HNSWConfig",
     # Metadata
     "StandardMetadata",
     "create_metadata",
@@ -40,6 +42,7 @@ __all__: list[str] = [
     "IndexMetrics",
     "PerformanceMetrics",
     "UsageMetrics",
+    "ChromaDBMetrics",
     "TimestampMetrics",
     "SystemInfo",
     "MetricsResponse",

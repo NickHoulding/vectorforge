@@ -94,3 +94,99 @@ def test_index_stats_multiple_deletions_immediate_removal(client, multiple_added
 
     expected_total_docs = 16
     assert stats["total_documents"] == expected_total_docs
+
+
+# =============================================================================
+# HNSW Configuration Tests
+# =============================================================================
+
+
+def test_index_stats_includes_hnsw_config(stats):
+    """Test that index stats includes HNSW configuration."""
+    assert "hnsw_config" in stats
+    assert isinstance(stats["hnsw_config"], dict)
+
+
+def test_hnsw_config_has_space(stats):
+    """Test that HNSW config includes distance metric."""
+    hnsw = stats["hnsw_config"]
+    assert "space" in hnsw
+    assert isinstance(hnsw["space"], str)
+    assert hnsw["space"] in ["cosine", "l2", "ip"]
+
+
+def test_hnsw_config_has_ef_construction(stats):
+    """Test that HNSW config includes ef_construction parameter."""
+    hnsw = stats["hnsw_config"]
+    assert "ef_construction" in hnsw
+    assert isinstance(hnsw["ef_construction"], int)
+    assert hnsw["ef_construction"] > 0
+
+
+def test_hnsw_config_has_ef_search(stats):
+    """Test that HNSW config includes ef_search parameter."""
+    hnsw = stats["hnsw_config"]
+    assert "ef_search" in hnsw
+    assert isinstance(hnsw["ef_search"], int)
+    assert hnsw["ef_search"] > 0
+
+
+def test_hnsw_config_has_max_neighbors(stats):
+    """Test that HNSW config includes max_neighbors parameter."""
+    hnsw = stats["hnsw_config"]
+    assert "max_neighbors" in hnsw
+    assert isinstance(hnsw["max_neighbors"], int)
+    assert hnsw["max_neighbors"] > 0
+
+
+def test_hnsw_config_has_resize_factor(stats):
+    """Test that HNSW config includes resize_factor parameter."""
+    hnsw = stats["hnsw_config"]
+    assert "resize_factor" in hnsw
+    assert isinstance(hnsw["resize_factor"], (int, float))
+    assert hnsw["resize_factor"] > 1.0
+
+
+def test_hnsw_config_has_sync_threshold(stats):
+    """Test that HNSW config includes sync_threshold parameter."""
+    hnsw = stats["hnsw_config"]
+    assert "sync_threshold" in hnsw
+    assert isinstance(hnsw["sync_threshold"], int)
+    assert hnsw["sync_threshold"] > 0
+
+
+def test_hnsw_config_all_fields_present(stats):
+    """Test that all HNSW config fields are present."""
+    hnsw = stats["hnsw_config"]
+    expected_fields = {
+        "space",
+        "ef_construction",
+        "ef_search",
+        "max_neighbors",
+        "resize_factor",
+        "sync_threshold",
+    }
+    actual_fields = set(hnsw.keys())
+    assert actual_fields == expected_fields
+
+
+def test_hnsw_config_default_values(client):
+    """Test that HNSW config returns expected default values."""
+    stats = client.get("/index/stats").json()
+    hnsw = stats["hnsw_config"]
+
+    # These are ChromaDB's default values
+    assert hnsw["space"] == "cosine"
+    assert hnsw["ef_construction"] == 100
+    assert hnsw["ef_search"] == 100
+    assert hnsw["max_neighbors"] == 16
+    assert hnsw["resize_factor"] == 1.2
+    assert hnsw["sync_threshold"] == 1000
+
+
+def test_hnsw_config_consistent_across_calls(client):
+    """Test that HNSW config is consistent across multiple calls."""
+    stats1 = client.get("/index/stats").json()
+    stats2 = client.get("/index/stats").json()
+
+    assert stats1["hnsw_config"] == stats2["hnsw_config"]
