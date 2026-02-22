@@ -149,12 +149,6 @@ def test_index_save_returns_200(client):
     assert resp.status_code == 200
 
 
-def test_index_save_returns_total_size(save_data):
-    """Test that save response includes total index size metric."""
-    assert "total_size_mb" in save_data
-    assert isinstance(save_data["total_size_mb"], float)
-
-
 def test_index_save_includes_status(save_data):
     """Test that save response includes status field."""
     assert "status" in save_data

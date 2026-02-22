@@ -64,7 +64,6 @@ def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> IndexSaveResponse
     return IndexSaveResponse(
         status=save_metrics["status"],
         directory=save_metrics["directory"],
-        total_size_mb=save_metrics["total_size_mb"],
         documents_saved=save_metrics["documents_saved"],
         embeddings_saved=save_metrics["embeddings_saved"],
         version=save_metrics["version"],

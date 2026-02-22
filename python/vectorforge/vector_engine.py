@@ -134,7 +134,6 @@ class VectorEngine:
                 - directory: Path where ChromaDB persists data
                 - documents_saved: Current number of documents
                 - embeddings_saved: Current number of embeddings
-                - total_size_mb: Size of persisted data
                 - version: VectorForge version
         """
         doc_count = self.collection.count()
@@ -146,23 +145,11 @@ class VectorEngine:
         else:
             persist_dir = directory
 
-        total_size_mb = 0.0
-        if os.path.exists(persist_dir):
-            total_size_bytes = sum(
-                os.path.getsize(os.path.join(dirpath, filename))
-                for dirpath, _, filenames in os.walk(persist_dir)
-                for filename in filenames
-            )
-            total_size_mb = total_size_bytes / (1024 * 1024)
-        else:
-            total_size_mb = (doc_count * 384 * 4 + doc_count * 1024) / (1024 * 1024)
-
         return {
             "status": "saved",
             "directory": persist_dir,
             "documents_saved": doc_count,
             "embeddings_saved": doc_count,
-            "total_size_mb": total_size_mb,
             "version": __version__,
         }
 
@@ -255,18 +242,24 @@ class VectorEngine:
             include=["documents", "metadatas", "distances"],
         )
 
+        ids = results.get("ids")
+        documents = results.get("documents")
+        metadatas = results.get("metadatas")
+        distances = results.get("distances")
+
         search_results: list[SearchResult] = []
         if (
-            results["ids"]
-            and results["documents"]
-            and results["metadatas"]
-            and results["distances"]
-            and len(results["ids"][0]) > 0
+            ids
+            and documents
+            and metadatas
+            and distances
+            and len(ids) > 0
+            and len(ids[0]) > 0
         ):
-            ids_list = results["ids"][0]
-            docs_list = results["documents"][0]
-            meta_list = results["metadatas"][0]
-            dist_list = results["distances"][0]
+            ids_list = ids[0]
+            docs_list = documents[0]
+            meta_list = metadatas[0]
+            dist_list = distances[0]
 
             for i in range(len(ids_list)):
                 doc_id = ids_list[i]
@@ -306,9 +299,8 @@ class VectorEngine:
             if results["metadatas"]:
                 for metadata in results["metadatas"]:
                     if metadata and "source_file" in metadata:
-                        source_file = metadata["source_file"]
-                        if isinstance(source_file, str):
-                            filenames.add(source_file)
+                        source_file = str(metadata["source_file"])
+                        filenames.add(source_file)
 
             unique_filenames = list(filenames)
             unique_filenames.sort()
@@ -333,18 +325,16 @@ class VectorEngine:
                 ids=[doc_id], include=["documents", "metadatas"]
             )
 
-            if (
-                result["ids"]
-                and result["documents"]
-                and result["metadatas"]
-                and len(result["ids"]) > 0
-            ):
-                docs = result["documents"]
-                metas = result["metadatas"]
+            ids = result.get("ids")
+            documents = result.get("documents")
+            metadatas = result.get("metadatas")
+
+            if ids and documents and metadatas and len(ids) > 0 and len(ids[0]) > 0:
                 return {
-                    "content": docs[0],
-                    "metadata": dict(metas[0]) if metas[0] else {},
+                    "content": documents[0],
+                    "metadata": metadatas[0],
                 }
+
             return None
 
         except Exception:
@@ -418,16 +408,19 @@ class VectorEngine:
         """
         try:
             result = self.collection.get(ids=[doc_id], include=["documents"])
-            if not result["ids"] or not result["documents"] or len(result["ids"]) == 0:
+
+            ids = result.get("ids")
+            documents = result.get("documents")
+
+            if ids and documents and len(ids) > 0:
+                doc_content = documents[0]
+                self.metrics.total_doc_size_bytes -= len(doc_content)
+                self.collection.delete(ids=[doc_id])
+                self.metrics.docs_deleted += 1
+
+                return True
+            else:
                 return False
-
-            docs = result["documents"]
-            doc_content = docs[0]
-            self.metrics.total_doc_size_bytes -= len(doc_content)
-            self.collection.delete(ids=[doc_id])
-            self.metrics.docs_deleted += 1
-
-            return True
 
         except Exception:
             return False
@@ -454,7 +447,6 @@ class VectorEngine:
             )
 
             doc_ids = results["ids"] if results["ids"] else []
-
             if not doc_ids:
                 return {
                     "status": "not_found",
@@ -469,11 +461,12 @@ class VectorEngine:
                     deleted_ids.append(doc_id)
 
             return {
-                "status": "deleted" if deleted_ids else "not_found",
+                "status": "deleted",
                 "filename": filename,
                 "chunks_deleted": len(deleted_ids),
                 "doc_ids": deleted_ids,
             }
+
         except Exception:
             return {
                 "status": "not_found",
@@ -529,17 +522,21 @@ class VectorEngine:
 
         metrics_dict.update(
             {
+                # Index metrics
                 "total_documents": total_docs,
                 "total_embeddings": total_embeddings,
+                # Performance metrics
                 "avg_query_time_ms": avg_query_time,
                 "min_query_time_ms": min_time,
                 "max_query_time_ms": max_time,
                 "p50_query_time_ms": p50,
                 "p95_query_time_ms": p95,
                 "p99_query_time_ms": p99,
+                # Memory metrics
                 "embeddings_mb": embeddings_mb,
                 "documents_mb": documents_mb,
                 "total_mb": embeddings_mb + documents_mb,
+                # System metrics
                 "model_name": self.model_name,
                 "model_dimension": embedding_dim,
                 "uptime_seconds": uptime,

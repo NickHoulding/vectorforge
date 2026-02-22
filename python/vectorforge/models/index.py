@@ -45,7 +45,6 @@ class IndexSaveResponse(BaseModel):
 
     status: str = Field(..., description="Operation status")
     directory: str = Field(..., description="Save directory path")
-    total_size_mb: float = Field(..., ge=0, description="Total disk space used")
     documents_saved: int = Field(..., ge=0, description="Number of documents saved")
     embeddings_saved: int = Field(..., ge=0, description="Number of embeddings saved")
     version: str = Field(..., description="Index format version")
@@ -55,9 +54,9 @@ class IndexSaveResponse(BaseModel):
             "example": {
                 "status": "saved",
                 "directory": "./data",
-                "total_size_mb": 2.816,
                 "documents_saved": 1250,
                 "embeddings_saved": 1250,
+                "version": "0.9.0",
             }
         }
 
