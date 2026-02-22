@@ -3,8 +3,6 @@ from typing import Any
 from vectorforge.api import index
 from vectorforge.config import VFGConfig
 from vectorforge.models.index import (
-    IndexLoadResponse,
-    IndexSaveResponse,
     IndexStatsResponse,
 )
 
@@ -24,38 +22,4 @@ def get_index_stats() -> dict[str, Any]:
         Dictionary with index statistics including document counts, embedding dimension, and compaction status.
     """
     response: IndexStatsResponse = index.get_index_stats()
-    return build_success_response(response)
-
-
-@mcp.tool(
-    description="Persist index to disk (embeddings + metadata). Enables fast recovery and reduces startup time. Returns file sizes and counts."
-)
-@handle_tool_errors
-def save_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
-    """Persist index to disk.
-
-    Args:
-        directory: Directory path for saving (default: './data').
-
-    Returns:
-        Dictionary with save confirmation, file sizes, and document counts.
-    """
-    response: IndexSaveResponse = index.save_index(directory=directory)
-    return build_success_response(response)
-
-
-@mcp.tool(
-    description="Restore index from disk. Loads previously saved embeddings and metadata. Faster than rebuilding from documents."
-)
-@handle_tool_errors
-def load_index(directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
-    """Load index from disk.
-
-    Args:
-        directory: Directory path to load from (default: './data').
-
-    Returns:
-        Dictionary with load confirmation, counts, and version information.
-    """
-    response: IndexLoadResponse = index.load_index(directory=directory)
     return build_success_response(response)

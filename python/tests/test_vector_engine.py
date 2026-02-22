@@ -845,50 +845,6 @@ def test_delete_file_with_mixed_chunks(vector_engine):
 
 
 # =============================================================================
-# save() and load() Tests
-# =============================================================================
-
-
-def test_save_returns_status(vector_engine):
-    """Test that save returns dict with status (now a no-op)."""
-    vector_engine.add_doc("Test document", {})
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        result = vector_engine.save(tmpdir)
-
-        assert "status" in result
-        assert result["status"] == "saved"
-
-
-def test_save_to_custom_directory(vector_engine):
-    """Test that save accepts custom directory path."""
-    vector_engine.add_doc("Test document", {})
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        custom_dir = os.path.join(tmpdir, "custom_data")
-        result = vector_engine.save(custom_dir)
-
-        assert result["status"] == "saved"
-
-
-def test_load_returns_status(vector_engine):
-    """Test that load returns dict with status (now a no-op)."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        result = vector_engine.load(tmpdir)
-
-        assert "status" in result
-        assert result["status"] == "loaded"
-
-
-def test_save_with_empty_index(vector_engine):
-    """Test that save works with an empty index."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        result = vector_engine.save(tmpdir)
-
-        assert result["status"] == "saved"
-
-
-# =============================================================================
 # get_metrics() Tests
 # =============================================================================
 

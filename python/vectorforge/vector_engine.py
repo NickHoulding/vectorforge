@@ -106,7 +106,6 @@ class VectorEngine:
         >>> engine = VectorEngine()
         >>> doc_id = engine.add_doc("Hello world", {"source_file": "test.txt"})
         >>> results = engine.search("greeting", top_k=5)
-        >>> engine.save()
     """
 
     def __init__(self) -> None:
@@ -126,68 +125,6 @@ class VectorEngine:
         self.model_name: str = VFGConfig.MODEL_NAME
         self.model: SentenceTransformer = SentenceTransformer(self.model_name)
         self.metrics: EngineMetrics = EngineMetrics()
-
-    def save(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
-        """Get information about ChromaDB's persistent storage.
-
-        ChromaDB PersistentClient automatically persists all data.
-
-        Args:
-            directory: Target directory path for ChromaDB data.
-
-        Returns:
-            A dictionary containing storage information and statistics:
-                - status: 'saved' (data is auto-persisted)
-                - directory: Path where ChromaDB persists data
-                - documents_saved: Current number of documents
-                - version: VectorForge version
-        """
-        doc_count = self.collection.count()
-
-        if directory == VFGConfig.DEFAULT_DATA_DIR:
-            persist_dir = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
-            )
-        else:
-            persist_dir = directory
-
-        return {
-            "status": "saved",
-            "directory": persist_dir,
-            "documents_saved": doc_count,
-            "version": __version__,
-        }
-
-    def load(self, directory: str = VFGConfig.DEFAULT_DATA_DIR) -> dict[str, Any]:
-        """Get information about ChromaDB's current loaded data.
-
-        ChromaDB PersistentClient automatically loads data on initialization.
-
-        Args:
-            directory: Target directory path for ChromaDB data.
-
-        Returns:
-            A dictionary containing current data information:
-                - status: 'loaded'
-                - directory: Path where ChromaDB loads/persists data
-                - documents_loaded: Current number of documents
-                - version: VectorForge version
-        """
-        if directory == VFGConfig.DEFAULT_DATA_DIR:
-            persist_dir = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), VFGConfig.CHROMA_PERSIST_DIR
-            )
-        else:
-            persist_dir = directory
-
-        doc_count = self.collection.count()
-
-        return {
-            "status": "loaded",
-            "directory": persist_dir,
-            "documents_loaded": doc_count,
-            "version": __version__,
-        }
 
     def search(
         self,

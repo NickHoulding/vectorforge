@@ -7,7 +7,7 @@ All models are re-exported here for backward compatibility.
 
 from .documents import DocumentDetail, DocumentInput, DocumentResponse
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
-from .index import IndexLoadResponse, IndexSaveResponse, IndexStatsResponse
+from .index import IndexStatsResponse
 from .metadata import StandardMetadata, create_metadata
 from .metrics import (
     IndexMetrics,
@@ -34,8 +34,6 @@ __all__: list[str] = [
     "SearchResponse",
     # Index
     "IndexStatsResponse",
-    "IndexSaveResponse",
-    "IndexLoadResponse",
     # Metadata
     "StandardMetadata",
     "create_metadata",
