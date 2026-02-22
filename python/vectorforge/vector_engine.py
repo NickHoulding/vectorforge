@@ -290,25 +290,21 @@ class VectorEngine:
 
         Returns:
             Sorted list of unique source filenames. Documents lacking source_file
-            metadata are skipped. Returns an empty list if an exception is thrown.
+            metadata are skipped. Returns empty list if no documents have been uploaded.
         """
-        try:
-            results = self.collection.get(include=["metadatas"])
+        results = self.collection.get(include=["metadatas"])
 
-            filenames: set[str] = set()
-            if results["metadatas"]:
-                for metadata in results["metadatas"]:
-                    if metadata and "source_file" in metadata:
-                        source_file = str(metadata["source_file"])
-                        filenames.add(source_file)
+        filenames: set[str] = set()
+        if results["metadatas"]:
+            for metadata in results["metadatas"]:
+                if metadata and "source_file" in metadata:
+                    source_file = str(metadata["source_file"])
+                    filenames.add(source_file)
 
-            unique_filenames = list(filenames)
-            unique_filenames.sort()
+        unique_filenames = list(filenames)
+        unique_filenames.sort()
 
-            return unique_filenames
-
-        except Exception:
-            return []
+        return unique_filenames
 
     def get_doc(self, doc_id: str) -> dict[str, Any] | None:
         """Retrieve a document by its ID.
@@ -318,27 +314,22 @@ class VectorEngine:
 
         Returns:
             Dictionary containing 'content' and 'metadata' keys if found,
-            None upon error, or if document doesn't exist.
+            None if document doesn't exist.
         """
-        try:
-            result = self.collection.get(
-                ids=[doc_id], include=["documents", "metadatas"]
-            )
+        result = self.collection.get(ids=[doc_id], include=["documents", "metadatas"])
 
-            ids = result.get("ids")
-            documents = result.get("documents")
-            metadatas = result.get("metadatas")
+        ids = result.get("ids")
+        documents = result.get("documents")
+        metadatas = result.get("metadatas")
+        doc = None
 
-            if ids and documents and metadatas and len(ids) > 0 and len(ids[0]) > 0:
-                return {
-                    "content": documents[0],
-                    "metadata": metadatas[0],
-                }
+        if ids and documents and metadatas and len(ids) > 0:
+            doc = {
+                "content": documents[0],
+                "metadata": metadatas[0],
+            }
 
-            return None
-
-        except Exception:
-            return None
+        return doc
 
     def add_doc(self, content: str, metadata: dict[str, Any] | None = None) -> str:
         """Add a new document to the vector index.
@@ -403,27 +394,22 @@ class VectorEngine:
             doc_id: Unique identifier of the document to remove.
 
         Returns:
-            True if document was found and deleted, False upon error or if
-            document ID doesn't exist.
+            True if document was found and deleted, False if document ID doesn't exist.
         """
-        try:
-            result = self.collection.get(ids=[doc_id], include=["documents"])
+        result = self.collection.get(ids=[doc_id], include=["documents"])
 
-            ids = result.get("ids")
-            documents = result.get("documents")
+        ids = result.get("ids")
+        documents = result.get("documents")
+        success = False
 
-            if ids and documents and len(ids) > 0:
-                doc_content = documents[0]
-                self.metrics.total_doc_size_bytes -= len(doc_content)
-                self.collection.delete(ids=[doc_id])
-                self.metrics.docs_deleted += 1
+        if ids and documents and len(ids) > 0:
+            doc_content = documents[0]
+            self.metrics.total_doc_size_bytes -= len(doc_content)
+            self.collection.delete(ids=[doc_id])
+            self.metrics.docs_deleted += 1
+            success = True
 
-                return True
-            else:
-                return False
-
-        except Exception:
-            return False
+        return success
 
     def delete_file(self, filename: str) -> dict[str, Any]:
         """Delete all document chunks associated with a specific source file.
@@ -441,39 +427,30 @@ class VectorEngine:
                 - chunks_deleted: Number of chunks deleted
                 - doc_ids: List of deleted document IDs
         """
-        try:
-            results = self.collection.get(
-                where={"source_file": filename}, include=["documents"]
-            )
+        results = self.collection.get(
+            where={"source_file": filename}, include=["documents"]
+        )
 
-            doc_ids = results["ids"] if results["ids"] else []
-            if not doc_ids:
-                return {
-                    "status": "not_found",
-                    "filename": filename,
-                    "chunks_deleted": 0,
-                    "doc_ids": [],
-                }
-
-            deleted_ids = []
-            for doc_id in doc_ids:
-                if self.delete_doc(doc_id):
-                    deleted_ids.append(doc_id)
-
-            return {
-                "status": "deleted",
-                "filename": filename,
-                "chunks_deleted": len(deleted_ids),
-                "doc_ids": deleted_ids,
-            }
-
-        except Exception:
+        doc_ids = results.get("ids")
+        if not doc_ids:
             return {
                 "status": "not_found",
                 "filename": filename,
                 "chunks_deleted": 0,
                 "doc_ids": [],
             }
+
+        deleted_ids = []
+        for doc_id in doc_ids:
+            if self.delete_doc(doc_id):
+                deleted_ids.append(doc_id)
+
+        return {
+            "status": "deleted",
+            "filename": filename,
+            "chunks_deleted": len(deleted_ids),
+            "doc_ids": deleted_ids,
+        }
 
     def get_metrics(self) -> dict[str, Any]:
         """Get comprehensive metrics about the vector engine's state and performance.
