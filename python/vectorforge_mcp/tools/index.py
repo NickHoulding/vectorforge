@@ -1,10 +1,7 @@
 from typing import Any
 
 from vectorforge.api import index
-from vectorforge.config import VFGConfig
-from vectorforge.models.index import (
-    IndexStatsResponse,
-)
+from vectorforge.models.index import IndexStatsResponse
 
 from ..decorators import handle_tool_errors
 from ..instance import mcp
