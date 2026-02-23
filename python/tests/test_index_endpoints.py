@@ -190,3 +190,178 @@ def test_hnsw_config_consistent_across_calls(client):
     stats2 = client.get("/index/stats").json()
 
     assert stats1["hnsw_config"] == stats2["hnsw_config"]
+
+
+# =============================================================================
+# HNSW Config Update Tests
+# =============================================================================
+
+
+def test_update_hnsw_config_requires_confirmation(client):
+    """Test that updating HNSW config requires ?confirm=true parameter."""
+    resp = client.put(
+        "/index/config/hnsw",
+        json={"ef_search": 150},
+    )
+
+    assert resp.status_code == 400
+    assert "confirm=true" in resp.json()["detail"]
+
+
+def test_update_hnsw_config_invalid_confirm_value(client):
+    """Test that confirm parameter must be exactly 'true'."""
+    resp = client.put(
+        "/index/config/hnsw?confirm=false",
+        json={"ef_search": 150},
+    )
+
+    assert resp.status_code == 400
+    assert "confirm=true" in resp.json()["detail"]
+
+
+def test_update_hnsw_config_empty_collection_success(client):
+    """Test updating HNSW config with empty collection."""
+    resp = client.put(
+        "/index/config/hnsw?confirm=true",
+        json={"ef_search": 150},
+    )
+
+    assert resp.status_code == 200
+
+    data = resp.json()
+    assert data["status"] == "success"
+    assert "migration" in data
+    assert data["migration"]["documents_migrated"] == 0
+    assert data["migration"]["old_collection_deleted"] is True
+    assert "config" in data
+    assert data["config"]["ef_search"] == 150
+
+
+def test_update_hnsw_config_with_documents_preserves_data(client):
+    """Test that updating HNSW config preserves all documents."""
+    doc1 = client.post("/doc/add", json={"content": "Test document 1"})
+    doc2 = client.post("/doc/add", json={"content": "Test document 2"})
+    doc3 = client.post("/doc/add", json={"content": "Test document 3"})
+
+    doc1_id = doc1.json()["id"]
+    doc2_id = doc2.json()["id"]
+    doc3_id = doc3.json()["id"]
+
+    resp = client.put(
+        "/index/config/hnsw?confirm=true",
+        json={"ef_search": 150, "max_neighbors": 32},
+    )
+    assert resp.status_code == 200
+
+    data = resp.json()
+    assert data["migration"]["documents_migrated"] == 3
+
+    doc1_get = client.get(f"/doc/{doc1_id}")
+    assert doc1_get.status_code == 200
+    assert doc1_get.json()["content"] == "Test document 1"
+
+    doc2_get = client.get(f"/doc/{doc2_id}")
+    assert doc2_get.status_code == 200
+    assert doc2_get.json()["content"] == "Test document 2"
+
+    doc3_get = client.get(f"/doc/{doc3_id}")
+    assert doc3_get.status_code == 200
+    assert doc3_get.json()["content"] == "Test document 3"
+
+    search_resp = client.post("/search", json={"query": "Test document", "top_k": 5})
+    assert search_resp.status_code == 200
+    assert len(search_resp.json()["results"]) == 3
+
+
+def test_update_hnsw_config_returns_migration_stats(client):
+    """Test that response contains correct migration statistics."""
+    for i in range(5):
+        client.post("/doc/add", json={"content": f"Document {i}"})
+
+    resp = client.put(
+        "/index/config/hnsw?confirm=true",
+        json={"ef_construction": 200},
+    )
+    assert resp.status_code == 200
+
+    data = resp.json()
+    assert "migration" in data
+    migration = data["migration"]
+
+    assert "documents_migrated" in migration
+    assert migration["documents_migrated"] == 5
+
+    assert "time_taken_seconds" in migration
+    assert isinstance(migration["time_taken_seconds"], (int, float))
+    assert migration["time_taken_seconds"] >= 0
+
+    assert "old_collection_deleted" in migration
+    assert migration["old_collection_deleted"] is True
+
+
+def test_update_hnsw_config_updates_config_in_stats(client):
+    """Test that GET /index/stats shows new config after update."""
+    initial_stats = client.get("/index/stats").json()
+    initial_ef_search = initial_stats["hnsw_config"]["ef_search"]
+
+    new_ef_search = 200
+    update_resp = client.put(
+        "/index/config/hnsw?confirm=true",
+        json={"ef_search": new_ef_search},
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["config"]["ef_search"] == new_ef_search
+
+    updated_stats = client.get("/index/stats").json()
+    assert updated_stats["hnsw_config"]["ef_search"] == new_ef_search
+    assert updated_stats["hnsw_config"]["ef_search"] != initial_ef_search
+
+
+def test_update_hnsw_config_partial_update(client):
+    """Test updating only some HNSW fields."""
+    resp = client.put(
+        "/index/config/hnsw?confirm=true",
+        json={"ef_search": 175},
+    )
+    assert resp.status_code == 200
+
+    config = resp.json()["config"]
+
+    assert config["ef_search"] == 175
+    assert "space" in config
+    assert "ef_construction" in config
+    assert "max_neighbors" in config
+
+
+def test_update_hnsw_config_response_structure(client):
+    """Test that response has correct structure."""
+    resp = client.put(
+        "/index/config/hnsw?confirm=true",
+        json={"ef_search": 150},
+    )
+    assert resp.status_code == 200
+
+    data = resp.json()
+
+    assert "status" in data
+    assert "message" in data
+    assert "migration" in data
+    assert "config" in data
+
+    migration = data["migration"]
+
+    assert "documents_migrated" in migration
+    assert "time_taken_seconds" in migration
+    assert "old_collection_deleted" in migration
+
+    config = data["config"]
+    expected_config_fields = {
+        "space",
+        "ef_construction",
+        "ef_search",
+        "max_neighbors",
+        "resize_factor",
+        "sync_threshold",
+    }
+
+    assert set(config.keys()) == expected_config_fields

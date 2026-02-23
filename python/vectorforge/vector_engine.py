@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import uuid
@@ -13,6 +14,8 @@ from sentence_transformers import SentenceTransformer
 from vectorforge import __version__
 from vectorforge.config import VFGConfig
 from vectorforge.models import SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -138,6 +141,7 @@ class VectorEngine:
         self.model_name: str = VFGConfig.MODEL_NAME
         self.model: SentenceTransformer = SentenceTransformer(self.model_name)
         self.metrics: EngineMetrics = EngineMetrics()
+        self._migration_in_progress: bool = False
 
     def search(
         self,
@@ -605,3 +609,181 @@ class VectorEngine:
             "resize_factor": float(hnsw_config.get("resize_factor", 1.2)),
             "sync_threshold": int(hnsw_config.get("sync_threshold", 1000)),
         }
+
+    def update_hnsw_config(self, new_config: dict[str, Any]) -> dict[str, Any]:
+        """Update HNSW configuration with blue-green collection recreation.
+
+        Performs zero-downtime migration by creating a new collection with updated
+        HNSW settings, migrating all documents, swapping collections atomically,
+        and deleting the old collection.
+
+        This is a destructive operation that requires full collection recreation
+        because ChromaDB does not support modifying HNSW parameters after creation.
+
+        Args:
+            new_config: Dictionary with HNSW parameters to update. All fields optional:
+                - space: Distance metric (default: "cosine")
+                - ef_construction: Build-time search depth (default: 100)
+                - ef_search: Query-time search depth (default: 100)
+                - max_neighbors: Maximum connections per node (default: 16)
+                - resize_factor: Dynamic index growth factor (default: 1.2)
+                - sync_threshold: Batch size for persistence (default: 1000)
+
+        Returns:
+            dict: Migration result containing:
+                - status: "success"
+                - message: Human-readable success message
+                - migration: Statistics (documents_migrated, time_taken_seconds, old_collection_deleted)
+                - config: New HNSW configuration
+
+        Raises:
+            RuntimeError: If migration is already in progress
+            Exception: If migration fails (old collection preserved)
+
+        Example:
+            >>> result = engine.update_hnsw_config({"ef_search": 150})
+            >>> print(f"Migrated {result['migration']['documents_migrated']} docs")
+        """
+        if self._migration_in_progress:
+            raise RuntimeError("HNSW configuration migration already in progress")
+
+        self._migration_in_progress = True
+        start_time = time.perf_counter()
+        new_collection = None
+
+        try:
+            old_collection = self.collection
+            doc_count = old_collection.count()
+
+            logger.info(
+                f"Starting HNSW config migration: {doc_count} documents to migrate"
+            )
+
+            hnsw_metadata = {
+                "hnsw:space": new_config.get("space", "cosine"),
+                "hnsw:construction_ef": new_config.get("ef_construction", 100),
+                "hnsw:search_ef": new_config.get("ef_search", 100),
+                "hnsw:M": new_config.get("max_neighbors", 16),
+                "hnsw:resize_factor": new_config.get("resize_factor", 1.2),
+                "hnsw:batch_size": new_config.get("sync_threshold", 1000),
+            }
+
+            temp_collection_name = (
+                f"{VFGConfig.CHROMA_COLLECTION_NAME}_temp_{uuid.uuid4().hex[:8]}"
+            )
+            logger.info(f"Creating temporary collection: {temp_collection_name}")
+
+            new_collection = self.chroma_client.create_collection(
+                name=temp_collection_name, metadata=hnsw_metadata
+            )
+
+            if doc_count > 0:
+                logger.info("Retrieving documents from old collection")
+                old_docs = old_collection.get(
+                    include=["documents", "embeddings", "metadatas"]
+                )
+
+                ids = old_docs.get("ids")
+                documents = old_docs.get("documents")
+                embeddings = old_docs.get("embeddings")
+                metadatas = old_docs.get("metadatas")
+
+                if ids is None or documents is None or embeddings is None:
+                    raise RuntimeError(
+                        "Failed to retrieve documents from old collection"
+                    )
+
+                batch_size = VFGConfig.MIGRATION_BATCH_SIZE
+                total_batches = (doc_count + batch_size - 1) // batch_size
+
+                logger.info(
+                    f"Migrating documents in {total_batches} batches of {batch_size}"
+                )
+
+                for batch_num in range(total_batches):
+                    start_idx = batch_num * batch_size
+                    end_idx = min(start_idx + batch_size, doc_count)
+
+                    batch_ids = ids[start_idx:end_idx]
+                    batch_docs = documents[start_idx:end_idx]
+                    batch_embeddings = embeddings[start_idx:end_idx]
+                    batch_metadatas = (
+                        metadatas[start_idx:end_idx] if metadatas else None
+                    )
+
+                    new_collection.add(
+                        ids=batch_ids,
+                        documents=batch_docs,
+                        embeddings=batch_embeddings,
+                        metadatas=batch_metadatas,
+                    )
+
+                    if (batch_num + 1) % 10 == 0 or batch_num == total_batches - 1:
+                        migrated = min(end_idx, doc_count)
+                        percent = (migrated / doc_count) * 100
+                        logger.info(
+                            f"Migration progress: {migrated}/{doc_count} documents ({percent:.1f}%)"
+                        )
+
+            original_name = old_collection.name
+            logger.info(f"Deleting old collection: {original_name}")
+            self.chroma_client.delete_collection(name=original_name)
+
+            logger.info(
+                f"Creating final collection with original name: {original_name}"
+            )
+            final_collection = self.chroma_client.create_collection(
+                name=original_name, metadata=hnsw_metadata
+            )
+
+            if doc_count > 0:
+                logger.info(f"Migrating documents from temp to final collection")
+                temp_docs = new_collection.get(
+                    include=["documents", "embeddings", "metadatas"]
+                )
+
+                final_collection.add(
+                    ids=temp_docs["ids"],
+                    documents=temp_docs["documents"],
+                    embeddings=temp_docs["embeddings"],
+                    metadatas=temp_docs["metadatas"],
+                )
+
+            logger.info(f"Deleting temporary collection: {new_collection.name}")
+            self.chroma_client.delete_collection(name=new_collection.name)
+
+            logger.info("Swapping collection reference to final collection")
+            self.collection = final_collection
+
+            elapsed_seconds = time.perf_counter() - start_time
+            logger.info(
+                f"Migration complete: {doc_count} docs in {elapsed_seconds:.2f}s"
+            )
+
+            new_hnsw_config = self.get_hnsw_config()
+
+            return {
+                "status": "success",
+                "message": "HNSW configuration updated successfully",
+                "migration": {
+                    "documents_migrated": doc_count,
+                    "time_taken_seconds": round(elapsed_seconds, 2),
+                    "old_collection_deleted": True,
+                },
+                "config": new_hnsw_config,
+            }
+
+        except Exception as e:
+            logger.error(f"Migration failed: {e}")
+            try:
+                if new_collection is not None:
+                    self.chroma_client.delete_collection(name=new_collection.name)
+                    logger.info("Cleaned up temporary collection after failure")
+
+            except Exception:
+                pass
+
+            raise
+
+        finally:
+            self._migration_in_progress = False

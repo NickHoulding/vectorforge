@@ -7,7 +7,13 @@ All models are re-exported here for backward compatibility.
 
 from .documents import DocumentDetail, DocumentInput, DocumentResponse
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
-from .index import HNSWConfig, IndexStatsResponse
+from .index import (
+    HNSWConfig,
+    HNSWConfigUpdate,
+    HNSWConfigUpdateResponse,
+    IndexStatsResponse,
+    MigrationInfo,
+)
 from .metadata import StandardMetadata, create_metadata
 from .metrics import (
     ChromaDBMetrics,
@@ -35,6 +41,9 @@ __all__: list[str] = [
     # Index
     "IndexStatsResponse",
     "HNSWConfig",
+    "HNSWConfigUpdate",
+    "HNSWConfigUpdateResponse",
+    "MigrationInfo",
     # Metadata
     "StandardMetadata",
     "create_metadata",

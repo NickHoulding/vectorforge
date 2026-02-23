@@ -37,13 +37,18 @@ def reset_engine() -> Generator[None, Any, None]:
     """Clear the engine state before each test.
 
     Automatically runs before every test to ensure a clean slate.
-    Clears all documents from the ChromaDB collection.
+    Clears all documents from the ChromaDB collection and resets
+    HNSW configuration to defaults.
     """
     try:
-        all_docs = engine.collection.get()
+        engine.chroma_client.delete_collection(name=VFGConfig.CHROMA_COLLECTION_NAME)
+    except Exception:
+        pass
 
-        if all_docs["ids"]:
-            engine.collection.delete(ids=all_docs["ids"])
+    try:
+        engine.collection = engine.chroma_client.create_collection(
+            name=VFGConfig.CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+        )
     except Exception:
         pass
 
@@ -65,16 +70,23 @@ def vector_engine(shared_model: SentenceTransformer) -> VectorEngine:
     """Create a fresh VectorEngine for each test with a pre-loaded model.
 
     Reuses the session-scoped model to avoid expensive model reloading.
-    Creates a new engine instance with clean state for test isolation.
+    Creates a new engine instance with clean state and default HNSW
+    configuration for test isolation.
     """
     engine_instance = VectorEngine()
     engine_instance.model = shared_model
 
     try:
-        all_docs = engine_instance.collection.get()
+        engine_instance.chroma_client.delete_collection(
+            name=VFGConfig.CHROMA_COLLECTION_NAME
+        )
+    except Exception:
+        pass
 
-        if all_docs["ids"]:
-            engine_instance.collection.delete(ids=all_docs["ids"])
+    try:
+        engine_instance.collection = engine_instance.chroma_client.create_collection(
+            name=VFGConfig.CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+        )
     except Exception:
         pass
 

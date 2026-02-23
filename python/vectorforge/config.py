@@ -100,6 +100,9 @@ class VFGConfig:
     CHROMA_COLLECTION_NAME: str = "vectorforge"
     """Default ChromaDB collection name."""
 
+    MIGRATION_BATCH_SIZE: int = 1000
+    """Batch size for HNSW configuration migration (blue-green collection recreation)."""
+
     # =============================================================================
     # Configuration Class Validator
     # =============================================================================

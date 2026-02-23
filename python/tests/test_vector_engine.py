@@ -1,9 +1,9 @@
 """Tests for the VectorEngine class"""
 
-import os
-import tempfile
+import time
 import uuid
 from collections import deque
+from datetime import datetime
 
 import numpy as np
 import pytest
@@ -1037,8 +1037,6 @@ def test_engine_metrics_query_times_max_history():
 
 def test_engine_metrics_created_at_is_iso_format():
     """Test that created_at timestamp is in ISO format."""
-    from datetime import datetime
-
     metrics = EngineMetrics()
 
     created = datetime.fromisoformat(metrics.created_at)
@@ -1183,7 +1181,6 @@ def test_get_chromadb_metrics_disk_sizes(vector_engine):
     assert metrics["disk_size_bytes"] >= 0
     assert metrics["disk_size_mb"] >= 0.0
 
-    # Verify conversion
     expected_mb = round(metrics["disk_size_bytes"] / (1024 * 1024), 2)
     assert metrics["disk_size_mb"] == expected_mb
 
@@ -1421,3 +1418,131 @@ def test_peak_document_count_after_add_delete_cycles(vector_engine):
 
     assert vector_engine.metrics.total_documents_peak == 6
     assert vector_engine.collection.count() == 6
+
+
+# =============================================================================
+# HNSW Config Update Tests
+# =============================================================================
+
+
+def test_update_hnsw_config_empty_collection(vector_engine):
+    """Test updating HNSW config with empty collection."""
+    result = vector_engine.update_hnsw_config({"ef_search": 150})
+
+    assert result["status"] == "success"
+    assert result["migration"]["documents_migrated"] == 0
+    assert result["migration"]["old_collection_deleted"] is True
+    assert result["config"]["ef_search"] == 150
+
+
+def test_update_hnsw_config_preserves_documents(vector_engine):
+    """Test that documents are preserved after HNSW config update."""
+    doc1_id = vector_engine.add_doc("Test content 1", {"key": "value1"})
+    doc2_id = vector_engine.add_doc("Test content 2", {"key": "value2"})
+    doc3_id = vector_engine.add_doc("Test content 3", {"key": "value3"})
+
+    result = vector_engine.update_hnsw_config({"ef_search": 175})
+
+    assert result["migration"]["documents_migrated"] == 3
+
+    doc1 = vector_engine.get_doc(doc1_id)
+    assert doc1 is not None
+    assert doc1["content"] == "Test content 1"
+    assert doc1["metadata"]["key"] == "value1"
+
+    doc2 = vector_engine.get_doc(doc2_id)
+    assert doc2 is not None
+    assert doc2["content"] == "Test content 2"
+
+    doc3 = vector_engine.get_doc(doc3_id)
+    assert doc3 is not None
+    assert doc3["content"] == "Test content 3"
+
+
+def test_update_hnsw_config_preserves_metadata(vector_engine):
+    """Test that metadata is preserved after HNSW config update."""
+    metadata = {
+        "source_file": "test.pdf",
+        "chunk_index": 0,
+        "page": 42,
+        "author": "Test Author",
+    }
+    doc_id = vector_engine.add_doc("Content with metadata", metadata)
+
+    vector_engine.update_hnsw_config({"max_neighbors": 32})
+    doc = vector_engine.get_doc(doc_id)
+
+    assert doc is not None
+    assert doc["metadata"]["source_file"] == "test.pdf"
+    assert doc["metadata"]["chunk_index"] == 0
+    assert doc["metadata"]["page"] == 42
+    assert doc["metadata"]["author"] == "Test Author"
+
+
+def test_update_hnsw_config_preserves_search_functionality(vector_engine):
+    """Test that search results are identical after config update."""
+    vector_engine.add_doc("Python programming language")
+    vector_engine.add_doc("Machine learning algorithms")
+    vector_engine.add_doc("Data science and analytics")
+
+    results_before = vector_engine.search("Python programming", top_k=3)
+
+    vector_engine.update_hnsw_config({"ef_search": 200})
+
+    results_after = vector_engine.search("Python programming", top_k=3)
+
+    assert len(results_before) == len(results_after)
+    assert results_before[0].id == results_after[0].id
+    assert results_before[0].content == results_after[0].content
+
+
+def test_update_hnsw_config_deletes_old_collection(vector_engine):
+    """Test that old collection is deleted after successful migration."""
+    old_collection_name = vector_engine.collection.name
+    result = vector_engine.update_hnsw_config({"ef_construction": 150})
+
+    assert vector_engine.collection.name == old_collection_name
+
+    collections = vector_engine.chroma_client.list_collections()
+    collection_names = [c.name for c in collections]
+
+    assert len([n for n in collection_names if "temp" not in n]) == 1
+    assert result["migration"]["old_collection_deleted"] is True
+
+
+def test_update_hnsw_config_returns_correct_stats(vector_engine):
+    """Test that migration stats are accurate."""
+    for i in range(7):
+        vector_engine.add_doc(f"Test document {i}")
+
+    start = time.perf_counter()
+    result = vector_engine.update_hnsw_config({"resize_factor": 1.5})
+    elapsed = time.perf_counter() - start
+
+    assert result["migration"]["documents_migrated"] == 7
+    assert result["migration"]["time_taken_seconds"] > 0
+    assert result["migration"]["time_taken_seconds"] <= elapsed + 1
+    assert result["migration"]["old_collection_deleted"] is True
+
+
+def test_update_hnsw_config_sets_migration_flag(vector_engine):
+    """Test that migration flag is set during migration."""
+    assert vector_engine._migration_in_progress is False
+
+    for i in range(5):
+        vector_engine.add_doc(f"Document {i}")
+
+    vector_engine.update_hnsw_config({"ef_search": 125})
+
+    assert vector_engine._migration_in_progress is False
+
+
+def test_update_hnsw_config_raises_if_already_in_progress(vector_engine):
+    """Test that attempting migration while one is in progress raises error."""
+    vector_engine._migration_in_progress = True
+
+    try:
+        with pytest.raises(RuntimeError, match="already in progress"):
+            vector_engine.update_hnsw_config({"ef_search": 150})
+    finally:
+        vector_engine._migration_in_progress = False
