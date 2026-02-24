@@ -5,6 +5,7 @@ __pycache__/
 .mypy_cache/
 python/data/
 python/tests/data/
+.venv/
 
 # ChromaDB
 chroma_data/
