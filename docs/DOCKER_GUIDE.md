@@ -88,7 +88,7 @@ MODEL_CACHE_DIR: str = os.getenv("HF_HOME", os.path.expanduser("~/.cache/hugging
 """Directory for HuggingFace model cache. Configurable via HF_HOME env var."""
 ```
 
-**Docker Concept Learned:** 
+**Docker Concept Learned:**
 - **Environment Variables**: Docker containers can receive configuration through `ENV` instructions or `-e` flags
 - **`os.getenv(key, default)`**: Python function that reads environment variables with fallback defaults
 - **Smart Defaults**: Code can detect environment (Docker vs local) and adjust behavior
@@ -150,7 +150,7 @@ import os
 ```python
 def __init__(self) -> None:
     """Initialize the VectorEngine with ChromaDB backend.
-    
+
     Creates a vector database using ChromaDB for storage and retrieval,
     with the 'all-MiniLM-L6-v2' sentence transformer model for embedding
     generation. Initializes metrics tracking.
@@ -163,18 +163,18 @@ def __init__(self) -> None:
 ```python
 def __init__(self) -> None:
     """Initialize the VectorEngine with ChromaDB backend.
-    
+
     Creates a vector database using ChromaDB for storage and retrieval,
     with the 'all-MiniLM-L6-v2' sentence transformer model for embedding
     generation. Initializes metrics tracking.
     """
     # Use absolute path from config (supports Docker volumes)
     chroma_path = VFGConfig.CHROMA_PERSIST_DIR
-    
+
     # Convert relative paths to absolute (for backward compatibility)
     if not os.path.isabs(chroma_path):
         chroma_path = os.path.abspath(chroma_path)
-    
+
     # Ensure directory exists
     os.makedirs(chroma_path, exist_ok=True)
 ```
@@ -203,17 +203,17 @@ from vectorforge.api.config import APIConfig
 
 def configure_logging() -> None:
     """Configure logging based on LOG_LEVEL environment variable.
-    
+
     Sets up basic logging to stdout (required for Docker log collection).
     Respects LOG_LEVEL env var: DEBUG, INFO, WARNING, ERROR, CRITICAL.
     """
     log_level = APIConfig.LOG_LEVEL
-    
+
     # Validate log level
     valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     if log_level not in valid_levels:
         log_level = "INFO"
-    
+
     # Configure root logger
     logging.basicConfig(
         level=getattr(logging, log_level),
@@ -221,7 +221,7 @@ def configure_logging() -> None:
         stream=sys.stdout,  # Important: Docker reads from stdout
         force=True,  # Override any existing config
     )
-    
+
     logger = logging.getLogger(__name__)
     logger.info(f"Logging configured at level: {log_level}")
 ```
@@ -296,20 +296,20 @@ __all__: list[str] = ["app", "engine"]
 @router.get("/health/ready")
 async def readiness_check() -> dict[str, str]:
     """Readiness probe for container orchestration.
-    
+
     Checks if VectorForge is fully initialized and ready to handle requests.
     Returns 200 if ready, 503 if not ready.
-    
+
     Used by Docker/Kubernetes to know when to send traffic to this container.
     """
     try:
         # Verify ChromaDB is accessible
         doc_count = engine.collection.count()
-        
+
         # Verify model is loaded
         if engine.model is None:
             raise RuntimeError("Model not loaded")
-        
+
         return {
             "status": "ready",
             "documents": doc_count,
@@ -326,7 +326,7 @@ async def readiness_check() -> dict[str, str]:
 @router.get("/health/live")
 async def liveness_check() -> dict[str, str]:
     """Liveness probe for container orchestration.
-    
+
     Simple check that the API is responding.
     Returns 200 if alive, used by Docker/Kubernetes to detect hung processes.
     """
@@ -361,7 +361,7 @@ import tempfile
 @pytest.fixture(autouse=True)
 def use_temp_chroma_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[str, Any, None]:
     """Use temporary directory for ChromaDB in tests.
-    
+
     Automatically applied to all tests. Ensures tests don't pollute
     the source code directory with test data.
     """
@@ -780,18 +780,18 @@ services:
       context: .
       dockerfile: Dockerfile
       # target: production  # Use this stage from multi-stage build
-    
+
     # Image name after building
     image: vectorforge:latest
-    
+
     # Container name (easier to reference)
     container_name: vectorforge
-    
+
     # Port mapping: host:container
     # Access the API at http://localhost:3001
     ports:
       - "3001:3001"
-    
+
     # Environment variables (override defaults)
     environment:
       - CHROMA_DATA_DIR=/data/chroma
@@ -799,11 +799,11 @@ services:
       # Uncomment to customize:
       # - API_PORT=3001
       # - API_HOST=0.0.0.0
-    
+
     # Volume mounts (persistent storage)
     volumes:
       - vectorforge-data:/data
-    
+
     # Health check configuration
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health/live"]
@@ -811,10 +811,10 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
-    
+
     # Restart policy
     restart: unless-stopped
-    
+
     # Resource limits (optional, uncomment to use)
     # deploy:
     #   resources:
@@ -1443,7 +1443,7 @@ $ docker build -t vectorforge:latest .
 #13 2.917       ValueError: Unable to determine which files to ship
 #13 2.917       inside the wheel using the following heuristics:
 #13 2.917       https://hatch.pypa.io/latest/plugins/builder/wheel/#default-file-selection
-#13 2.917 
+#13 2.917
 #13 2.917       The most likely cause of this is that there is no directory that matches
 #13 2.917       the name of your project (vectorforge).
 ERROR: failed to solve: process "/bin/sh -c uv sync --frozen --no-dev" did not complete successfully: exit code: 1
