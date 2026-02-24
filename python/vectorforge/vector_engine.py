@@ -131,9 +131,14 @@ class VectorEngine:
         with the 'all-MiniLM-L6-v2' sentence transformer model for embedding
         generation. Initializes metrics tracking.
         """
-        engine_dir = os.path.dirname(os.path.abspath(__file__))
-        chroma_path = os.path.join(engine_dir, VFGConfig.CHROMA_PERSIST_DIR)
+        chroma_path: str = VFGConfig.CHROMA_PERSIST_DIR
 
+        if not os.path.isabs(chroma_path):
+            chroma_path = os.path.abspath(chroma_path)
+
+        os.makedirs(chroma_path, exist_ok=True)
+
+        self.chroma_path: str = chroma_path  # Store for use in metrics methods
         self.chroma_client = chromadb.PersistentClient(path=chroma_path)
         self.collection = self.chroma_client.get_or_create_collection(
             name=VFGConfig.CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
@@ -523,9 +528,7 @@ class VectorEngine:
             FileNotFoundError: If the ChromaDB persist directory does not exist.
             OSError: If there's an error accessing the directory or files.
         """
-        chroma_path = os.path.join(
-            os.path.dirname(__file__), VFGConfig.CHROMA_PERSIST_DIR
-        )
+        chroma_path = self.chroma_path
 
         if not os.path.exists(chroma_path):
             raise FileNotFoundError(
@@ -570,9 +573,7 @@ class VectorEngine:
             "collection_name": self.collection.name,
             "disk_size_bytes": disk_bytes,
             "disk_size_mb": round(disk_mb, 2),
-            "persist_directory": os.path.abspath(
-                os.path.join(os.path.dirname(__file__), VFGConfig.CHROMA_PERSIST_DIR)
-            ),
+            "persist_directory": self.chroma_path,
             "max_batch_size": self.chroma_client.get_max_batch_size(),
         }
 

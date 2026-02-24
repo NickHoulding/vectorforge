@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from vectorforge import __version__
 from vectorforge.api import engine
@@ -47,6 +47,44 @@ def check_health() -> dict[str, Any]:
         "version": __version__,
         "chromadb_heartbeat": heartbeat,
     }
+
+
+@router.get("/health/ready")
+async def readiness_check() -> dict[str, str | int]:
+    """Readiness probe for container orchestration.
+    
+    Checks if VectorForge is fully initialized and ready to handle requests.
+    Returns 200 if ready, 503 if not ready.
+    
+    Used by Docker/Kubernetes to know when to send traffic to this container.
+    """
+    try:
+        doc_count: int = engine.collection.count()
+
+        if engine.model is None:
+            raise RuntimeError("Model not loaded")
+        
+        return {
+            "status": "ready",
+            "documents": doc_count,
+            "model": engine.model_name
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Service not ready: {str(e)}"
+        )
+    
+
+@router.get("/health/live")
+async def liveness_check() -> dict[str, str]:
+    """Liveness probe for container orchestration.
+    
+    Simple check that the API is responding.
+    Returns 200 if alive, used by Docker/Kubernetes to detect hung processes.
+    """
+    return {"status": "alive"}
 
 
 @router.get("/metrics", response_model=MetricsResponse)

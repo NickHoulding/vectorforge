@@ -94,8 +94,13 @@ class VFGConfig:
     # ChromaDB Configuration
     # =============================================================================
 
-    CHROMA_PERSIST_DIR: str = "chroma_data"
-    """Directory name for ChromaDB persistent storage (relative to vector_engine.py)."""
+    CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_DATA_DIR", "/data/chroma" if os.path.exists("/data") else "./data/chroma")
+    """Directory for ChromaDB persistent storage. Configurable via CHROMA_DATA_DIR env var."""
+
+    MODEL_CACHE_DIR: str = os.getenv(
+        "HF_HOME", os.path.expanduser("~/.cache/huggingface")
+    )
+    """Directory for HuggingFace model cache. Configurable via HF_HOME env var."""
 
     CHROMA_COLLECTION_NAME: str = "vectorforge"
     """Default ChromaDB collection name."""

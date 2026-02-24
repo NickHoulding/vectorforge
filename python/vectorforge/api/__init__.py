@@ -4,6 +4,9 @@ from fastapi import FastAPI
 
 from vectorforge import __version__
 from vectorforge.vector_engine import VectorEngine
+from vectorforge.logging_config import configure_logging
+
+configure_logging()
 
 app: FastAPI = FastAPI(
     title="VectorForge API",

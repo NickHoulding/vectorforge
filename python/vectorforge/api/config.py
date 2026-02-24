@@ -1,3 +1,5 @@
+import os
+
 class APIConfig:
     """Configuration for VectorForge API server.
 
@@ -9,11 +11,14 @@ class APIConfig:
     # API Configuration
     # =============================================================================
 
-    API_PORT: int = 3001
+    API_PORT: int = int(os.getenv("API_PORT", "3001"))
     """Default port for the FastAPI server."""
 
-    API_HOST: str = "0.0.0.0"
+    API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
     """Default host binding for the FastAPI server."""
+
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
+    """Logging level (DEBUG, INFO, WARNING, ERROR). Configurable via LOG_LEVEL env var."""
 
     # =============================================================================
     # Configuration Class Validator

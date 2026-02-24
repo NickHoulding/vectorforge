@@ -27,7 +27,7 @@ build-backend = "hatchling.build"
 package = true
 
 [project.scripts]
-vectorforge-api = "vectorforge.api:main"
+vectorforge-api = "vectorforge.__main__:main"
 vectorforge-mcp = "vectorforge_mcp.server:main"
 
 [dependency-groups]

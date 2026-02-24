@@ -1,6 +1,8 @@
 """Shared test fixtures for VectorForge test suite"""
 
 from typing import Any, Generator
+import tempfile
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -20,6 +22,15 @@ from vectorforge.vector_engine import VectorEngine
 def anyio_backend() -> str:
     """Configure anyio to use only asyncio backend."""
     return "asyncio"
+
+
+@pytest.fixture(autouse=True)
+def use_temp_chroma_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[str, Any, None]:
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        chroma_path = os.path.join(tmpdir, "chroma_test")
+        monkeypatch.setenv("CHROMA_DATA_DIR", chroma_path)
+        yield chroma_path
 
 
 @pytest.fixture(scope="session")
