@@ -8,7 +8,7 @@ from vectorforge.api.config import APIConfig
 
 def configure_logging() -> None:
     """Configure logging based on LOG_LEVEL environment variable.
-    
+
     Sets up basic logging to stdout (required for Docker log collection).
     Respects LOG_LEVEL env var: DEBUG, INFO, WARNING, ERROR, CRITICAL.
     """
@@ -22,7 +22,7 @@ def configure_logging() -> None:
         level=getattr(logging, log_level),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stdout,
-        force=True
+        force=True,
     )
 
     logger = logging.getLogger(__name__)

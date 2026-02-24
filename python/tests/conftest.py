@@ -1,8 +1,8 @@
 """Shared test fixtures for VectorForge test suite"""
 
-from typing import Any, Generator
-import tempfile
 import os
+import tempfile
+from typing import Any, Generator
 
 import pytest
 from fastapi.testclient import TestClient

@@ -94,7 +94,10 @@ class VFGConfig:
     # ChromaDB Configuration
     # =============================================================================
 
-    CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_DATA_DIR", "/data/chroma" if os.path.exists("/data") else "./data/chroma")
+    CHROMA_PERSIST_DIR: str = os.getenv(
+        "CHROMA_DATA_DIR",
+        "/data/chroma" if os.path.exists("/data") else "./data/chroma",
+    )
     """Directory for ChromaDB persistent storage. Configurable via CHROMA_DATA_DIR env var."""
 
     MODEL_CACHE_DIR: str = os.getenv(

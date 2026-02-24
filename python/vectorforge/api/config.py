@@ -1,5 +1,6 @@
 import os
 
+
 class APIConfig:
     """Configuration for VectorForge API server.
 
