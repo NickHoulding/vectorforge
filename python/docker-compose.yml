@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  vectorforge:
+  # Build config
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # target: production
+
+    # Image name after building
+    image: vectorforge:latest
+
+    # Container name (easier to reference)
+    container_name: vectorforge
+
+    # Port mapping (access API at: http://localhost:3001)
+    ports:
+      - "3001:3001"
+
+    # ENV vars
+    environment:
+      - CHROMA_DATA_DIR=/data/chroma
+      - LOG_LEVEL=INFO
+      # Uncomment to customize:
+      # - API_PORT=3001
+      # - API_HOST=0.0.0.0
+
+    # Volume mounts
+    volumes:
+      - vectorforge-data:/data
+
+    # Health check config
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Resource Limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 2G
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 1G
+
+# Named volumes
+volumes:
+  vectorforge-data:
+    driver: local
+    # Data persists even if container is deleted
