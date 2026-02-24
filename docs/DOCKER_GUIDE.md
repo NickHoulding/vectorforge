@@ -6,13 +6,13 @@
 
 ## 📚 Table of Contents
 
-1. [Docker Basics - What You Need to Know](#docker-basics)
-2. [Phase 1: Prepare Your Code for Docker](#phase-1-prepare-code)
-3. [Phase 2: Create Your First Dockerfile](#phase-2-dockerfile)
-4. [Phase 3: Build and Run Your Container](#phase-3-build-and-run)
-5. [Phase 4: Add Docker Compose](#phase-4-docker-compose)
-6. [Phase 5: Test Data Persistence](#phase-5-data-persistence)
-7. [Troubleshooting Common Issues](#troubleshooting)
+1. [Docker Basics - What You Need to Know](#docker-basics---what-you-need-to-know)
+2. [Phase 1: Prepare Your Code for Docker](#phase-1-prepare-code-for-docker)
+3. [Phase 2: Create Your First Dockerfile](#phase-2-create-your-first-dockerfile)
+4. [Phase 3: Build and Run Your Container](#phase-3-build-and-run-your-container)
+5. [Phase 4: Understanding Data Persistence](#phase-4-understanding-data-persistence)
+6. [Phase 5: Testing and Validation](#phase-5-testing-and-validation)
+7. [Troubleshooting Common Issues](#troubleshooting-common-issues)
 8. [Next Steps](#next-steps)
 
 ---
@@ -1240,25 +1240,86 @@ docker run --rm \
 ```dockerfile
 FROM vectorforge:latest
 
-# Install dev dependencies
-COPY --from=builder /app/.venv /app/.venv
-RUN /app/.venv/bin/uv sync --frozen
+# Switch to root to install dependencies
+USER root
 
-# Copy tests
+# Install uv for installing dev dependencies
+# We need uv to run 'uv sync --frozen' to install dev dependencies
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install ALL dependencies including dev dependencies
+# The production image only has runtime deps, we need pytest etc.
+RUN uv sync --frozen
+
+# Copy test files
 COPY tests/ ./tests/
 COPY pytest.ini ./
+
+# Switch back to non-root user for running tests
+USER vectorforge
 
 # Run tests
 CMD ["pytest", "tests/", "-v"]
 ```
 
+> **💡 Why not use `COPY --from=builder`?**
+>
+> You might think we could copy the `.venv` from the builder stage:
+> ```dockerfile
+> COPY --from=builder /app/.venv /app/.venv  # ❌ This won't work!
+> ```
+>
+> **Problem:** Docker's `COPY --from=<stage>` can only reference stages within the **same Dockerfile**. The `builder` stage is in `Dockerfile`, but we're in `Dockerfile.test` - they're separate files!
+>
+> **Solution:** Make `Dockerfile.test` self-contained by:
+> 1. Starting from the built `vectorforge:latest` image
+> 2. Installing uv from the official image
+> 3. Running `uv sync --frozen` to install all dependencies (including dev)
+
 **Run tests in Docker:**
+
+Before building, you need to temporarily make the `tests/` directory available:
+
 ```bash
-# Build test image
+# Step 1: Edit .dockerignore and comment out the 'tests/' line
+# Line 34 in .dockerignore:
+# tests/    ← Add # to comment this out
+
+# Step 2: Build test image
 docker build -f Dockerfile.test -t vectorforge:test .
 
-# Run tests
+# Step 3: Uncomment the 'tests/' line in .dockerignore
+# (This keeps tests out of production builds)
+
+# Step 4: Run tests
 docker run --rm vectorforge:test
+```
+
+> **📝 Why modify .dockerignore?**
+>
+> The `.dockerignore` file excludes `tests/` to keep the production image small. But `Dockerfile.test` needs to `COPY tests/`, which fails if tests are ignored.
+>
+> **Options:**
+> 1. Temporarily comment out `tests/` in `.dockerignore` (shown above)
+> 2. Create a separate `.dockerignore.test` file (requires build flag)
+> 3. Keep tests in the build context permanently (wastes space in production builds)
+>
+> We recommend option 1 for simplicity.
+
+**Expected output:**
+```
+============================= test session starts ==============================
+collected 422 items
+
+tests/test_api.py::test_health_endpoint PASSED                           [  0%]
+tests/test_api.py::test_add_document PASSED                              [  0%]
+...
+tests/test_vector_engine.py::test_search PASSED                          [100%]
+
+============================== 422 passed in 45.23s =============================
 ```
 
 ---
@@ -1569,6 +1630,158 @@ drwxr-xr-x 1 root root  xxx /app/vectorforge
 - **Builder stage**: Needs it for `uv sync` to build the package
 - **Production stage**: Needs it for Python to import the module at runtime
 - Both stages need the exact same source code for consistency
+
+---
+
+### Issue 0.5: Test Build Fails - tests/ Directory Not Found or Typo in COPY Command
+
+**Error when building test image:**
+```bash
+$ docker build -f Dockerfile.test -t vectorforge:test .
+
+# Either:
+# Error 1: No such file or directory
+failed to compute cache key: "/tests" not found: not found
+
+# Or Error 2: ModuleNotFoundError when running tests
+docker run --rm vectorforge:test
+ModuleNotFoundError: No module named 'pytest'
+```
+
+**What happened:**
+There are actually **three separate issues** that can cause test builds to fail:
+
+#### **Sub-Issue A: tests/ directory excluded by .dockerignore**
+
+**Root cause:**
+```bash
+# .dockerignore line 34:
+tests/                    # ← Excludes tests from Docker build context
+```
+
+The `.dockerignore` file tells Docker which files to **ignore** when building images. The production Dockerfile doesn't need tests (to keep the image small), so `tests/` is excluded. But `Dockerfile.test` explicitly tries to `COPY tests/`, which fails because the files aren't available.
+
+**Solution:**
+```bash
+# Step 1: Edit .dockerignore (line 34)
+# Change:
+tests/
+# To:
+# tests/
+
+# Step 2: Build test image
+docker build -f Dockerfile.test -t vectorforge:test .
+
+# Step 3: Put .dockerignore back to original
+# Change:
+# tests/
+# To:
+tests/
+```
+
+**Why not just remove tests/ from .dockerignore permanently?**
+- Every `COPY` in the production Dockerfile would include tests (wastes space)
+- The build context would be larger (slower uploads to Docker daemon)
+- Production images would be bigger for no reason
+
+**Alternative: Use a separate .dockerignore file**
+```bash
+# Create .dockerignore.test (without tests/ excluded)
+cp .dockerignore .dockerignore.test
+sed -i '/^tests\//d' .dockerignore.test
+
+# Build with custom ignore file (Docker 23.0+)
+DOCKER_BUILDKIT=1 docker build -f Dockerfile.test \
+  --ignore-file .dockerignore.test \
+  -t vectorforge:test .
+```
+
+---
+
+#### **Sub-Issue B: Typo in Dockerfile.test - pyproject/toml instead of pyproject.toml**
+
+**Root cause in Dockerfile.test:**
+```dockerfile
+# Line 7 (WRONG):
+COPY pyproject/toml uv.lock ./    # ❌ Slash instead of dot!
+
+# Should be (CORRECT):
+COPY pyproject.toml uv.lock ./    # ✅ Dot, not slash
+```
+
+**Error message:**
+```bash
+failed to compute cache key: "/pyproject/toml" not found: not found
+```
+
+**Solution:**
+Fix the typo - change `/` to `.` in the filename.
+
+---
+
+#### **Sub-Issue C: Cannot reference 'builder' stage from different Dockerfile**
+
+**What you might try (but won't work):**
+```dockerfile
+# Dockerfile.test (WRONG APPROACH):
+FROM vectorforge:latest
+
+# ❌ This tries to reference the 'builder' stage from Dockerfile
+COPY --from=builder /app/.venv /app/.venv
+
+# Error:
+# failed to solve: failed to resolve source metadata for docker.io/library/builder:latest
+```
+
+**Root cause:**
+Docker's `COPY --from=<stage>` can only reference stages within the **same Dockerfile**. The `builder` stage exists in `Dockerfile`, but we're in `Dockerfile.test` - they're separate files!
+
+**Why this error message is confusing:**
+Docker interprets `builder` as a **Docker image name** (like `ubuntu:latest`) instead of a build stage. It tries to pull `docker.io/library/builder:latest` from Docker Hub, which doesn't exist.
+
+**Solution:**
+Make `Dockerfile.test` self-contained:
+```dockerfile
+FROM vectorforge:latest
+
+# Switch to root to install dependencies
+USER root
+
+# Install uv from official image (not from 'builder' stage)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install ALL dependencies including dev (pytest, etc.)
+RUN uv sync --frozen
+
+# Copy test files
+COPY tests/ ./tests/
+COPY pytest.ini ./
+
+USER vectorforge
+CMD ["pytest", "tests/", "-v"]
+```
+
+**Why this works:**
+1. We start from the already-built `vectorforge:latest` image (has runtime dependencies)
+2. We install uv from the official Astral image (publicly available)
+3. We run `uv sync --frozen` to add dev dependencies (pytest, etc.) to the existing `.venv`
+4. We copy tests and run them
+
+**Verification:**
+```bash
+# After fixing all three issues:
+docker build -f Dockerfile.test -t vectorforge:test .
+docker run --rm vectorforge:test
+
+# Should show:
+============================= test session starts ==============================
+collected 422 items
+...
+============================== 422 passed in 45.23s =============================
+```
 
 ---
 
