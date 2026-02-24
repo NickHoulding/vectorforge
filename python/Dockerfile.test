@@ -1,0 +1,14 @@
+FROM vectorforge:latest
+
+USER root
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --frozen
+
+COPY tests/ ./tests/
+COPY pytest.ini ./
+
+CMD ["pytest", "tests/", "-v"]
