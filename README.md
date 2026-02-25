@@ -709,15 +709,43 @@ for result in results:
 
 ## Development Process
 
-**TODO: Fill in with dev challenges, learnings, interesting bugs/edge cases discovered, performance optimization insights, etc.**
-<!--
-Fill in with your experience:
-- What challenges did you face during development?
-- How did you overcome specific technical hurdles?
-- What did you learn about vector databases, embeddings, or FastAPI?
-- Any interesting bugs or edge cases you discovered?
-- Performance optimization insights?
--->
+VectorForge went through a significant architectural evolution during development:
+
+### **Initial Approach: C++/Pybind11 Optimization**
+The project originally explored a C++ implementation with Python bindings via pybind11 for maximum performance. This approach included:
+- Custom C++ vector operations and similarity calculations
+- CMake build system for cross-platform compilation
+- Python bindings for seamless integration
+
+### **Pivot to ChromaDB**
+After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vector database engine. This decision was driven by:
+
+**Benefits of ChromaDB:**
+- **Production-ready** - Battle-tested persistence and ACID guarantees
+- **Built-in optimizations** - HNSW indexing, efficient similarity search
+- **Maintained by experts** - Active development by vector DB specialists
+- **Less complexity** - No C++ compilation, easier deployment
+- **Rich features** - Metadata filtering, collections, batch operations
+- **Docker-friendly** - Simpler containerization without build toolchains
+
+**Tradeoffs:**
+- Slightly higher memory overhead vs. custom C++
+- Less control over low-level optimizations
+
+**Outcome:** The ChromaDB implementation achieved production-ready stability while maintaining excellent performance for the target use cases. The code from the C++ exploration is preserved in git history (commits before the ChromaDB migration) for reference.
+
+### **Key Technical Decisions**
+1. **FastAPI over Flask** - Async support for high concurrency
+2. **ChromaDB for persistence** - Eliminates custom storage implementation
+3. **Sentence Transformers** - Industry-standard embeddings
+4. **Comprehensive testing** - 422 tests covering all functionality
+5. **Docker-first deployment** - Built for containerized environments
+
+### **Development Insights**
+- Vector databases are complex - using a specialized solution (ChromaDB) proved more reliable than building from scratch
+- Type hints and Pydantic validation catch errors early and improve API usability
+- Comprehensive metrics tracking is essential for production debugging
+- Docker multi-stage builds dramatically reduce image size while maintaining functionality
 
 ---
 

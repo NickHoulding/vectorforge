@@ -1,4 +1,6 @@
 ## Todo
+- [ ] **Automated docker rebuild scripts** Make automated docker build bash script?
+- [ ] **Re-evaluate HNSW config update functionality** Since running in Docker on a static volume, is this functionality still useful?
 - [ ] **Deploy on DigitalOcean**
 
 ### Future Enhancements

@@ -8,6 +8,7 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen
 
+# Temporarily un-comment tests/ directory in .dockerignore
 COPY tests/ ./tests/
 COPY pytest.ini ./
 

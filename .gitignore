@@ -3,8 +3,8 @@ __pycache__/
 .pytest_cache/
 .vscode/
 .mypy_cache/
-python/data/
-python/tests/data/
+data/
+tests/data/
 .venv/
 
 # ChromaDB
@@ -13,16 +13,14 @@ chroma_data/
 # Coverage reports
 *.coverage
 .coverage
-python/.coverage
 htmlcov/
 
 # Benchmark results (keep baseline, ignore new runs)
-python/benchmarks/results/*
-!python/benchmarks/results/0001_baseline.json
+benchmarks/results/*
+!benchmarks/results/0001_baseline.json
 .benchmarks/
 
-# Old C++ build artifacts
-deprecated/build/
+# C++ build artifacts (if needed in future)
 *.so
 *.o
 *.a
@@ -35,5 +33,5 @@ install_manifest.txt
 Makefile
 
 # Python C++ extensions
-python/vectorforge/*.so
-python/vectorforge/*.dylib
+vectorforge/*.so
+vectorforge/*.dylib

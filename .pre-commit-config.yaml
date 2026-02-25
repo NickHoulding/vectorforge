@@ -11,7 +11,7 @@ repos:
       - id: isort
         name: isort (import sorting)
         stages: [pre-push]
-        files: ^python/
+        files: ^(vectorforge|vectorforge_mcp|tests)/
         args: ["--profile", "black", "--line-length", "88"]
 
   # Black - Code formatting
@@ -21,7 +21,7 @@ repos:
       - id: black
         name: black (code formatting)
         stages: [pre-push]
-        files: ^python/
+        files: ^(vectorforge|vectorforge_mcp|tests)/
         args: ["--line-length", "88"]
 
   # mypy - Type checking (using local installation for better performance)
@@ -29,10 +29,10 @@ repos:
     hooks:
       - id: mypy
         name: mypy (type checking)
-        entry: bash -c 'cd python && uv run mypy .'
+        entry: bash -c 'uv run mypy .'
         language: system
         types: [python]
-        files: ^python/(vectorforge|vectorforge_mcp)/
+        files: ^(vectorforge|vectorforge_mcp)/
         stages: [pre-push]
         pass_filenames: false
 

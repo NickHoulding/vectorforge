@@ -61,7 +61,7 @@ docker compose version
 
 **What we're doing:** Allowing configuration values to come from environment variables with sensible defaults.
 
-**File to edit:** `python/vectorforge/config.py`
+**File to edit:** `vectorforge/config.py`
 
 **Find this section** (around line 96-101):
 ```python
@@ -105,7 +105,7 @@ MODEL_CACHE_DIR: str = os.getenv("HF_HOME", os.path.expanduser("~/.cache/hugging
 
 ---
 
-**File to edit:** `python/vectorforge/api/config.py`
+**File to edit:** `vectorforge/api/config.py`
 
 **Find this section** (around line 12-16):
 ```python
@@ -144,7 +144,7 @@ import os
 - Data must be stored in **volumes** (persistent storage)
 - `/data` is a common convention for application data
 
-**File to edit:** `python/vectorforge/vector_engine.py`
+**File to edit:** `vectorforge/vector_engine.py`
 
 **Find this code** (around line 134-139):
 ```python
@@ -190,7 +190,7 @@ def __init__(self) -> None:
 
 **What we're doing:** Making logs configurable so you can debug Docker containers easily.
 
-**Create new file:** `python/vectorforge/logging_config.py`
+**Create new file:** `vectorforge/logging_config.py`
 
 ```python
 """Logging configuration for VectorForge"""
@@ -233,7 +233,7 @@ def configure_logging() -> None:
 
 ---
 
-**File to edit:** `python/vectorforge/api/__init__.py`
+**File to edit:** `vectorforge/api/__init__.py`
 
 **Add this import at the top:**
 ```python
@@ -288,7 +288,7 @@ __all__: list[str] = ["app", "engine"]
 - **Readiness Probe**: "Is the app ready to receive traffic?"
 - **Liveness Probe**: "Is the app still running?"
 
-**File to edit:** `python/vectorforge/api/system.py`
+**File to edit:** `vectorforge/api/system.py`
 
 **Add these new endpoints after the existing `/health` endpoint:**
 
@@ -349,7 +349,7 @@ from fastapi import HTTPException
 - Interferes with Docker builds
 - Causes flaky tests
 
-**File to edit:** `python/tests/conftest.py`
+**File to edit:** `tests/conftest.py`
 
 **Add these imports at the top:**
 ```python
@@ -395,7 +395,7 @@ $ uv run vectorforge-api
 ImportError: cannot import name 'main' from 'vectorforge.api'
 ```
 
-**File to edit:** `python/pyproject.toml`
+**File to edit:** `pyproject.toml`
 
 **Find this line** (around line 30):
 ```toml
@@ -496,7 +496,7 @@ A `Dockerfile` is like a recipe that tells Docker how to build your application 
 - Huge image sizes
 - Leaking secrets
 
-**Create file:** `python/.dockerignore`
+**Create file:** `.dockerignore`
 
 ```
 # Python
@@ -554,7 +554,7 @@ docs/
 
 ### 2.2: Create the Dockerfile
 
-**Create file:** `python/Dockerfile`
+**Create file:** `Dockerfile`
 
 Let's build it step by step with explanations:
 
@@ -722,7 +722,7 @@ CMD ["vectorforge-api"]
 # Uses the entrypoint defined in pyproject.toml
 ```
 
-**Save this file as:** `python/Dockerfile`
+**Save this file as:** `Dockerfile`
 
 ---
 
@@ -765,7 +765,7 @@ CMD ["vectorforge-api"]
 - Manages volumes, networks, environment variables
 - One command to start everything: `docker compose up`
 
-**Create file:** `python/docker-compose.yml`
+**Create file:** `docker-compose.yml`
 
 ```yaml
 # Docker Compose file for VectorForge
@@ -1236,7 +1236,7 @@ docker run --rm \
 
 **Create a test Dockerfile:**
 
-**File:** `python/Dockerfile.test`
+**File:** `Dockerfile.test`
 ```dockerfile
 FROM vectorforge:latest
 
@@ -1472,7 +1472,7 @@ ImportError: cannot import name 'main' from 'vectorforge.api'
 
 **Solution: Fix the entry point**
 
-Edit `python/pyproject.toml`, change line 30:
+Edit `pyproject.toml`, change line 30:
 ```toml
 # WRONG:
 vectorforge-api = "vectorforge.api:main"
@@ -1525,7 +1525,7 @@ RUN uv sync --frozen --no-dev  # Tries to build vectorforge package, but source 
 
 **Solution: Copy source code BEFORE running uv sync**
 
-Edit your `python/Dockerfile`, in the builder stage:
+Edit your `Dockerfile`, in the builder stage:
 
 ```dockerfile
 # ✅ CORRECT ORDER:
@@ -1587,7 +1587,7 @@ COPY --from=builder /root/.cache/huggingface ...   # ✅ Copies model cache
 
 **Solution: Copy source code in production stage too**
 
-Edit your `python/Dockerfile`, in the production stage, add these lines **after** copying the `.venv`:
+Edit your `Dockerfile`, in the production stage, add these lines **after** copying the `.venv`:
 
 ```dockerfile
 FROM base AS production
