@@ -707,6 +707,113 @@ for result in results:
 
 ---
 
+## HNSW Configuration
+
+VectorForge uses ChromaDB's **Hierarchical Navigable Small World (HNSW)** algorithm for efficient approximate nearest neighbor search. You can tune HNSW parameters to optimize the tradeoff between search accuracy and performance.
+
+### **Getting Current Configuration**
+
+```bash
+curl http://localhost:3001/index/stats
+```
+
+**Response includes:**
+```json
+{
+  "status": "success",
+  "total_documents": 1250,
+  "embedding_dimension": 384,
+  "hnsw_config": {
+    "space": "cosine",
+    "ef_construction": 100,
+    "ef_search": 100,
+    "max_neighbors": 16,
+    "resize_factor": 1.2,
+    "sync_threshold": 1000
+  }
+}
+```
+
+### **Updating HNSW Configuration**
+
+Update HNSW parameters via zero-downtime collection migration:
+
+```bash
+curl -X PUT "http://localhost:3001/index/config/hnsw?confirm=true" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ef_search": 150,
+    "max_neighbors": 32
+  }'
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "HNSW configuration updated successfully",
+  "migration": {
+    "documents_migrated": 1250,
+    "time_taken_seconds": 8.47,
+    "old_collection_deleted": true
+  },
+  "config": {
+    "space": "cosine",
+    "ef_construction": 100,
+    "ef_search": 150,
+    "max_neighbors": 32,
+    "resize_factor": 1.2,
+    "sync_threshold": 1000
+  }
+}
+```
+
+### **How HNSW Migration Works**
+
+The migration performs a **collection-level blue-green style migration**:
+
+1. Creates new collection with updated HNSW settings
+2. Migrates all documents + embeddings in batches (1000 docs/batch)
+3. Atomically swaps to the new collection
+4. Deletes the old collection
+
+**Note:** This is collection-level migration within the same ChromaDB database. All collections share the same Docker volume (`vectorforge-data:/data`).
+
+### **Important Considerations**
+
+- **Disk Space**: Migration temporarily requires up to **3x disk space** (old + temp + new collections)
+
+- **Shared Storage**: All collections use the same persistent volume. This is **not infrastructure-level** blue-green deployment with separate volumes.
+
+- **Single Container**: If running multiple replicas, scale to 1 container before migrating to avoid race conditions.
+
+- **Confirmation Required**: Must include `?confirm=true` query parameter as a safety gate.
+
+### **HNSW Parameters Explained**
+
+| Parameter | Description | Higher Value = | Typical Range |
+|-----------|-------------|----------------|---------------|
+| `space` | Distance metric | N/A (cosine, l2, ip) | - |
+| `ef_construction` | Build-time search depth | Better index quality, slower construction | 100-500 |
+| `ef_search` | Query-time search depth | Higher accuracy, slower queries | 10-500 |
+| `max_neighbors` | Connections per node (M) | Better recall, more memory | 16-64 |
+| `resize_factor` | Index growth multiplier | Less frequent resizing | 1.2-2.0 |
+| `sync_threshold` | Batch size for persistence | Less frequent disk writes | 100-10000 |
+
+### **When to Tune HNSW**
+
+**Good for:**
+- Initial performance tuning after deployment
+- Adjusting search quality vs speed tradeoff
+- Experimenting with distance metrics
+
+**Not recommended for:**
+- Frequent configuration changes (expensive to recreate)
+- Very large datasets (>10M docs) without disk space planning
+- Multi-replica deployments (coordinate manually first)
+
+---
+
 ## Development Process
 
 VectorForge went through a significant architectural evolution during development:

@@ -61,14 +61,18 @@ def update_hnsw_config(
     """
     Update HNSW index configuration (requires collection recreation)
 
-    This endpoint performs a zero-downtime blue-green migration:
+    This endpoint performs a zero-downtime collection-level migration:
     1. Creates new collection with updated HNSW settings
     2. Migrates all documents with embeddings in batches
-    3. Atomically swaps collections
+    3. Atomically swaps to the new collection
     4. Deletes old collection
 
+    Note: This is collection-level blue-green migration within the same ChromaDB
+    database. All collections share the same persistent storage volume.
+
     **Warning:** This is a destructive operation that recreates the entire collection.
-    Always include `?confirm=true` to proceed.
+    Migration temporarily requires up to 3x disk space. Always include `?confirm=true`
+    to proceed.
 
     Args:
         config: New HNSW configuration (all fields optional, unspecified use defaults)

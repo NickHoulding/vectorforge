@@ -80,7 +80,8 @@ class HNSWConfigUpdate(BaseModel):
 
     All fields are optional. Unspecified fields use ChromaDB defaults.
     Note: Updating HNSW config requires full collection recreation with
-    zero-downtime blue-green migration.
+    zero-downtime collection-level migration. All collections share the
+    same ChromaDB database and persistent storage volume.
 
     Attributes:
         space: Distance metric (default: "cosine")

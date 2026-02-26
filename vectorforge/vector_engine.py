@@ -612,14 +612,16 @@ class VectorEngine:
         }
 
     def update_hnsw_config(self, new_config: dict[str, Any]) -> dict[str, Any]:
-        """Update HNSW configuration with blue-green collection recreation.
+        """Update HNSW configuration with zero-downtime collection migration.
 
-        Performs zero-downtime migration by creating a new collection with updated
-        HNSW settings, migrating all documents, swapping collections atomically,
-        and deleting the old collection.
+        Performs a collection-level blue-green style migration by creating a new
+        collection with updated HNSW settings, migrating all documents in batches,
+        atomically swapping to the new collection, and cleaning up the old collection.
 
         This is a destructive operation that requires full collection recreation
         because ChromaDB does not support modifying HNSW parameters after creation.
+        All collections share the same persistent storage (ChromaDB database), so
+        this is not infrastructure-level blue-green deployment with separate volumes.
 
         Args:
             new_config: Dictionary with HNSW parameters to update. All fields optional:

@@ -109,7 +109,7 @@ class VFGConfig:
     """Default ChromaDB collection name."""
 
     MIGRATION_BATCH_SIZE: int = 1000
-    """Batch size for HNSW configuration migration (blue-green collection recreation)."""
+    """Batch size for HNSW configuration migration (collection-level recreation)."""
 
     # =============================================================================
     # Configuration Class Validator
