@@ -114,7 +114,7 @@ class CollectionListResponse(BaseModel):
                 "status": "success",
                 "collections": [
                     {
-                        "name": "vectorforge",
+                        "collection_name": "vectorforge",
                         "id": "550e8400-e29b-41d4-a716-446655440000",
                         "document_count": 1250,
                         "created_at": "2026-01-15T10:00:00Z",
@@ -130,7 +130,7 @@ class CollectionListResponse(BaseModel):
                         "metadata": {},
                     },
                     {
-                        "name": "customer_docs",
+                        "collection_name": "customer_docs",
                         "id": "7029ba34-0788-4798-b82c-512bf3037c99",
                         "document_count": 1500,
                         "created_at": "2026-02-26T12:00:00Z",
@@ -171,7 +171,7 @@ class CollectionCreateResponse(BaseModel):
                 "status": "success",
                 "message": "Collection 'customer_docs' created successfully",
                 "collection": {
-                    "name": "customer_docs",
+                    "collection_name": "customer_docs",
                     "id": "7029ba34-0788-4798-b82c-512bf3037c99",
                     "document_count": 0,
                     "created_at": "2026-02-26T12:00:00Z",

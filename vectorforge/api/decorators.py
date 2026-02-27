@@ -2,6 +2,7 @@
 
 import functools
 import inspect
+import logging
 from typing import Any, Callable, TypeVar, cast
 
 from fastapi import HTTPException
@@ -9,6 +10,8 @@ from fastapi import HTTPException
 from vectorforge.api import manager
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+logger = logging.getLogger(__name__)
 
 
 def handle_api_errors(func: F) -> F:
@@ -39,11 +42,11 @@ def handle_api_errors(func: F) -> F:
             raise
 
         except FileNotFoundError as e:
-            print(f"FileNotFoundError: {e}")
+            logger.warning(f"FileNotFoundError: {e}")
             raise HTTPException(status_code=404, detail=f"Resource not found: {str(e)}")
 
         except ValueError as e:
-            print(f"ValueError: {e}")
+            logger.warning(f"ValueError: {e}")
             raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
 
         except RuntimeError as e:
@@ -53,7 +56,7 @@ def handle_api_errors(func: F) -> F:
             raise HTTPException(status_code=500, detail=error_msg)
 
         except Exception as e:
-            print(f"Unexpected error in {func.__name__}: {e}")
+            logger.error(f"Unexpected error in {func.__name__}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
     @functools.wraps(func)
@@ -65,11 +68,11 @@ def handle_api_errors(func: F) -> F:
             raise
 
         except FileNotFoundError as e:
-            print(f"FileNotFoundError: {e}")
+            logger.warning(f"FileNotFoundError: {e}")
             raise HTTPException(status_code=404, detail=f"Resource not found: {str(e)}")
 
         except ValueError as e:
-            print(f"ValueError: {e}")
+            logger.warning(f"ValueError: {e}")
             raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
 
         except RuntimeError as e:
@@ -79,7 +82,7 @@ def handle_api_errors(func: F) -> F:
             raise HTTPException(status_code=500, detail=error_msg)
 
         except Exception as e:
-            print(f"Unexpected error in {func.__name__}: {e}")
+            logger.error(f"Unexpected error in {func.__name__}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
     if inspect.iscoroutinefunction(func):

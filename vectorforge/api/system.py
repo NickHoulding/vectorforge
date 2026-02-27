@@ -68,9 +68,6 @@ async def readiness_check() -> dict[str, str | int]:
         default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
         doc_count: int = default_engine.collection.count()
 
-        if default_engine.model is None:
-            raise RuntimeError("Model not loaded")
-
         return {
             "status": "ready",
             "documents": doc_count,

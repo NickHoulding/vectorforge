@@ -131,57 +131,96 @@ class VFGConfig:
     @classmethod
     def validate(cls) -> None:
         """Validate configuration values."""
-        assert isinstance(cls.MODEL_NAME, str)
-        assert len(cls.MODEL_NAME) > 0
+        if not isinstance(cls.MODEL_NAME, str):
+            raise ValueError("MODEL_NAME must be a string")
+        if len(cls.MODEL_NAME) == 0:
+            raise ValueError("MODEL_NAME cannot be empty")
 
-        assert isinstance(cls.EMBEDDING_DIMENSION, int)
-        assert cls.EMBEDDING_DIMENSION > 0
+        if not isinstance(cls.EMBEDDING_DIMENSION, int):
+            raise ValueError("EMBEDDING_DIMENSION must be an int")
+        if cls.EMBEDDING_DIMENSION <= 0:
+            raise ValueError("EMBEDDING_DIMENSION must be > 0")
 
-        assert isinstance(cls.MAX_PATH_LEN, int)
-        assert cls.MAX_PATH_LEN > 0
+        if not isinstance(cls.MAX_PATH_LEN, int):
+            raise ValueError("MAX_PATH_LEN must be an int")
+        if cls.MAX_PATH_LEN <= 0:
+            raise ValueError("MAX_PATH_LEN must be > 0")
 
-        assert isinstance(cls.MAX_FILENAME_LENGTH, int)
-        assert cls.MAX_FILENAME_LENGTH > 0
-        assert cls.MAX_FILENAME_LENGTH <= cls.MAX_PATH_LEN
+        if not isinstance(cls.MAX_FILENAME_LENGTH, int):
+            raise ValueError("MAX_FILENAME_LENGTH must be an int")
+        if cls.MAX_FILENAME_LENGTH <= 0:
+            raise ValueError("MAX_FILENAME_LENGTH must be > 0")
+        if cls.MAX_FILENAME_LENGTH > cls.MAX_PATH_LEN:
+            raise ValueError("MAX_FILENAME_LENGTH must be <= MAX_PATH_LEN")
 
-        assert isinstance(cls.MIN_CONTENT_LENGTH, int)
-        assert cls.MIN_CONTENT_LENGTH > 0
+        if not isinstance(cls.MIN_CONTENT_LENGTH, int):
+            raise ValueError("MIN_CONTENT_LENGTH must be an int")
+        if cls.MIN_CONTENT_LENGTH <= 0:
+            raise ValueError("MIN_CONTENT_LENGTH must be > 0")
 
-        assert isinstance(cls.MAX_CONTENT_LENGTH, int)
-        assert cls.MAX_CONTENT_LENGTH > 0
-        assert cls.MAX_CONTENT_LENGTH >= cls.MIN_CONTENT_LENGTH
+        if not isinstance(cls.MAX_CONTENT_LENGTH, int):
+            raise ValueError("MAX_CONTENT_LENGTH must be an int")
+        if cls.MAX_CONTENT_LENGTH <= 0:
+            raise ValueError("MAX_CONTENT_LENGTH must be > 0")
+        if cls.MAX_CONTENT_LENGTH < cls.MIN_CONTENT_LENGTH:
+            raise ValueError("MAX_CONTENT_LENGTH must be >= MIN_CONTENT_LENGTH")
 
-        assert isinstance(cls.MIN_QUERY_LENGTH, int)
-        assert cls.MIN_QUERY_LENGTH > 0
+        if not isinstance(cls.MIN_QUERY_LENGTH, int):
+            raise ValueError("MIN_QUERY_LENGTH must be an int")
+        if cls.MIN_QUERY_LENGTH <= 0:
+            raise ValueError("MIN_QUERY_LENGTH must be > 0")
 
-        assert isinstance(cls.MAX_QUERY_LENGTH, int)
-        assert cls.MAX_QUERY_LENGTH > 0
-        assert cls.MAX_QUERY_LENGTH >= cls.MIN_QUERY_LENGTH
+        if not isinstance(cls.MAX_QUERY_LENGTH, int):
+            raise ValueError("MAX_QUERY_LENGTH must be an int")
+        if cls.MAX_QUERY_LENGTH <= 0:
+            raise ValueError("MAX_QUERY_LENGTH must be > 0")
+        if cls.MAX_QUERY_LENGTH < cls.MIN_QUERY_LENGTH:
+            raise ValueError("MAX_QUERY_LENGTH must be >= MIN_QUERY_LENGTH")
 
-        assert isinstance(cls.DEFAULT_CHUNK_SIZE, int)
-        assert cls.DEFAULT_CHUNK_SIZE > 0
+        if not isinstance(cls.DEFAULT_CHUNK_SIZE, int):
+            raise ValueError("DEFAULT_CHUNK_SIZE must be an int")
+        if cls.DEFAULT_CHUNK_SIZE <= 0:
+            raise ValueError("DEFAULT_CHUNK_SIZE must be > 0")
 
-        assert isinstance(cls.DEFAULT_CHUNK_OVERLAP, int)
-        assert cls.DEFAULT_CHUNK_OVERLAP >= 0
-        assert cls.DEFAULT_CHUNK_OVERLAP <= cls.DEFAULT_CHUNK_SIZE
+        if not isinstance(cls.DEFAULT_CHUNK_OVERLAP, int):
+            raise ValueError("DEFAULT_CHUNK_OVERLAP must be an int")
+        if cls.DEFAULT_CHUNK_OVERLAP < 0:
+            raise ValueError("DEFAULT_CHUNK_OVERLAP must be >= 0")
+        if cls.DEFAULT_CHUNK_OVERLAP > cls.DEFAULT_CHUNK_SIZE:
+            raise ValueError("DEFAULT_CHUNK_OVERLAP must be <= DEFAULT_CHUNK_SIZE")
 
-        assert isinstance(cls.DEFAULT_TOP_K, int)
-        assert cls.DEFAULT_TOP_K > 0
-        assert cls.MIN_TOP_K <= cls.DEFAULT_TOP_K <= cls.MAX_TOP_K
+        if not isinstance(cls.DEFAULT_TOP_K, int):
+            raise ValueError("DEFAULT_TOP_K must be an int")
+        if cls.DEFAULT_TOP_K <= 0:
+            raise ValueError("DEFAULT_TOP_K must be > 0")
+        if not (cls.MIN_TOP_K <= cls.DEFAULT_TOP_K <= cls.MAX_TOP_K):
+            raise ValueError("DEFAULT_TOP_K must be between MIN_TOP_K and MAX_TOP_K")
 
-        assert isinstance(cls.MIN_TOP_K, int)
-        assert cls.MIN_TOP_K > 0
+        if not isinstance(cls.MIN_TOP_K, int):
+            raise ValueError("MIN_TOP_K must be an int")
+        if cls.MIN_TOP_K <= 0:
+            raise ValueError("MIN_TOP_K must be > 0")
 
-        assert isinstance(cls.MAX_TOP_K, int)
-        assert cls.MAX_TOP_K > 0
-        assert cls.MAX_TOP_K >= cls.MIN_TOP_K
+        if not isinstance(cls.MAX_TOP_K, int):
+            raise ValueError("MAX_TOP_K must be an int")
+        if cls.MAX_TOP_K <= 0:
+            raise ValueError("MAX_TOP_K must be > 0")
+        if cls.MAX_TOP_K < cls.MIN_TOP_K:
+            raise ValueError("MAX_TOP_K must be >= MIN_TOP_K")
 
-        assert isinstance(cls.MAX_QUERY_HISTORY, int)
-        assert cls.MAX_QUERY_HISTORY >= 0
+        if not isinstance(cls.MAX_QUERY_HISTORY, int):
+            raise ValueError("MAX_QUERY_HISTORY must be an int")
+        if cls.MAX_QUERY_HISTORY < 0:
+            raise ValueError("MAX_QUERY_HISTORY must be >= 0")
 
-        assert isinstance(cls.SUPPORTED_FILE_EXTENSIONS, tuple)
-        assert len(cls.SUPPORTED_FILE_EXTENSIONS) > 0
-        assert all(
+        if not isinstance(cls.SUPPORTED_FILE_EXTENSIONS, tuple):
+            raise ValueError("SUPPORTED_FILE_EXTENSIONS must be a tuple")
+        if len(cls.SUPPORTED_FILE_EXTENSIONS) == 0:
+            raise ValueError("SUPPORTED_FILE_EXTENSIONS cannot be empty")
+        if not all(
             isinstance(ext, str) and ext.startswith(".") and len(ext) > 1
             for ext in cls.SUPPORTED_FILE_EXTENSIONS
-        )
+        ):
+            raise ValueError(
+                "Each entry in SUPPORTED_FILE_EXTENSIONS must be a string starting with '.'"
+            )

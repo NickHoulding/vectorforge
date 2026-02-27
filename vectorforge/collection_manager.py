@@ -109,9 +109,6 @@ class CollectionManager:
                 "Collection name must contain only alphanumeric characters, underscores, and hyphens"
             )
 
-        if self.collection_exists(name=name):
-            raise ValueError(f"Collection with name: {name} already exists.")
-
     def collection_exists(self, name: str) -> bool:
         """Check if a collection exists.
 
@@ -215,9 +212,7 @@ class CollectionManager:
 
         metadata_dict = collection.metadata or {}
         description = metadata_dict.get(self.META_DESCRIPTION_KEY, None)
-        created_at = metadata_dict.get(
-            self.META_CREATED_AT_KEY, datetime.now(timezone.utc).isoformat()
-        )
+        created_at = metadata_dict.get(self.META_CREATED_AT_KEY, "unknown")
 
         custom_metadata = {}
         for key, value in metadata_dict.items():
@@ -275,6 +270,8 @@ class CollectionManager:
             ValueError: If name is invalid or collection already exists
             RuntimeError: If max collections limit reached
         """
+        self.validate_collection_name(name)
+
         if self.collection_exists(name):
             raise ValueError(f"Collection '{name}' already exists")
 

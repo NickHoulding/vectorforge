@@ -28,9 +28,14 @@ class APIConfig:
     @classmethod
     def validate(cls) -> None:
         """Validate configuration values."""
-        assert isinstance(cls.API_PORT, int)
-        assert 1 <= cls.API_PORT <= 65535
+        if not isinstance(cls.API_PORT, int):
+            raise ValueError("API_PORT must be an int")
+        if not (1 <= cls.API_PORT <= 65535):
+            raise ValueError("API_PORT must be between 1 and 65535")
 
-        assert isinstance(cls.API_HOST, str)
-        assert len(cls.API_HOST) > 0
-        assert not cls.API_HOST.isspace()
+        if not isinstance(cls.API_HOST, str):
+            raise ValueError("API_HOST must be a string")
+        if len(cls.API_HOST) == 0:
+            raise ValueError("API_HOST cannot be empty")
+        if cls.API_HOST.isspace():
+            raise ValueError("API_HOST cannot be whitespace")

@@ -4,8 +4,8 @@ import time
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
-from typing import Any, Dict, Optional
+from datetime import datetime, timezone
+from typing import Any
 
 import chromadb
 import numpy as np
@@ -70,10 +70,12 @@ class EngineMetrics:
     total_documents_peak: int = 0
 
     # Timestamps
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    last_query_at: Optional[str] = None
-    last_doc_added_at: Optional[str] = None
-    last_file_uploaded_at: Optional[str] = None
+    created_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    last_query_at: str | None = None
+    last_doc_added_at: str | None = None
+    last_file_uploaded_at: str | None = None
 
     # Query performance history
     query_times: deque[float] = field(default_factory=deque)
@@ -202,7 +204,7 @@ class VectorEngine:
             query_embedding
         )
 
-        where_clause: Optional[Dict[str, Any]] = None
+        where_clause: dict[str, Any] | None = None
         if filters:
             if len(filters) == 1:
                 where_clause = dict(filters)
@@ -477,7 +479,7 @@ class VectorEngine:
         embedding_dim: int = self.model.get_sentence_embedding_dimension() or 0
 
         created: datetime = datetime.fromisoformat(self.metrics.created_at)
-        uptime: float = (datetime.now() - created).total_seconds()
+        uptime: float = (datetime.now(timezone.utc) - created).total_seconds()
 
         metrics_dict.update(
             {
@@ -681,7 +683,20 @@ class VectorEngine:
                 "hnsw:sync_threshold": new_config.get("sync_threshold", 1000),
             }
 
-            temp_collection_name = f"{old_collection.name}_temp_{uuid.uuid4().hex[:8]}"
+            old_metadata = old_collection.metadata or {}
+            for key, value in old_metadata.items():
+                if (
+                    key == "vf:description"
+                    or key == "vf:created_at"
+                    or key.startswith("vf:meta:")
+                ):
+                    hnsw_metadata[key] = value
+
+            max_base_len = (
+                (VFGConfig.MAX_COLLECTION_NAME_LENGTH - 1) - len("_temp_") - 8
+            )
+            base_name = old_collection.name[:max_base_len]
+            temp_collection_name = f"{base_name}_temp_{uuid.uuid4().hex[:8]}"
             logger.info(f"Creating temporary collection: {temp_collection_name}")
 
             new_collection = self.chroma_client.create_collection(
@@ -753,11 +768,13 @@ class VectorEngine:
                     include=["documents", "embeddings", "metadatas"]
                 )
 
+                temp_metadatas = temp_docs.get("metadatas")
+
                 final_collection.add(
                     ids=temp_docs["ids"],
                     documents=temp_docs["documents"],
                     embeddings=temp_docs["embeddings"],
-                    metadatas=temp_docs["metadatas"],
+                    metadatas=temp_metadatas if temp_metadatas else None,
                 )
 
             logger.info(f"Deleting temporary collection: {new_collection.name}")
