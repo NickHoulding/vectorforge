@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StandardMetadata(BaseModel):
@@ -37,6 +37,10 @@ class StandardMetadata(BaseModel):
                    when using this model directly (creation only, not filtering).
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"source_file": "document.pdf", "chunk_index": 0}}
+    )
+
     source_file: str | None = Field(
         default=None, description="Source document filename or path"
     )
@@ -56,11 +60,6 @@ class StandardMetadata(BaseModel):
             )
 
         return self
-
-    class ConfigDict:
-        json_schema_extra = {
-            "example": {"source_file": "document.pdf", "chunk_index": 0}
-        }
 
 
 def create_metadata(**kwargs: Any) -> dict[str, Any]:

@@ -1,6 +1,7 @@
 from typing import Any
 
 from vectorforge.api import system
+from vectorforge.config import VFGConfig
 from vectorforge.models.metrics import MetricsResponse
 
 from ..decorators import handle_tool_errors
@@ -12,13 +13,20 @@ from ..utils import build_success_response
     description="Get comprehensive metrics: performance stats (query times, percentiles), memory usage, operation counts, uptime, and system info."
 )
 @handle_tool_errors
-def get_metrics() -> dict[str, Any]:
+def get_metrics(
+    collection_name: str = VFGConfig.DEFAULT_COLLECTION_NAME,
+) -> dict[str, Any]:
     """Get comprehensive system metrics.
+
+    Args:
+        collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
         Dictionary with detailed performance, usage, memory, timestamp, and system metrics.
     """
-    response: MetricsResponse = system.get_metrics()
+    response: MetricsResponse = system.get_collection_metrics(
+        collection_name=collection_name
+    )
     return build_success_response(response)
 
 

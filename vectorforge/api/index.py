@@ -4,8 +4,8 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from vectorforge.api import engine
-from vectorforge.api.decorators import handle_api_errors
+from vectorforge.api import manager
+from vectorforge.api.decorators import handle_api_errors, require_collection
 from vectorforge.models import (
     HNSWConfig,
     HNSWConfigUpdate,
@@ -16,22 +16,28 @@ from vectorforge.models import (
 router: APIRouter = APIRouter()
 
 
-@router.get("/index/stats", response_model=IndexStatsResponse)
+@router.get("/collections/{collection_name}/stats", response_model=IndexStatsResponse)
+@require_collection
 @handle_api_errors
-def get_index_stats() -> IndexStatsResponse:
+def get_collection_stats(collection_name: str) -> IndexStatsResponse:
     """
-    Get quick index statistics
+    Get quick index statistics for a specific collection
 
     Lightweight endpoint for checking index health and size. Returns essential
     metrics including document counts, embedding dimension, and HNSW index
     configuration. For comprehensive metrics, use GET /metrics instead.
 
+    Args:
+        collection_name: Name of the collection
+
     Returns:
         IndexStatsResponse: Core index statistics and HNSW configuration
 
     Raises:
+        HTTPException: 404 if collection not found
         HTTPException: 500 if stats retrieval fails
     """
+    engine = manager.get_engine(collection_name)
     stats: dict[str, Any] = engine.get_index_stats()
     hnsw_config_dict: dict[str, Any] = engine.get_hnsw_config()
 
@@ -52,14 +58,19 @@ def get_index_stats() -> IndexStatsResponse:
     )
 
 
-@router.put("/index/config/hnsw", response_model=HNSWConfigUpdateResponse)
+@router.put(
+    "/collections/{collection_name}/config/hnsw",
+    response_model=HNSWConfigUpdateResponse,
+)
+@require_collection
 @handle_api_errors
-def update_hnsw_config(
+def update_collection_hnsw_config(
+    collection_name: str,
     config: HNSWConfigUpdate,
-    confirm: Optional[str] = Query(None, description="Must be 'true' to confirm"),
+    confirm: Optional[bool] = Query(None, description="Must be true to confirm"),
 ) -> HNSWConfigUpdateResponse:
     """
-    Update HNSW index configuration (requires collection recreation)
+    Update HNSW index configuration for a specific collection (requires collection recreation)
 
     This endpoint performs a zero-downtime collection-level migration:
     1. Creates new collection with updated HNSW settings
@@ -75,45 +86,42 @@ def update_hnsw_config(
     to proceed.
 
     Args:
+        collection_name: Name of the collection to update
         config: New HNSW configuration (all fields optional, unspecified use defaults)
-        confirm: Must be "true" to execute (safety gate)
+        confirm: Must be true to execute (safety gate)
 
     Returns:
         HNSWConfigUpdateResponse: Migration statistics and new configuration
 
     Raises:
+        HTTPException: 404 if collection not found
         HTTPException: 400 if missing confirmation or invalid configuration
         HTTPException: 503 if migration already in progress
         HTTPException: 500 if migration fails (old collection preserved)
 
     Example:
         ```
-        PUT /index/config/hnsw?confirm=true
+        PUT /collections/my_collection/config/hnsw?confirm=true
         {
             "ef_search": 150,
             "max_neighbors": 32
         }
         ```
     """
-    if confirm != "true":
+    if not confirm:
         raise HTTPException(
             status_code=400,
             detail="Must include ?confirm=true to update HNSW config (requires collection recreation)",
         )
 
-    if engine._migration_in_progress:
+    engine = manager.get_engine(collection_name)
+
+    if engine.migration_in_progress:
         raise HTTPException(
             status_code=503,
             detail="HNSW configuration migration already in progress",
         )
 
-    try:
-        result = engine.update_hnsw_config(config.model_dump())
-
-    except RuntimeError as e:
-        if "already in progress" in str(e):
-            raise HTTPException(status_code=503, detail=str(e))
-
-        raise HTTPException(status_code=500, detail=str(e))
+    result = engine.update_hnsw_config(config.model_dump())
 
     return HNSWConfigUpdateResponse(**result)

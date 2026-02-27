@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class IndexMetrics(BaseModel):
@@ -161,15 +161,8 @@ class MetricsResponse(BaseModel):
         chromadb: ChromaDB-specific operational metrics.
     """
 
-    index: IndexMetrics
-    performance: PerformanceMetrics
-    usage: UsageMetrics
-    timestamps: TimestampMetrics
-    system: SystemInfo
-    chromadb: ChromaDBMetrics
-
-    class ConfigDict:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "index": {
                     "total_documents": 1500,
@@ -214,3 +207,11 @@ class MetricsResponse(BaseModel):
                 },
             }
         }
+    )
+
+    index: IndexMetrics
+    performance: PerformanceMetrics
+    usage: UsageMetrics
+    timestamps: TimestampMetrics
+    system: SystemInfo
+    chromadb: ChromaDBMetrics

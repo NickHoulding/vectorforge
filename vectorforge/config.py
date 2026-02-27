@@ -22,15 +22,6 @@ class VFGConfig:
     # Storage Configuration
     # =============================================================================
 
-    DEFAULT_DATA_DIR: str = "./data"
-    """Default directory for saving/loading index state."""
-
-    METADATA_FILENAME: str = "metadata.json"
-    """Filename for metadata storage."""
-
-    EMBEDDINGS_FILENAME: str = "embeddings.npz"
-    """Filename for embeddings storage."""
-
     MAX_PATH_LEN: int = 4096
     """Maximum valid path length for save/load functionality"""
 
@@ -105,11 +96,33 @@ class VFGConfig:
     )
     """Directory for HuggingFace model cache. Configurable via HF_HOME env var."""
 
-    CHROMA_COLLECTION_NAME: str = "vectorforge"
-    """Default ChromaDB collection name."""
-
     MIGRATION_BATCH_SIZE: int = 1000
     """Batch size for HNSW configuration migration (collection-level recreation)."""
+
+    # =============================================================================
+    # Collection Management Configuration
+    # =============================================================================
+
+    MAX_COLLECTIONS: int = int(os.getenv("MAX_COLLECTIONS", "100"))
+    """Maximum number of collections allowed per instance."""
+
+    DEFAULT_COLLECTION_NAME: str = "vectorforge"
+    """Default collection when none specified (backward compatibility)."""
+
+    COLLECTION_CACHE_SIZE: int = int(os.getenv("COLLECTION_CACHE_SIZE", "50"))
+    """FIFO cache size for collection engines."""
+
+    MAX_COLLECTION_NAME_LENGTH: int = 64
+    """Maximum length for collection names."""
+
+    MIN_COLLECTION_NAME_LENGTH: int = 1
+    """Minimum length for collection names."""
+
+    MAX_DESCRIPTION_LENGTH: int = 500
+    """Maximum character length of a collection's description."""
+
+    MAX_METADATA_PAIRS: int = 20
+    """Maximum number of key-value pairs for collection metadata."""
 
     # =============================================================================
     # Configuration Class Validator
@@ -123,20 +136,6 @@ class VFGConfig:
 
         assert isinstance(cls.EMBEDDING_DIMENSION, int)
         assert cls.EMBEDDING_DIMENSION > 0
-
-        assert isinstance(cls.DEFAULT_DATA_DIR, str)
-        assert len(cls.DEFAULT_DATA_DIR) > 0
-        assert len(cls.DEFAULT_DATA_DIR) < cls.MAX_PATH_LEN
-
-        assert isinstance(cls.METADATA_FILENAME, str)
-        assert len(cls.METADATA_FILENAME) > 0
-        assert len(cls.METADATA_FILENAME) <= cls.MAX_FILENAME_LENGTH
-        assert os.path.basename(cls.EMBEDDINGS_FILENAME) == cls.EMBEDDINGS_FILENAME
-
-        assert isinstance(cls.EMBEDDINGS_FILENAME, str)
-        assert len(cls.EMBEDDINGS_FILENAME) > 0
-        assert len(cls.EMBEDDINGS_FILENAME) <= cls.MAX_FILENAME_LENGTH
-        assert os.path.basename(cls.METADATA_FILENAME) == cls.METADATA_FILENAME
 
         assert isinstance(cls.MAX_PATH_LEN, int)
         assert cls.MAX_PATH_LEN > 0

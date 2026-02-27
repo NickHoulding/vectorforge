@@ -18,7 +18,7 @@ from vectorforge.config import VFGConfig
 @pytest.fixture
 def metrics(client):
     """Reusable fixture returning index metrics."""
-    resp = client.get("/metrics")
+    resp = client.get("/collections/vectorforge/metrics")
     assert resp.status_code == 200
     return resp.json()
 
@@ -109,13 +109,9 @@ def test_health_version_matches_package_version(client):
 
 
 def test_health_response_has_no_extra_fields(client):
-    """Test that health response only contains expected fields."""
-    resp = client.get("/health")
-    data = resp.json()
-
-    expected_fields = {"status", "version", "chromadb_heartbeat"}
-    actual_fields = set(data.keys())
-
+    response = client.get("/health")
+    expected_fields = {"status", "version", "chromadb_heartbeat", "total_collections"}
+    actual_fields = set(response.json().keys())
     assert actual_fields == expected_fields
 
 
@@ -163,8 +159,8 @@ def test_health_endpoint_responds_quickly(client):
 
 
 def test_metrics_returns_200(client):
-    """Test that GET /metrics returns 200 status."""
-    resp = client.get("/metrics")
+    """Test that GET /collections/vectorforge/metrics returns 200 status."""
+    resp = client.get("/collections/vectorforge/metrics")
     assert resp.status_code == 200
 
 
@@ -247,11 +243,14 @@ def test_metrics_includes_system_info(metrics):
 
 def test_metrics_updates_after_operations(client):
     """Test that metrics update correctly after performing operations."""
-    initial_metrics = client.get("/metrics").json()
+    initial_metrics = client.get("/collections/vectorforge/metrics").json()
 
-    client.post("/doc/add", json={"content": "test document", "metadata": {}})
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "test document", "metadata": {}},
+    )
 
-    after_add = client.get("/metrics").json()
+    after_add = client.get("/collections/vectorforge/metrics").json()
     assert (
         after_add["usage"]["documents_added"]
         == initial_metrics["usage"]["documents_added"] + 1
@@ -265,20 +264,20 @@ def test_metrics_updates_after_operations(client):
 
 def test_metrics_after_add_delete_cycle(client, sample_doc, multiple_added_docs):
     """Test metrics accuracy after adding and deleting documents."""
-    initial_metrics = client.get("/metrics").json()
+    initial_metrics = client.get("/collections/vectorforge/metrics").json()
 
-    add_resp = client.post("/doc/add", json=sample_doc)
+    add_resp = client.post("/collections/vectorforge/documents", json=sample_doc)
     doc_id = add_resp.json()["id"]
 
-    after_add = client.get("/metrics").json()
+    after_add = client.get("/collections/vectorforge/metrics").json()
     assert (
         after_add["usage"]["documents_added"]
         == initial_metrics["usage"]["documents_added"] + 1
     )
 
-    client.delete(f"/doc/{doc_id}")
+    client.delete(f"/collections/vectorforge/documents/{doc_id}")
 
-    after_delete = client.get("/metrics").json()
+    after_delete = client.get("/collections/vectorforge/metrics").json()
     assert (
         after_delete["usage"]["documents_deleted"]
         == initial_metrics["usage"]["documents_deleted"] + 1
@@ -291,13 +290,13 @@ def test_metrics_after_add_delete_cycle(client, sample_doc, multiple_added_docs)
 
 def test_metrics_after_search_operation(client, added_doc):
     """Test that metrics update after search operations."""
-    initial_metrics = client.get("/metrics").json()
+    initial_metrics = client.get("/collections/vectorforge/metrics").json()
     initial_queries = initial_metrics["performance"]["total_queries"]
     initial_query_time = initial_metrics["performance"]["total_query_time_ms"]
 
-    client.post("/search", json={"query": "test", "top_k": 5})
+    client.post("/collections/vectorforge/search", json={"query": "test", "top_k": 5})
 
-    after_search = client.get("/metrics").json()
+    after_search = client.get("/collections/vectorforge/metrics").json()
     assert after_search["performance"]["total_queries"] == initial_queries + 1
     assert after_search["performance"]["total_query_time_ms"] > initial_query_time
     assert after_search["timestamps"]["last_query_at"] is not None
@@ -307,9 +306,11 @@ def test_metrics_after_search_operation(client, added_doc):
 def test_metrics_performance_percentiles_calculation(client, multiple_added_docs):
     """Test that p50, p95, p99 percentiles are calculated correctly."""
     for i in range(20):
-        client.post("/search", json={"query": f"query {i}", "top_k": 5})
+        client.post(
+            "/collections/vectorforge/search", json={"query": f"query {i}", "top_k": 5}
+        )
 
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     assert metrics["performance"]["p50_query_time_ms"] is not None
     assert metrics["performance"]["p95_query_time_ms"] is not None
     assert metrics["performance"]["p99_query_time_ms"] is not None
@@ -338,14 +339,17 @@ def test_metrics_performance_percentiles_calculation(client, multiple_added_docs
 
 def test_metrics_doc_size_tracking_accuracy(client):
     """Test that document size tracking accurately reflects storage usage."""
-    initial_metrics = client.get("/metrics").json()
+    initial_metrics = client.get("/collections/vectorforge/metrics").json()
     initial_size = initial_metrics["usage"]["total_doc_size_bytes"]
 
     large_content = "x" * 10000
     for _ in range(10):
-        client.post("/doc/add", json={"content": large_content, "metadata": {}})
+        client.post(
+            "/collections/vectorforge/documents",
+            json={"content": large_content, "metadata": {}},
+        )
 
-    after_metrics = client.get("/metrics").json()
+    after_metrics = client.get("/collections/vectorforge/metrics").json()
     expected_increase = len(large_content) * 10
     actual_increase = after_metrics["usage"]["total_doc_size_bytes"] - initial_size
 
@@ -354,12 +358,12 @@ def test_metrics_doc_size_tracking_accuracy(client):
 
 def test_metrics_uptime_increases(client):
     """Test that uptime_seconds increases over time."""
-    metrics1 = client.get("/metrics").json()
+    metrics1 = client.get("/collections/vectorforge/metrics").json()
     uptime1 = metrics1["system"]["uptime_seconds"]
 
     time.sleep(0.1)
 
-    metrics2 = client.get("/metrics").json()
+    metrics2 = client.get("/collections/vectorforge/metrics").json()
     uptime2 = metrics2["system"]["uptime_seconds"]
 
     assert uptime2 > uptime1
@@ -368,21 +372,21 @@ def test_metrics_uptime_increases(client):
 
 def test_metrics_only_accepts_get_method(client):
     """Test that metrics endpoint only accepts GET requests."""
-    resp = client.post("/metrics")
+    resp = client.post("/collections/vectorforge/metrics")
     assert resp.status_code == 405
 
-    resp = client.put("/metrics")
+    resp = client.put("/collections/vectorforge/metrics")
     assert resp.status_code == 405
 
-    resp = client.delete("/metrics")
+    resp = client.delete("/collections/vectorforge/metrics")
     assert resp.status_code == 405
 
 
 def test_metrics_endpoint_is_idempotent(client):
     """Test that multiple metrics calls return consistent structure."""
-    resp1 = client.get("/metrics")
-    resp2 = client.get("/metrics")
-    resp3 = client.get("/metrics")
+    resp1 = client.get("/collections/vectorforge/metrics")
+    resp2 = client.get("/collections/vectorforge/metrics")
+    resp3 = client.get("/collections/vectorforge/metrics")
 
     assert resp1.status_code == 200
     assert resp2.status_code == 200
@@ -395,7 +399,7 @@ def test_metrics_endpoint_is_idempotent(client):
 
 def test_metrics_response_has_no_extra_fields(client):
     """Test that metrics response only contains expected top-level fields."""
-    resp = client.get("/metrics")
+    resp = client.get("/collections/vectorforge/metrics")
     data = resp.json()
 
     expected_fields = {
@@ -413,7 +417,7 @@ def test_metrics_response_has_no_extra_fields(client):
 
 def test_metrics_version_matches_package_version(client):
     """Test that metrics system version matches package version."""
-    resp = client.get("/metrics")
+    resp = client.get("/collections/vectorforge/metrics")
     data = resp.json()
 
     assert data["system"]["version"] == __version__
@@ -421,8 +425,10 @@ def test_metrics_version_matches_package_version(client):
 
 def test_metrics_ignores_query_parameters(client):
     """Test that metrics endpoint ignores query parameters."""
-    resp1 = client.get("/metrics")
-    resp2 = client.get("/metrics", params={"foo": "bar", "baz": "qux"})
+    resp1 = client.get("/collections/vectorforge/metrics")
+    resp2 = client.get(
+        "/collections/vectorforge/metrics", params={"foo": "bar", "baz": "qux"}
+    )
 
     assert resp1.status_code == 200
     assert resp2.status_code == 200
@@ -432,17 +438,17 @@ def test_metrics_ignores_query_parameters(client):
 
 def test_metrics_after_file_upload(client):
     """Test that file upload updates chunks_created and files_uploaded."""
-    initial_metrics = client.get("/metrics").json()
+    initial_metrics = client.get("/collections/vectorforge/metrics").json()
     initial_chunks = initial_metrics["usage"]["chunks_created"]
     initial_files = initial_metrics["usage"]["files_uploaded"]
 
     file_content = b"Test file content for upload testing. " * 100
     files = {"file": ("test.txt", io.BytesIO(file_content), "text/plain")}
 
-    resp = client.post("/file/upload", files=files)
+    resp = client.post("/collections/vectorforge/files/upload", files=files)
     assert resp.status_code == 201
 
-    after_metrics = client.get("/metrics").json()
+    after_metrics = client.get("/collections/vectorforge/metrics").json()
     assert after_metrics["usage"]["chunks_created"] > initial_chunks
     assert after_metrics["usage"]["files_uploaded"] == initial_files + 1
     assert after_metrics["timestamps"]["last_file_uploaded_at"] is not None
@@ -450,12 +456,12 @@ def test_metrics_after_file_upload(client):
 
 def test_metrics_after_deletions(client, multiple_added_docs):
     """Test that metrics update properly after deletions."""
-    initial_metrics = client.get("/metrics").json()
+    initial_metrics = client.get("/collections/vectorforge/metrics").json()
 
     for i in range(6):
-        client.delete(f"/doc/{multiple_added_docs[i]}")
+        client.delete(f"/collections/vectorforge/documents/{multiple_added_docs[i]}")
 
-    after_metrics = client.get("/metrics").json()
+    after_metrics = client.get("/collections/vectorforge/metrics").json()
     assert (
         after_metrics["index"]["total_documents"]
         < initial_metrics["index"]["total_documents"]
@@ -464,13 +470,13 @@ def test_metrics_after_deletions(client, multiple_added_docs):
 
 def test_metrics_doc_size_values_are_non_negative(client):
     """Test that document size metric is non-negative."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     assert metrics["usage"]["total_doc_size_bytes"] >= 0
 
 
 def test_metrics_performance_percentiles_none_when_no_queries(client):
     """Test that percentiles are None when no queries have been executed."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
 
     if metrics["performance"]["total_queries"] == 0:
         assert metrics["performance"]["min_query_time_ms"] is None
@@ -482,8 +488,8 @@ def test_metrics_performance_percentiles_none_when_no_queries(client):
 
 def test_metrics_timestamps_are_iso_format(client, added_doc):
     """Test that timestamp fields follow ISO 8601 format."""
-    client.post("/search", json={"query": "test", "top_k": 5})
-    metrics = client.get("/metrics").json()
+    client.post("/collections/vectorforge/search", json={"query": "test", "top_k": 5})
+    metrics = client.get("/collections/vectorforge/metrics").json()
 
     created_at = metrics["timestamps"]["engine_created_at"]
     assert isinstance(created_at, str)
@@ -498,9 +504,11 @@ def test_metrics_timestamps_are_iso_format(client, added_doc):
 def test_metrics_average_query_time_calculation(client, multiple_added_docs):
     """Test that average query time is calculated correctly."""
     for i in range(5):
-        client.post("/search", json={"query": f"test {i}", "top_k": 5})
+        client.post(
+            "/collections/vectorforge/search", json={"query": f"test {i}", "top_k": 5}
+        )
 
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
 
     total_time = metrics["performance"]["total_query_time_ms"]
     total_queries = metrics["performance"]["total_queries"]
@@ -513,9 +521,11 @@ def test_metrics_average_query_time_calculation(client, multiple_added_docs):
 
 def test_metrics_usage_counters_are_cumulative(client):
     """Test that usage metrics are cumulative and never decrease."""
-    metrics1 = client.get("/metrics").json()
-    client.post("/doc/add", json={"content": "test", "metadata": {}})
-    metrics2 = client.get("/metrics").json()
+    metrics1 = client.get("/collections/vectorforge/metrics").json()
+    client.post(
+        "/collections/vectorforge/documents", json={"content": "test", "metadata": {}}
+    )
+    metrics2 = client.get("/collections/vectorforge/metrics").json()
 
     assert metrics2["usage"]["documents_added"] >= metrics1["usage"]["documents_added"]
     assert (
@@ -525,13 +535,13 @@ def test_metrics_usage_counters_are_cumulative(client):
 
 def test_metrics_model_name_is_correct(client):
     """Test that model_name matches the configured model."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     assert metrics["system"]["model_name"] == VFGConfig.MODEL_NAME
 
 
 def test_metrics_model_dimension_is_correct(client):
     """Test that model_dimension matches the configured dimension."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     assert metrics["system"]["model_dimension"] == VFGConfig.EMBEDDING_DIMENSION
 
 
@@ -552,7 +562,7 @@ def test_health_includes_chromadb_heartbeat(client):
 
 def test_metrics_includes_chromadb_section(client):
     """Test that metrics response includes chromadb section."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
 
     assert "chromadb" in metrics
     assert isinstance(metrics["chromadb"], dict)
@@ -560,7 +570,7 @@ def test_metrics_includes_chromadb_section(client):
 
 def test_chromadb_metrics_has_version(client):
     """Test that ChromaDB metrics includes version."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     chromadb = metrics["chromadb"]
 
     assert "version" in chromadb
@@ -570,19 +580,19 @@ def test_chromadb_metrics_has_version(client):
 
 def test_chromadb_metrics_has_collection_info(client):
     """Test that ChromaDB metrics includes collection information."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     chromadb = metrics["chromadb"]
 
     assert "collection_id" in chromadb
     assert "collection_name" in chromadb
     assert isinstance(chromadb["collection_id"], str)
     assert isinstance(chromadb["collection_name"], str)
-    assert chromadb["collection_name"] == VFGConfig.CHROMA_COLLECTION_NAME
+    assert chromadb["collection_name"] == VFGConfig.DEFAULT_COLLECTION_NAME
 
 
 def test_chromadb_metrics_has_disk_size(client):
     """Test that ChromaDB metrics includes disk size information."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     chromadb = metrics["chromadb"]
 
     assert "disk_size_bytes" in chromadb
@@ -595,7 +605,7 @@ def test_chromadb_metrics_has_disk_size(client):
 
 def test_chromadb_metrics_disk_size_conversion(client):
     """Test that disk_size_mb is correctly calculated from bytes."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     chromadb = metrics["chromadb"]
 
     expected_mb = round(chromadb["disk_size_bytes"] / (1024 * 1024), 2)
@@ -604,7 +614,7 @@ def test_chromadb_metrics_disk_size_conversion(client):
 
 def test_chromadb_metrics_has_persist_directory(client):
     """Test that ChromaDB metrics includes persist directory path."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     chromadb = metrics["chromadb"]
 
     assert "persist_directory" in chromadb
@@ -614,7 +624,7 @@ def test_chromadb_metrics_has_persist_directory(client):
 
 def test_chromadb_metrics_has_max_batch_size(client):
     """Test that ChromaDB metrics includes max batch size."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     chromadb = metrics["chromadb"]
 
     assert "max_batch_size" in chromadb
@@ -624,19 +634,19 @@ def test_chromadb_metrics_has_max_batch_size(client):
 
 def test_chromadb_metrics_disk_size_increases_with_documents(client):
     """Test that disk size increases when documents are added."""
-    metrics1 = client.get("/metrics").json()
+    metrics1 = client.get("/collections/vectorforge/metrics").json()
     initial_disk_bytes = metrics1["chromadb"]["disk_size_bytes"]
 
     for i in range(10):
         client.post(
-            "/documents",
+            "/collections/vectorforge/documents",
             json={
                 "content": f"Test document {i} with substantial content " * 20,
                 "metadata": {"test_id": i},
             },
         )
 
-    metrics2 = client.get("/metrics").json()
+    metrics2 = client.get("/collections/vectorforge/metrics").json()
     final_disk_bytes = metrics2["chromadb"]["disk_size_bytes"]
 
     assert final_disk_bytes >= initial_disk_bytes
@@ -644,7 +654,7 @@ def test_chromadb_metrics_disk_size_increases_with_documents(client):
 
 def test_chromadb_metrics_all_fields_present(client):
     """Test that all ChromaDB metric fields are present."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     chromadb = metrics["chromadb"]
 
     expected_fields = {
@@ -668,7 +678,7 @@ def test_chromadb_metrics_all_fields_present(client):
 
 def test_metrics_includes_peak_document_count(client):
     """Test that metrics response includes total_documents_peak field."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     index_metrics = metrics["index"]
 
     assert "total_documents_peak" in index_metrics
@@ -678,7 +688,7 @@ def test_metrics_includes_peak_document_count(client):
 
 def test_peak_document_count_starts_at_zero(client):
     """Test that peak document count field exists and is non-negative."""
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     index_metrics = metrics["index"]
 
     # Peak may not be zero if other tests ran first in the session
@@ -690,17 +700,17 @@ def test_peak_document_count_starts_at_zero(client):
 
 def test_peak_document_count_increases_when_documents_added(client):
     """Test that peak increases when documents are added (or stays same if already high)."""
-    metrics1 = client.get("/metrics").json()
+    metrics1 = client.get("/collections/vectorforge/metrics").json()
     initial_peak = metrics1["index"]["total_documents_peak"]
     initial_total = metrics1["index"]["total_documents"]
     assert initial_total == 0
 
     client.post(
-        "/doc/add",
+        "/collections/vectorforge/documents",
         json={"content": "Test document for peak tracking", "metadata": {"test": 1}},
     )
 
-    metrics2 = client.get("/metrics").json()
+    metrics2 = client.get("/collections/vectorforge/metrics").json()
     new_peak = metrics2["index"]["total_documents_peak"]
     new_total = metrics2["index"]["total_documents"]
 
@@ -714,7 +724,7 @@ def test_peak_document_count_stays_same_when_documents_deleted(client):
     doc_ids = []
     for i in range(5):
         resp = client.post(
-            "/doc/add",
+            "/collections/vectorforge/documents",
             json={
                 "content": f"Test document {i} for peak tracking",
                 "metadata": {"test_id": i},
@@ -722,7 +732,7 @@ def test_peak_document_count_stays_same_when_documents_deleted(client):
         )
         doc_ids.append(resp.json()["id"])
 
-    metrics1 = client.get("/metrics").json()
+    metrics1 = client.get("/collections/vectorforge/metrics").json()
     peak_after_add = metrics1["index"]["total_documents_peak"]
     total_after_add = metrics1["index"]["total_documents"]
 
@@ -730,9 +740,9 @@ def test_peak_document_count_stays_same_when_documents_deleted(client):
     assert peak_after_add >= 5
 
     for i in range(3):
-        client.delete(f"/doc/{doc_ids[i]}")
+        client.delete(f"/collections/vectorforge/documents/{doc_ids[i]}")
 
-    metrics2 = client.get("/metrics").json()
+    metrics2 = client.get("/collections/vectorforge/metrics").json()
     peak_after_delete = metrics2["index"]["total_documents_peak"]
     total_after_delete = metrics2["index"]["total_documents"]
 
@@ -746,7 +756,7 @@ def test_peak_document_count_equals_total_when_no_deletions(
     """Test that peak is at least as high as total after only adding documents."""
     assert len(multiple_added_docs) == 20
 
-    metrics = client.get("/metrics").json()
+    metrics = client.get("/collections/vectorforge/metrics").json()
     index_metrics = metrics["index"]
 
     peak = index_metrics["total_documents_peak"]

@@ -17,7 +17,7 @@ TEST_DATA_PATH = os.path.join(os.path.dirname(__file__), "data")
 @pytest.fixture
 def stats(client):
     """Reusable stats index data fixture"""
-    resp = client.get("/index/stats")
+    resp = client.get("/collections/vectorforge/stats")
     assert resp.status_code == 200
     return resp.json()
 
@@ -28,8 +28,8 @@ def stats(client):
 
 
 def test_index_stats_returns_200(client):
-    """Test that GET /index/stats returns 200 status."""
-    resp = client.get("/index/stats")
+    """Test that GET /collections/vectorforge/stats returns 200 status."""
+    resp = client.get("/collections/vectorforge/stats")
     assert resp.status_code == 200
 
 
@@ -53,7 +53,7 @@ def test_index_stats_returns_embedding_dimension(stats):
 
 def test_index_stats_with_empty_index(client):
     """Test index stats when index is empty."""
-    stats = client.get("/index/stats").json()
+    stats = client.get("/collections/vectorforge/stats").json()
 
     assert stats["total_documents"] == 0
     assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
@@ -61,10 +61,16 @@ def test_index_stats_with_empty_index(client):
 
 def test_index_stats_after_adding_documents(client):
     """Test that stats update correctly after adding documents."""
-    client.post("/doc/add", json={"content": "test doc 1", "metadata": {}})
-    client.post("/doc/add", json={"content": "test doc 2", "metadata": {}})
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "test doc 1", "metadata": {}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "test doc 2", "metadata": {}},
+    )
 
-    stats = client.get("/index/stats").json()
+    stats = client.get("/collections/vectorforge/stats").json()
     expected_total_docs = 2
     assert stats["total_documents"] == expected_total_docs
 
@@ -72,25 +78,25 @@ def test_index_stats_after_adding_documents(client):
 def test_index_stats_after_document_deletion(client, multiple_added_docs):
     """Test that stats update correctly after document deletion."""
     doc_id = multiple_added_docs[0]
-    client.delete(f"/doc/{doc_id}")
+    client.delete(f"/collections/vectorforge/documents/{doc_id}")
 
-    stats = client.get("/index/stats").json()
+    stats = client.get("/collections/vectorforge/stats").json()
     expected_total_docs = 19
     assert stats["total_documents"] == expected_total_docs
 
 
 def test_index_stats_embedding_dimension_is_384(client):
     """Test that embedding_dimension matches configured model dimension."""
-    stats = client.get("/index/stats").json()
+    stats = client.get("/collections/vectorforge/stats").json()
     assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
 
 
 def test_index_stats_multiple_deletions_immediate_removal(client, multiple_added_docs):
     """Test that multiple deletions are immediately reflected in stats."""
     for i in range(4):
-        client.delete(f"/doc/{multiple_added_docs[i]}")
+        client.delete(f"/collections/vectorforge/documents/{multiple_added_docs[i]}")
 
-    stats = client.get("/index/stats").json()
+    stats = client.get("/collections/vectorforge/stats").json()
 
     expected_total_docs = 16
     assert stats["total_documents"] == expected_total_docs
@@ -172,7 +178,7 @@ def test_hnsw_config_all_fields_present(stats):
 
 def test_hnsw_config_default_values(client):
     """Test that HNSW config returns expected default values."""
-    stats = client.get("/index/stats").json()
+    stats = client.get("/collections/vectorforge/stats").json()
     hnsw = stats["hnsw_config"]
 
     # These are ChromaDB's default values
@@ -186,8 +192,8 @@ def test_hnsw_config_default_values(client):
 
 def test_hnsw_config_consistent_across_calls(client):
     """Test that HNSW config is consistent across multiple calls."""
-    stats1 = client.get("/index/stats").json()
-    stats2 = client.get("/index/stats").json()
+    stats1 = client.get("/collections/vectorforge/stats").json()
+    stats2 = client.get("/collections/vectorforge/stats").json()
 
     assert stats1["hnsw_config"] == stats2["hnsw_config"]
 
@@ -200,7 +206,7 @@ def test_hnsw_config_consistent_across_calls(client):
 def test_update_hnsw_config_requires_confirmation(client):
     """Test that updating HNSW config requires ?confirm=true parameter."""
     resp = client.put(
-        "/index/config/hnsw",
+        "/collections/vectorforge/config/hnsw",
         json={"ef_search": 150},
     )
 
@@ -211,7 +217,7 @@ def test_update_hnsw_config_requires_confirmation(client):
 def test_update_hnsw_config_invalid_confirm_value(client):
     """Test that confirm parameter must be exactly 'true'."""
     resp = client.put(
-        "/index/config/hnsw?confirm=false",
+        "/collections/vectorforge/config/hnsw?confirm=false",
         json={"ef_search": 150},
     )
 
@@ -222,7 +228,7 @@ def test_update_hnsw_config_invalid_confirm_value(client):
 def test_update_hnsw_config_empty_collection_success(client):
     """Test updating HNSW config with empty collection."""
     resp = client.put(
-        "/index/config/hnsw?confirm=true",
+        "/collections/vectorforge/config/hnsw?confirm=true",
         json={"ef_search": 150},
     )
 
@@ -239,16 +245,22 @@ def test_update_hnsw_config_empty_collection_success(client):
 
 def test_update_hnsw_config_with_documents_preserves_data(client):
     """Test that updating HNSW config preserves all documents."""
-    doc1 = client.post("/doc/add", json={"content": "Test document 1"})
-    doc2 = client.post("/doc/add", json={"content": "Test document 2"})
-    doc3 = client.post("/doc/add", json={"content": "Test document 3"})
+    doc1 = client.post(
+        "/collections/vectorforge/documents", json={"content": "Test document 1"}
+    )
+    doc2 = client.post(
+        "/collections/vectorforge/documents", json={"content": "Test document 2"}
+    )
+    doc3 = client.post(
+        "/collections/vectorforge/documents", json={"content": "Test document 3"}
+    )
 
     doc1_id = doc1.json()["id"]
     doc2_id = doc2.json()["id"]
     doc3_id = doc3.json()["id"]
 
     resp = client.put(
-        "/index/config/hnsw?confirm=true",
+        "/collections/vectorforge/config/hnsw?confirm=true",
         json={"ef_search": 150, "max_neighbors": 32},
     )
     assert resp.status_code == 200
@@ -256,19 +268,21 @@ def test_update_hnsw_config_with_documents_preserves_data(client):
     data = resp.json()
     assert data["migration"]["documents_migrated"] == 3
 
-    doc1_get = client.get(f"/doc/{doc1_id}")
+    doc1_get = client.get(f"/collections/vectorforge/documents/{doc1_id}")
     assert doc1_get.status_code == 200
     assert doc1_get.json()["content"] == "Test document 1"
 
-    doc2_get = client.get(f"/doc/{doc2_id}")
+    doc2_get = client.get(f"/collections/vectorforge/documents/{doc2_id}")
     assert doc2_get.status_code == 200
     assert doc2_get.json()["content"] == "Test document 2"
 
-    doc3_get = client.get(f"/doc/{doc3_id}")
+    doc3_get = client.get(f"/collections/vectorforge/documents/{doc3_id}")
     assert doc3_get.status_code == 200
     assert doc3_get.json()["content"] == "Test document 3"
 
-    search_resp = client.post("/search", json={"query": "Test document", "top_k": 5})
+    search_resp = client.post(
+        "/collections/vectorforge/search", json={"query": "Test document", "top_k": 5}
+    )
     assert search_resp.status_code == 200
     assert len(search_resp.json()["results"]) == 3
 
@@ -276,10 +290,12 @@ def test_update_hnsw_config_with_documents_preserves_data(client):
 def test_update_hnsw_config_returns_migration_stats(client):
     """Test that response contains correct migration statistics."""
     for i in range(5):
-        client.post("/doc/add", json={"content": f"Document {i}"})
+        client.post(
+            "/collections/vectorforge/documents", json={"content": f"Document {i}"}
+        )
 
     resp = client.put(
-        "/index/config/hnsw?confirm=true",
+        "/collections/vectorforge/config/hnsw?confirm=true",
         json={"ef_construction": 200},
     )
     assert resp.status_code == 200
@@ -300,19 +316,19 @@ def test_update_hnsw_config_returns_migration_stats(client):
 
 
 def test_update_hnsw_config_updates_config_in_stats(client):
-    """Test that GET /index/stats shows new config after update."""
-    initial_stats = client.get("/index/stats").json()
+    """Test that GET /collections/vectorforge/stats shows new config after update."""
+    initial_stats = client.get("/collections/vectorforge/stats").json()
     initial_ef_search = initial_stats["hnsw_config"]["ef_search"]
 
     new_ef_search = 200
     update_resp = client.put(
-        "/index/config/hnsw?confirm=true",
+        "/collections/vectorforge/config/hnsw?confirm=true",
         json={"ef_search": new_ef_search},
     )
     assert update_resp.status_code == 200
     assert update_resp.json()["config"]["ef_search"] == new_ef_search
 
-    updated_stats = client.get("/index/stats").json()
+    updated_stats = client.get("/collections/vectorforge/stats").json()
     assert updated_stats["hnsw_config"]["ef_search"] == new_ef_search
     assert updated_stats["hnsw_config"]["ef_search"] != initial_ef_search
 
@@ -320,7 +336,7 @@ def test_update_hnsw_config_updates_config_in_stats(client):
 def test_update_hnsw_config_partial_update(client):
     """Test updating only some HNSW fields."""
     resp = client.put(
-        "/index/config/hnsw?confirm=true",
+        "/collections/vectorforge/config/hnsw?confirm=true",
         json={"ef_search": 175},
     )
     assert resp.status_code == 200
@@ -336,7 +352,7 @@ def test_update_hnsw_config_partial_update(client):
 def test_update_hnsw_config_response_structure(client):
     """Test that response has correct structure."""
     resp = client.put(
-        "/index/config/hnsw?confirm=true",
+        "/collections/vectorforge/config/hnsw?confirm=true",
         json={"ef_search": 150},
     )
     assert resp.status_code == 200

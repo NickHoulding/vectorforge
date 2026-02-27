@@ -5,8 +5,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from vectorforge import __version__
-from vectorforge.api import engine
-from vectorforge.api.decorators import handle_api_errors
+from vectorforge.api import manager
+from vectorforge.api.decorators import handle_api_errors, require_collection
+from vectorforge.config import VFGConfig
 from vectorforge.models import (
     ChromaDBMetrics,
     IndexMetrics,
@@ -37,15 +38,20 @@ def check_health() -> dict[str, Any]:
         {
             "status": "healthy",
             "version": "0.9.0",
-            "chromadb_heartbeat": 1234567890
+            "chromadb_heartbeat": 1234567890,
+            "total_collections": 5
         }
         ```
     """
-    heartbeat = engine.chroma_client.heartbeat()
+    default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
+    heartbeat = default_engine.chroma_client.heartbeat()
+    collections = manager.list_collections()
+
     return {
         "status": "healthy",
         "version": __version__,
         "chromadb_heartbeat": heartbeat,
+        "total_collections": len(collections),
     }
 
 
@@ -59,12 +65,17 @@ async def readiness_check() -> dict[str, str | int]:
     Used by Docker/Kubernetes to know when to send traffic to this container.
     """
     try:
-        doc_count: int = engine.collection.count()
+        default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
+        doc_count: int = default_engine.collection.count()
 
-        if engine.model is None:
+        if default_engine.model is None:
             raise RuntimeError("Model not loaded")
 
-        return {"status": "ready", "documents": doc_count, "model": engine.model_name}
+        return {
+            "status": "ready",
+            "documents": doc_count,
+            "model": default_engine.model_name,
+        }
 
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service not ready: {str(e)}")
@@ -80,11 +91,12 @@ async def liveness_check() -> dict[str, str]:
     return {"status": "alive"}
 
 
-@router.get("/metrics", response_model=MetricsResponse)
+@router.get("/collections/{collection_name}/metrics", response_model=MetricsResponse)
+@require_collection
 @handle_api_errors
-def get_metrics() -> MetricsResponse:
+def get_collection_metrics(collection_name: str) -> MetricsResponse:
     """
-    Get comprehensive system metrics
+    Get comprehensive metrics for a specific collection
 
     Returns detailed performance, usage, and system statistics including:
     - Index statistics (documents)
@@ -94,16 +106,20 @@ def get_metrics() -> MetricsResponse:
     - ChromaDB statistics (version, storage, collection info)
 
     This endpoint provides complete observability into the vector engine's state
-    and performance characteristics.
+    and performance characteristics for a specific collection.
+
+    Args:
+        collection_name: Name of the collection
 
     Returns:
         MetricsResponse: Comprehensive metrics across all categories
 
     Raises:
+        HTTPException: 404 if collection not found
         HTTPException: 500 if metrics collection fails
     """
+    engine = manager.get_engine(collection_name)
     metrics: dict[str, Any] = engine.get_metrics()
-    index_stats: dict[str, Any] = engine.get_index_stats()
     chromadb_metrics_dict: dict[str, Any] = engine.get_chromadb_metrics()
 
     index_metrics: IndexMetrics = IndexMetrics(

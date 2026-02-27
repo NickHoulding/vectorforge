@@ -5,6 +5,13 @@ Pydantic models for request/response validation organized by domain.
 All models are re-exported here for backward compatibility.
 """
 
+from .collections import (
+    CollectionCreateRequest,
+    CollectionCreateResponse,
+    CollectionDeleteResponse,
+    CollectionInfo,
+    CollectionListResponse,
+)
 from .documents import DocumentDetail, DocumentInput, DocumentResponse
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
 from .index import (
@@ -30,6 +37,12 @@ __all__: list[str] = [
     "DocumentInput",
     "DocumentResponse",
     "DocumentDetail",
+    # Collections
+    "CollectionCreateRequest",
+    "CollectionCreateResponse",
+    "CollectionDeleteResponse",
+    "CollectionInfo",
+    "CollectionListResponse",
     # Files
     "FileUploadResponse",
     "FileDeleteResponse",

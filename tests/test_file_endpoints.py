@@ -26,7 +26,7 @@ def upload_file(client):
 
     def _upload(filename, content, mime_type="text/plain"):
         files = {"file": (filename, io.BytesIO(content), mime_type)}
-        resp = client.post("/file/upload", files=files)
+        resp = client.post("/collections/vectorforge/files/upload", files=files)
         return resp
 
     return _upload
@@ -37,7 +37,7 @@ def uploaded_test_file(client, sample_file):
     """Upload the sample test file and return its metadata."""
     filename, content = sample_file
     files = {"file": (filename, io.BytesIO(content), "text/plain")}
-    resp = client.post("/file/upload", files=files)
+    resp = client.post("/collections/vectorforge/files/upload", files=files)
     return resp.json()
 
 
@@ -52,7 +52,7 @@ def get_metrics(client):
     """Factory fixture to get current metrics."""
 
     def _get_metrics():
-        return client.get("/metrics").json()
+        return client.get("/collections/vectorforge/metrics").json()
 
     return _get_metrics
 
@@ -63,14 +63,14 @@ def get_metrics(client):
 
 
 def test_file_list_returns_200(client):
-    """Test that GET /file/list returns 200 status."""
-    response = client.get("/file/list")
+    """Test that GET /collections/vectorforge/files/list returns 200 status."""
+    response = client.get("/collections/vectorforge/files/list")
     assert response.status_code == 200
 
 
 def test_file_list_returns_filenames_list(client):
     """Test that file list response contains filenames list."""
-    response = client.get("/file/list")
+    response = client.get("/collections/vectorforge/files/list")
     data = response.json()
     assert "filenames" in data
     assert isinstance(data["filenames"], list)
@@ -78,7 +78,7 @@ def test_file_list_returns_filenames_list(client):
 
 def test_file_list_empty_when_no_files_uploaded(client):
     """Test that file list is empty when no files have been uploaded."""
-    resp = client.get("/file/list")
+    resp = client.get("/collections/vectorforge/files/list")
     assert resp.status_code == 200
     assert len(resp.json()["filenames"]) == 0
 
@@ -120,7 +120,7 @@ def test_file_upload_returns_doc_ids(uploaded_test_file):
 def test_file_upload_chunks_have_metadata(client, uploaded_test_file):
     """Test that uploaded file chunks contain source_file and chunk_index metadata."""
     for doc_id in uploaded_test_file["doc_ids"]:
-        resp = client.get(f"/doc/{doc_id}")
+        resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert resp.status_code == 200
 
         doc_data = resp.json()
@@ -140,7 +140,7 @@ def test_file_upload_unsupported_format_returns_400(upload_file):
 def test_file_upload_no_filename_returns_400(client):
     """Test that uploading without a filename returns 400."""
     files = {"file": (None, io.BytesIO(b"Test content"), "text/plain")}
-    resp = client.post("/file/upload", files=files)
+    resp = client.post("/collections/vectorforge/files/upload", files=files)
     assert resp.status_code in [400, 422]
 
 
@@ -152,30 +152,34 @@ def test_file_upload_empty_file(upload_file):
 
 def test_file_delete_returns_200(client, uploaded_test_file):
     """Test that file DELETE returns 200 for existing file."""
-    resp = client.delete(f"/file/delete/{uploaded_test_file['filename']}")
+    resp = client.delete(
+        f"/collections/vectorforge/files/{uploaded_test_file['filename']}"
+    )
     assert resp.status_code == 200
 
 
 def test_file_delete_removes_all_chunks(client, uploaded_test_file):
     """Test that deleting a file removes all associated chunks."""
     filename = uploaded_test_file["filename"]
-    resp = client.delete(f"/file/delete/{filename}")
+    resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
     for doc_id in resp.json()["doc_ids"]:
-        resp = client.get(f"/doc/{doc_id}")
+        resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert resp.status_code == 404
 
 
 def test_file_delete_returns_404_for_nonexistent_file(client):
     """Test that deleting a non-existent file returns 404."""
-    resp = client.delete("/file/delete/nonexistant-file.txt")
+    resp = client.delete("/collections/vectorforge/files/nonexistant-file.txt")
     assert resp.status_code == 404
 
 
 def test_file_delete_response_contains_filename(client, uploaded_test_file):
     """Test that delete response includes the filename."""
-    resp = client.delete(f"/file/delete/{uploaded_test_file['filename']}")
+    resp = client.delete(
+        f"/collections/vectorforge/files/{uploaded_test_file['filename']}"
+    )
     assert resp.status_code == 200
 
     data = resp.json()
@@ -185,7 +189,9 @@ def test_file_delete_response_contains_filename(client, uploaded_test_file):
 
 def test_file_delete_response_contains_chunks_deleted_count(client, uploaded_test_file):
     """Test that delete response includes count of chunks deleted."""
-    resp = client.delete(f"/file/delete/{uploaded_test_file['filename']}")
+    resp = client.delete(
+        f"/collections/vectorforge/files/{uploaded_test_file['filename']}"
+    )
     assert resp.status_code == 200
 
     data = resp.json()
@@ -195,7 +201,9 @@ def test_file_delete_response_contains_chunks_deleted_count(client, uploaded_tes
 
 def test_file_delete_response_contains_doc_ids(client, uploaded_test_file):
     """Test that delete response includes list of deleted document IDs."""
-    resp = client.delete(f"/file/delete/{uploaded_test_file['filename']}")
+    resp = client.delete(
+        f"/collections/vectorforge/files/{uploaded_test_file['filename']}"
+    )
     assert resp.status_code == 200
 
     data = resp.json()
@@ -206,7 +214,7 @@ def test_file_delete_response_contains_doc_ids(client, uploaded_test_file):
 
 def test_file_list_includes_uploaded_filenames(client, uploaded_test_file):
     """Test that file list includes filenames of uploaded files."""
-    resp = client.get("/file/list")
+    resp = client.get("/collections/vectorforge/files/list")
     assert resp.status_code == 200
     assert uploaded_test_file["filename"] in resp.json()["filenames"]
 
@@ -215,10 +223,10 @@ def test_file_list_excludes_deleted_files(client, uploaded_test_file):
     """Test that file list doesn't include deleted files."""
     filename = uploaded_test_file["filename"]
 
-    resp = client.delete(f"/file/delete/{filename}")
+    resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
-    resp = client.get("/file/list")
+    resp = client.get("/collections/vectorforge/files/list")
     assert resp.status_code == 200
     assert filename not in resp.json()["filenames"]
 
@@ -250,14 +258,20 @@ def test_file_delete_does_not_affect_other_files(client, upload_file):
     assert resp2.status_code == 201
     doc_ids_2 = resp2.json()["doc_ids"]
 
-    resp = client.delete("/file/delete/file1.txt")
+    resp = client.delete("/collections/vectorforge/files/file1.txt")
     assert resp.status_code == 200
 
     for doc_id in doc_ids_1:
-        assert client.get(f"/doc/{doc_id}").status_code == 404
+        assert (
+            client.get(f"/collections/vectorforge/documents/{doc_id}").status_code
+            == 404
+        )
 
     for doc_id in doc_ids_2:
-        assert client.get(f"/doc/{doc_id}").status_code == 200
+        assert (
+            client.get(f"/collections/vectorforge/documents/{doc_id}").status_code
+            == 200
+        )
 
 
 def test_file_upload_response_format(upload_file):
@@ -311,7 +325,7 @@ def test_file_delete_with_special_characters_in_filename(client, upload_file):
     resp = upload_file(filename, b"Content for deletion")
     assert resp.status_code == 201
 
-    resp = client.delete(f"/file/delete/{filename}")
+    resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
     data = resp.json()
@@ -328,7 +342,7 @@ def test_file_upload_pdf_extracts_text(client, upload_file):
     assert data["chunks_created"] > 0
     assert len(data["doc_ids"]) > 0
 
-    doc_resp = client.get(f"/doc/{data['doc_ids'][0]}")
+    doc_resp = client.get(f"/collections/vectorforge/documents/{data['doc_ids'][0]}")
     assert doc_resp.status_code == 200
     assert "content" in doc_resp.json()
 
@@ -341,7 +355,7 @@ def test_file_upload_txt_decodes_utf8(client, upload_file):
     assert resp.status_code == 201
 
     doc_id = resp.json()["doc_ids"][0]
-    doc_resp = client.get(f"/doc/{doc_id}")
+    doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
     assert doc_resp.status_code == 200
 
     doc_data = doc_resp.json()
@@ -384,7 +398,7 @@ def test_file_delete_updates_deleted_docs_metric(client, get_metrics, upload_fil
 
     initial_deleted = get_metrics()["usage"]["documents_deleted"]
 
-    delete_resp = client.delete(f"/file/delete/{filename}")
+    delete_resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert delete_resp.status_code == 200
     chunks_deleted = delete_resp.json()["chunks_deleted"]
 
@@ -421,7 +435,7 @@ def test_file_delete_response_contains_status(client, upload_file):
     upload_resp = upload_file(filename, b"Testing delete status field")
     assert upload_resp.status_code == 201
 
-    resp = client.delete(f"/file/delete/{filename}")
+    resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
     data = resp.json()
@@ -448,7 +462,7 @@ def test_file_list_after_multiple_uploads(client, upload_file):
         resp = upload_file(filename, f"Content of {filename}".encode("utf-8"))
         assert resp.status_code == 201
 
-    resp = client.get("/file/list")
+    resp = client.get("/collections/vectorforge/files/list")
     assert resp.status_code == 200
 
     file_list = resp.json()["filenames"]
@@ -469,10 +483,10 @@ def test_file_delete_twice_returns_404(client, upload_file):
     resp = upload_file(filename, b"Testing double deletion")
     assert resp.status_code == 201
 
-    resp = client.delete(f"/file/delete/{filename}")
+    resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
-    resp = client.delete(f"/file/delete/{filename}")
+    resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 404
 
 
@@ -499,7 +513,7 @@ def test_file_upload_chunk_metadata_contains_chunk_index(
     assert len(doc_ids) > 1
 
     for i, doc_id in enumerate(doc_ids):
-        doc_resp = client.get(f"/doc/{doc_id}")
+        doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert doc_resp.status_code == 200
 
         metadata = doc_resp.json()["metadata"]
@@ -514,7 +528,7 @@ def test_file_upload_chunk_metadata_contains_source_file(client, upload_file):
     assert resp.status_code == 201
 
     for doc_id in resp.json()["doc_ids"]:
-        doc_resp = client.get(f"/doc/{doc_id}")
+        doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert doc_resp.status_code == 200
 
         metadata = doc_resp.json()["metadata"]
@@ -524,7 +538,7 @@ def test_file_upload_chunk_metadata_contains_source_file(client, upload_file):
 
 def test_file_list_response_structure(client):
     """Test that file list response has the correct structure."""
-    resp = client.get("/file/list")
+    resp = client.get("/collections/vectorforge/files/list")
     assert resp.status_code == 200
 
     data = resp.json()
@@ -539,7 +553,7 @@ def test_file_delete_response_structure(client, upload_file):
     resp = upload_file(filename, b"Testing delete response structure")
     assert resp.status_code == 201
 
-    resp = client.delete(f"/file/delete/{filename}")
+    resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
     data = resp.json()
@@ -566,7 +580,7 @@ def test_file_upload_multiple_files_sequential(upload_file):
 
 def test_file_delete_empty_filename_returns_404(client):
     """Test that deleting with an empty filename returns 404."""
-    resp = client.delete("/file/delete/")
+    resp = client.delete("/collections/vectorforge/files/")
     assert resp.status_code in [404, 405]
 
 
@@ -593,8 +607,8 @@ def test_file_upload_chunk_overlap_behavior(client, upload_file):
     doc_ids = resp.json()["doc_ids"]
 
     if len(doc_ids) > 1:
-        resp1 = client.get(f"/doc/{doc_ids[0]}")
-        resp2 = client.get(f"/doc/{doc_ids[1]}")
+        resp1 = client.get(f"/collections/vectorforge/documents/{doc_ids[0]}")
+        resp2 = client.get(f"/collections/vectorforge/documents/{doc_ids[1]}")
 
         chunk1 = resp1.json()["content"]
         chunk2 = resp2.json()["content"]
@@ -613,7 +627,9 @@ def test_file_delete_returns_all_chunk_ids_for_multipart_file(client, upload_fil
     uploaded_doc_ids = set(upload_resp.json()["doc_ids"])
     chunks_created = upload_resp.json()["chunks_created"]
 
-    delete_resp = client.delete("/file/delete/multipart_delete_test.txt")
+    delete_resp = client.delete(
+        "/collections/vectorforge/files/multipart_delete_test.txt"
+    )
     assert delete_resp.status_code == 200
 
     deleted_doc_ids = set(delete_resp.json()["doc_ids"])
@@ -641,10 +657,10 @@ def test_file_upload_filename_with_unicode_characters(client, upload_file):
     assert resp.status_code == 201
     assert resp.json()["filename"] == filename
 
-    list_resp = client.get("/file/list")
+    list_resp = client.get("/collections/vectorforge/files/list")
     assert filename in list_resp.json()["filenames"]
 
-    delete_resp = client.delete(f"/file/delete/{filename}")
+    delete_resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert delete_resp.status_code == 200
 
 
@@ -655,7 +671,7 @@ def test_file_delete_with_url_encoded_special_characters(client, upload_file):
     resp = upload_file(filename, b"Testing URL encoding")
     assert resp.status_code == 201
 
-    resp = client.delete(f"/file/delete/{filename}")
+    resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
 
@@ -667,7 +683,7 @@ def test_file_list_returns_unique_filenames(client, upload_file):
         resp = upload_file(filename, f"Version {i}".encode("utf-8"))
         assert resp.status_code == 201
 
-    resp = client.get("/file/list")
+    resp = client.get("/collections/vectorforge/files/list")
     filenames = resp.json()["filenames"]
 
     assert filename in filenames
@@ -690,7 +706,7 @@ def test_file_upload_and_delete_affects_embeddings_count(
     after_upload = get_metrics()
     assert after_upload["index"]["total_documents"] == initial_docs + chunks_created
 
-    delete_resp = client.delete("/file/delete/embeddings_test.txt")
+    delete_resp = client.delete("/collections/vectorforge/files/embeddings_test.txt")
     assert delete_resp.status_code == 200
 
     after_delete = get_metrics()
@@ -711,7 +727,7 @@ def test_file_upload_chunk_boundaries_no_content_loss(client, upload_file):
 
     all_content = ""
     for doc_id in doc_ids:
-        doc_resp = client.get(f"/doc/{doc_id}")
+        doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         chunk_content = doc_resp.json()["content"]
 
         if all_content and len(all_content) > 0:
@@ -732,7 +748,7 @@ def test_file_upload_single_character_file(client, upload_file):
     assert data["chunks_created"] == 1
     assert len(data["doc_ids"]) == 1
 
-    doc_resp = client.get(f"/doc/{data['doc_ids'][0]}")
+    doc_resp = client.get(f"/collections/vectorforge/documents/{data['doc_ids'][0]}")
     assert doc_resp.json()["content"] == "X"
 
 
@@ -759,18 +775,27 @@ def test_file_delete_mixed_files_preserves_others(client, upload_file):
         assert resp.status_code == 201
         uploaded_files[filename] = resp.json()["doc_ids"]
 
-    resp = client.delete("/file/delete/file_b.txt")
+    resp = client.delete("/collections/vectorforge/files/file_b.txt")
     assert resp.status_code == 200
 
     for doc_id in uploaded_files["file_b.txt"]:
-        assert client.get(f"/doc/{doc_id}").status_code == 404
+        assert (
+            client.get(f"/collections/vectorforge/documents/{doc_id}").status_code
+            == 404
+        )
 
     for doc_id in uploaded_files["file_a.txt"]:
-        assert client.get(f"/doc/{doc_id}").status_code == 200
+        assert (
+            client.get(f"/collections/vectorforge/documents/{doc_id}").status_code
+            == 200
+        )
     for doc_id in uploaded_files["file_c.txt"]:
-        assert client.get(f"/doc/{doc_id}").status_code == 200
+        assert (
+            client.get(f"/collections/vectorforge/documents/{doc_id}").status_code
+            == 200
+        )
 
-    list_resp = client.get("/file/list")
+    list_resp = client.get("/collections/vectorforge/files/list")
     filenames = list_resp.json()["filenames"]
     assert "file_a.txt" in filenames
     assert "file_c.txt" in filenames
@@ -785,7 +810,7 @@ def test_file_upload_newlines_and_formatting_preserved(client, upload_file):
     assert resp.status_code == 201
 
     doc_id = resp.json()["doc_ids"][0]
-    doc_resp = client.get(f"/doc/{doc_id}")
+    doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
     retrieved_content = doc_resp.json()["content"]
 
     assert "Line 1" in retrieved_content
@@ -814,11 +839,11 @@ def test_file_operations_consistency_across_multiple_uploads_and_deletes(
             assert resp.status_code == 201
             active_files.add(filename)
         else:
-            resp = client.delete(f"/file/delete/{filename}")
+            resp = client.delete(f"/collections/vectorforge/files/{filename}")
             assert resp.status_code == 200
             active_files.discard(filename)
 
-    list_resp = client.get("/file/list")
+    list_resp = client.get("/collections/vectorforge/files/list")
     current_files = set(list_resp.json()["filenames"])
 
     for active_file in active_files:

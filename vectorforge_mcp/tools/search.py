@@ -19,6 +19,7 @@ def search_documents(
     top_k: int = VFGConfig.DEFAULT_TOP_K,
     source_file: str | None = None,
     chunk_index: int | None = None,
+    collection_name: str = VFGConfig.DEFAULT_COLLECTION_NAME,
 ) -> dict[str, Any]:
     """Perform semantic search on indexed documents with optional filtering.
 
@@ -27,6 +28,7 @@ def search_documents(
         top_k: Number of top results to return (default: 10, max: 100).
         source_file: Optional filter by source filename (case-sensitive).
         chunk_index: Optional filter by chunk index (must be >= 0).
+        collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
         List of search results with document IDs, content, similarity scores, and metadata.
@@ -46,6 +48,8 @@ def search_documents(
             filters["chunk_index"] = chunk_index
 
     search_params: SearchQuery = SearchQuery(query=query, top_k=top_k, filters=filters)
-    response: SearchResponse = search.search(search_params=search_params)
+    response: SearchResponse = search.search(
+        collection_name=collection_name, search_params=search_params
+    )
 
     return build_success_response(response)

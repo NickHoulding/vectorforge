@@ -4,12 +4,13 @@ import os
 import tempfile
 from typing import Any, Generator
 
+import chromadb
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 from sentence_transformers import SentenceTransformer
 
-from vectorforge.api import app, engine
+from vectorforge.api import app, manager
 from vectorforge.config import VFGConfig
 from vectorforge.vector_engine import VectorEngine
 
@@ -33,9 +34,9 @@ def use_temp_chroma_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[str, Any, 
         yield chroma_path
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def client() -> TestClient:
-    """Create a TestClient for each testing session.
+    """Create a TestClient for each test function.
 
     Provides a FastAPI TestClient instance for making HTTP requests
     to the VectorForge API endpoints in tests.
@@ -49,19 +50,30 @@ def reset_engine() -> Generator[None, Any, None]:
 
     Automatically runs before every test to ensure a clean slate.
     Clears all documents from the ChromaDB collection and resets
-    HNSW configuration to defaults.
+    HNSW configuration to defaults. Also deletes any non-default
+    collections created by prior tests.
     """
-    try:
-        engine.chroma_client.delete_collection(name=VFGConfig.CHROMA_COLLECTION_NAME)
-    except Exception:
-        pass
+    default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
 
-    try:
-        engine.collection = engine.chroma_client.create_collection(
-            name=VFGConfig.CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
-        )
-    except Exception:
-        pass
+    for col in default_engine.chroma_client.list_collections():
+        if col.name != VFGConfig.DEFAULT_COLLECTION_NAME:
+            default_engine.chroma_client.delete_collection(col.name)
+
+    with manager._cache_lock:
+        keys_to_remove = [
+            k for k in manager._engine_cache if k != VFGConfig.DEFAULT_COLLECTION_NAME
+        ]
+        for k in keys_to_remove:
+            del manager._engine_cache[k]
+
+    default_engine.chroma_client.delete_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME
+    )
+
+    collection = default_engine.chroma_client.create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    default_engine.collection = collection
 
     yield
 
@@ -77,29 +89,22 @@ def shared_model() -> SentenceTransformer:
 
 
 @pytest.fixture
-def vector_engine(shared_model: SentenceTransformer) -> VectorEngine:
+def vector_engine(
+    shared_model: SentenceTransformer, use_temp_chroma_dir: str
+) -> VectorEngine:
     """Create a fresh VectorEngine for each test with a pre-loaded model.
 
     Reuses the session-scoped model to avoid expensive model reloading.
     Creates a new engine instance with clean state and default HNSW
     configuration for test isolation.
     """
-    engine_instance = VectorEngine()
-    engine_instance.model = shared_model
-
-    try:
-        engine_instance.chroma_client.delete_collection(
-            name=VFGConfig.CHROMA_COLLECTION_NAME
-        )
-    except Exception:
-        pass
-
-    try:
-        engine_instance.collection = engine_instance.chroma_client.create_collection(
-            name=VFGConfig.CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
-        )
-    except Exception:
-        pass
+    chroma_client = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection = chroma_client.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine_instance = VectorEngine(
+        collection=collection, model=shared_model, chroma_client=chroma_client
+    )
 
     return engine_instance
 
@@ -121,7 +126,7 @@ def added_doc(client: TestClient) -> Any:
     response containing the document ID and status.
     """
     response: Response = client.post(
-        "/doc/add",
+        "/collections/vectorforge/documents",
         json={
             "content": "Machine learning is fascinating",
             "metadata": {"topic": "AI"},
@@ -167,7 +172,7 @@ def multiple_added_docs(client: TestClient) -> list[str]:
     doc_ids: list[str] = []
     for i, content in enumerate(varied_content):
         response: Response = client.post(
-            "/doc/add",
+            "/collections/vectorforge/documents",
             json={
                 "content": content,
                 "metadata": {"source_file": f"doc_{i}.txt", "chunk_index": 0},

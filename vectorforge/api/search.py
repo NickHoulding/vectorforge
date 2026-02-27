@@ -1,36 +1,39 @@
 """Search Endpoints"""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
-from vectorforge.api import engine
-from vectorforge.api.decorators import handle_api_errors
+from vectorforge.api import manager
+from vectorforge.api.decorators import handle_api_errors, require_collection
 from vectorforge.models import SearchQuery, SearchResponse, SearchResult
 
 router: APIRouter = APIRouter()
 
 
-@router.post("/search", response_model=SearchResponse)
+@router.post("/collections/{collection_name}/search", response_model=SearchResponse)
+@require_collection
 @handle_api_errors
-def search(search_params: SearchQuery) -> SearchResponse:
+def search(collection_name: str, search_params: SearchQuery) -> SearchResponse:
     """
-    Perform semantic search on indexed documents
+    Perform semantic search within a specific collection
 
-    Searches the vector index using semantic similarity to find the most relevant
-    document chunks for the given query. Returns results ranked by similarity score.
-    Optionally filter results by metadata fields.
+    Searches the collection's vector index using semantic similarity to find
+    the most relevant document chunks for the given query. Returns results
+    ranked by similarity score. Optionally filter results by metadata fields.
 
     Args:
-        search_params (SearchQuery): Query string, number of results (top_k),
-                                    and optional metadata filters
+        collection_name: Name of the collection to search
+        search_params: Query string, number of results (top_k), and optional filters
 
     Returns:
         SearchResponse: Ranked search results with similarity scores and metadata
 
     Raises:
+        HTTPException: 404 if collection not found
         HTTPException: 500 if search fails
 
     Example:
-        ```json
+        ```
+        POST /collections/customer_docs/search
         {
             "query": "What is machine learning?",
             "top_k": 5,
@@ -38,6 +41,7 @@ def search(search_params: SearchQuery) -> SearchResponse:
         }
         ```
     """
+    engine = manager.get_engine(collection_name)
     query: str = search_params.query.strip()
     results: list[SearchResult] = engine.search(
         query=query, top_k=search_params.top_k, filters=search_params.filters

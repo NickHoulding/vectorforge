@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from vectorforge.config import VFGConfig
 
@@ -18,6 +18,16 @@ class SearchQuery(BaseModel):
         filters: Optional metadata filters as key-value pairs for narrowing results.
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "query": "What is machine learning?",
+                "top_k": 5,
+                "filters": {"source_file": "textbook.pdf"},
+            }
+        }
+    )
+
     query: str = Field(
         ...,
         min_length=VFGConfig.MIN_QUERY_LENGTH,
@@ -34,15 +44,6 @@ class SearchQuery(BaseModel):
         default=None, description="Optional metadata filters"
     )
 
-    class ConfigDict:
-        json_schema_extra = {
-            "example": {
-                "query": "What is machine learning?",
-                "top_k": 5,
-                "filters": {"source_file": "textbook.pdf"},
-            }
-        }
-
 
 class SearchResult(BaseModel):
     """Individual search result with similarity scoring.
@@ -58,15 +59,8 @@ class SearchResult(BaseModel):
         score: Cosine similarity score (0-1), where 1 is perfect match.
     """
 
-    id: str = Field(..., description="Document identifier")
-    content: str = Field(..., description="Document text content")
-    metadata: dict[str, Any] | None = Field(
-        default=None, description="Document metadata"
-    )
-    score: float = Field(..., description="Similarity score")
-
-    class ConfigDict:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "abc-123-def",
                 "content": "Machine learning is a subset of AI that focuses on...",
@@ -74,6 +68,14 @@ class SearchResult(BaseModel):
                 "score": 0.89,
             }
         }
+    )
+
+    id: str = Field(..., description="Document identifier")
+    content: str = Field(..., description="Document text content")
+    metadata: dict[str, Any] | None = Field(
+        default=None, description="Document metadata"
+    )
+    score: float = Field(..., description="Similarity score")
 
 
 class SearchResponse(BaseModel):
@@ -89,12 +91,8 @@ class SearchResponse(BaseModel):
         count: Total number of results returned (may be less than top_k if fewer matches exist).
     """
 
-    query: str = Field(..., description="Original search query")
-    results: list[SearchResult] = Field(..., description="List of search results")
-    count: int = Field(..., description="Number of results returned")
-
-    class ConfigDict:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "query": "What is machine learning?",
                 "results": [
@@ -114,3 +112,8 @@ class SearchResponse(BaseModel):
                 "count": 2,
             }
         }
+    )
+
+    query: str = Field(..., description="Original search query")
+    results: list[SearchResult] = Field(..., description="List of search results")
+    count: int = Field(..., description="Number of results returned")

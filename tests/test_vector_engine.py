@@ -222,19 +222,17 @@ def test_add_doc_with_whitespace_only_content_raises_error(vector_engine):
         vector_engine.add_doc("   ", {})
 
 
-def test_add_doc_multiple_sequential():
+def test_add_doc_multiple_sequential(vector_engine):
     """Test adding multiple documents sequentially updates indices correctly."""
-    engine = VectorEngine()
-
     doc_ids = []
     for i in range(5):
-        doc_id = engine.add_doc(f"Document {i}", {})
+        doc_id = vector_engine.add_doc(f"Document {i}", {})
         doc_ids.append(doc_id)
 
-    assert engine.collection.count() == 5
+    assert vector_engine.collection.count() == 5
 
     for doc_id in doc_ids:
-        result = engine.collection.get(ids=[doc_id])
+        result = vector_engine.collection.get(ids=[doc_id])
         assert len(result["ids"]) == 1
 
 
@@ -399,13 +397,12 @@ def test_search_returns_correct_structure(vector_engine):
     assert hasattr(result, "metadata")
 
 
-def test_search_respects_top_k():
+def test_search_respects_top_k(vector_engine):
     """Test that search returns at most top_k results."""
-    engine = VectorEngine()
     for i in range(20):
-        engine.add_doc(f"Document number {i}", {})
+        vector_engine.add_doc(f"Document number {i}", {})
 
-    results = engine.search("document", top_k=5)
+    results = vector_engine.search("document", top_k=5)
 
     assert len(results) == 5
 
@@ -426,13 +423,12 @@ def test_search_excludes_deleted_documents(vector_engine):
     assert doc_id not in doc_ids_after
 
 
-def test_search_results_sorted_by_score():
+def test_search_results_sorted_by_score(vector_engine):
     """Test that search results are sorted by similarity score descending."""
-    engine = VectorEngine()
     for i in range(10):
-        engine.add_doc(f"Document with varying content topic {i}", {})
+        vector_engine.add_doc(f"Document with varying content topic {i}", {})
 
-    results = engine.search("document content")
+    results = vector_engine.search("document content")
 
     scores = [r.score for r in results]
     assert scores == sorted(scores, reverse=True)
@@ -1527,22 +1523,22 @@ def test_update_hnsw_config_returns_correct_stats(vector_engine):
 
 def test_update_hnsw_config_sets_migration_flag(vector_engine):
     """Test that migration flag is set during migration."""
-    assert vector_engine._migration_in_progress is False
+    assert vector_engine.migration_in_progress is False
 
     for i in range(5):
         vector_engine.add_doc(f"Document {i}")
 
     vector_engine.update_hnsw_config({"ef_search": 125})
 
-    assert vector_engine._migration_in_progress is False
+    assert vector_engine.migration_in_progress is False
 
 
 def test_update_hnsw_config_raises_if_already_in_progress(vector_engine):
     """Test that attempting migration while one is in progress raises error."""
-    vector_engine._migration_in_progress = True
+    vector_engine.migration_in_progress = True
 
     try:
         with pytest.raises(RuntimeError, match="already in progress"):
             vector_engine.update_hnsw_config({"ef_search": 150})
     finally:
-        vector_engine._migration_in_progress = False
+        vector_engine.migration_in_progress = False

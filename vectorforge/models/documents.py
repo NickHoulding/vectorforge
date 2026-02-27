@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from vectorforge.config import VFGConfig
 
@@ -17,6 +17,15 @@ class DocumentInput(BaseModel):
         metadata: Optional key-value pairs for filtering and identification.
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "content": "Machine learning is a subset of AI...",
+                "metadata": {"title": "ML Intro", "author": "Jane"},
+            }
+        }
+    )
+
     content: str = Field(
         ...,
         min_length=VFGConfig.MIN_CONTENT_LENGTH,
@@ -26,14 +35,6 @@ class DocumentInput(BaseModel):
     metadata: dict[str, Any] | None = Field(
         default=None, description="Optional metadata"
     )
-
-    class ConfigDict:
-        json_schema_extra = {
-            "example": {
-                "content": "Machine learning is a subset of AI...",
-                "metadata": {"title": "ML Intro", "author": "Jane"},
-            }
-        }
 
 
 class DocumentResponse(BaseModel):
@@ -47,11 +48,12 @@ class DocumentResponse(BaseModel):
         status: Operation result (e.g., 'indexed', 'deleted').
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"id": "abc-123-def", "status": "indexed"}}
+    )
+
     id: str = Field(..., description="Unique document identifier")
     status: str = Field(..., description="Operation status")
-
-    class ConfigDict:
-        json_schema_extra = {"example": {"id": "abc-123-def", "status": "indexed"}}
 
 
 class DocumentDetail(BaseModel):
@@ -67,17 +69,18 @@ class DocumentDetail(BaseModel):
         metadata: Associated metadata including source file and chunk information.
     """
 
-    id: str = Field(..., description="Unique document identifier")
-    content: str = Field(..., description="Document text content")
-    metadata: dict[str, Any] | None = Field(
-        default=None, description="Document metadata"
-    )
-
-    class ConfigDict:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "abc-123-def",
                 "content": "Machine learning is a subset of artificial intelligence...",
                 "metadata": {"source_file": "textbook.pdf", "chunk_index": 0},
             }
         }
+    )
+
+    id: str = Field(..., description="Unique document identifier")
+    content: str = Field(..., description="Document text content")
+    metadata: dict[str, Any] | None = Field(
+        default=None, description="Document metadata"
+    )

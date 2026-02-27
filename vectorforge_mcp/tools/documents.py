@@ -1,6 +1,7 @@
 from typing import Any
 
 from vectorforge.api import documents
+from vectorforge.config import VFGConfig
 from vectorforge.models.documents import DocumentDetail, DocumentInput, DocumentResponse
 
 from ..decorators import handle_tool_errors
@@ -12,16 +13,21 @@ from ..utils import build_success_response
     description="Fetch document content and metadata by ID. Use to verify stored content, inspect search results, or retrieve metadata."
 )
 @handle_tool_errors
-def get_document(doc_id: str) -> dict[str, Any]:
+def get_document(
+    doc_id: str, collection_name: str = VFGConfig.DEFAULT_COLLECTION_NAME
+) -> dict[str, Any]:
     """Retrieve a single document by ID.
 
     Args:
         doc_id: Unique document identifier (UUID).
+        collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
         Dictionary with document ID, content, and metadata.
     """
-    response: DocumentDetail = documents.get_doc(doc_id=doc_id)
+    response: DocumentDetail = documents.get_doc(
+        collection_name=collection_name, doc_id=doc_id
+    )
     return build_success_response(response)
 
 
@@ -30,19 +36,24 @@ def get_document(doc_id: str) -> dict[str, Any]:
 )
 @handle_tool_errors
 def add_document(
-    content: str, metadata: dict[str, Any] | None = None
+    content: str,
+    metadata: dict[str, Any] | None = None,
+    collection_name: str = VFGConfig.DEFAULT_COLLECTION_NAME,
 ) -> dict[str, Any]:
     """Add a single document to the index.
 
     Args:
         content: The document text content to index (required, non-empty).
         metadata: Optional metadata dictionary (e.g., {"source": "email", "date": "2026-01-20"}).
+        collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
         Dictionary with created document ID and status.
     """
     doc_input: DocumentInput = DocumentInput(content=content, metadata=metadata)
-    response: DocumentResponse = documents.add_doc(doc=doc_input)
+    response: DocumentResponse = documents.add_doc(
+        collection_name=collection_name, doc=doc_input
+    )
     return build_success_response(response)
 
 
@@ -50,14 +61,19 @@ def add_document(
     description="Permanently remove a document and its embeddings from the index. Cannot be undone."
 )
 @handle_tool_errors
-def delete_document(doc_id: str) -> dict[str, Any]:
+def delete_document(
+    doc_id: str, collection_name: str = VFGConfig.DEFAULT_COLLECTION_NAME
+) -> dict[str, Any]:
     """Delete a single document by ID.
 
     Args:
         doc_id: Unique document identifier (UUID) to permanently delete.
+        collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
         Dictionary with document ID and deletion status.
     """
-    response: DocumentResponse = documents.delete_doc(doc_id=doc_id)
+    response: DocumentResponse = documents.delete_doc(
+        collection_name=collection_name, doc_id=doc_id
+    )
     return build_success_response(response)

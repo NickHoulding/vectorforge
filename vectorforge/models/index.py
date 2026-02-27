@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class HNSWConfig(BaseModel):
@@ -16,20 +16,13 @@ class HNSWConfig(BaseModel):
         ef_search: Size of the dynamic candidate list for search operations.
                   Higher values improve search accuracy but slow queries.
         max_neighbors: Maximum number of connections per node in the graph.
-                      Higher values improve recall but increase memory usage.
+                       Higher values improve recall but increase memory usage.
         resize_factor: Factor by which to grow the index when capacity is reached.
         sync_threshold: Number of operations before forcing index persistence.
     """
 
-    space: str = Field(..., description="Distance metric (cosine, l2, ip)")
-    ef_construction: int = Field(..., description="Index construction parameter")
-    ef_search: int = Field(..., description="Search quality parameter")
-    max_neighbors: int = Field(..., description="Max connections per node")
-    resize_factor: float = Field(..., description="Index growth factor")
-    sync_threshold: int = Field(..., description="Persistence threshold")
-
-    class ConfigDict:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "space": "cosine",
                 "ef_construction": 100,
@@ -39,6 +32,14 @@ class HNSWConfig(BaseModel):
                 "sync_threshold": 1000,
             }
         }
+    )
+
+    space: str = Field(..., description="Distance metric (cosine, l2, ip)")
+    ef_construction: int = Field(..., description="Index construction parameter")
+    ef_search: int = Field(..., description="Search quality parameter")
+    max_neighbors: int = Field(..., description="Max connections per node")
+    resize_factor: float = Field(..., description="Index growth factor")
+    sync_threshold: int = Field(..., description="Persistence threshold")
 
 
 class IndexStatsResponse(BaseModel):
@@ -52,13 +53,8 @@ class IndexStatsResponse(BaseModel):
         hnsw_config: HNSW index configuration parameters.
     """
 
-    status: str = Field(..., description="Operation status")
-    total_documents: int = Field(..., description="Active documents")
-    embedding_dimension: int = Field(..., description="Embedding size")
-    hnsw_config: HNSWConfig = Field(..., description="HNSW index configuration")
-
-    class ConfigDict:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "status": "success",
                 "total_documents": 1250,
@@ -73,6 +69,12 @@ class IndexStatsResponse(BaseModel):
                 },
             }
         }
+    )
+
+    status: str = Field(..., description="Operation status")
+    total_documents: int = Field(..., description="Active documents")
+    embedding_dimension: int = Field(..., description="Embedding size")
+    hnsw_config: HNSWConfig = Field(..., description="HNSW index configuration")
 
 
 class HNSWConfigUpdate(BaseModel):
@@ -92,6 +94,15 @@ class HNSWConfigUpdate(BaseModel):
         sync_threshold: Batch size for persistence (default: 1000)
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "ef_search": 150,
+                "max_neighbors": 32,
+            }
+        }
+    )
+
     space: Optional[str] = Field(
         default="cosine", description="Distance metric (cosine, l2, ip)"
     )
@@ -108,14 +119,6 @@ class HNSWConfigUpdate(BaseModel):
     sync_threshold: Optional[int] = Field(
         default=1000, description="Batch size for persistence"
     )
-
-    class ConfigDict:
-        json_schema_extra = {
-            "example": {
-                "ef_search": 150,
-                "max_neighbors": 32,
-            }
-        }
 
 
 class MigrationInfo(BaseModel):
@@ -146,13 +149,8 @@ class HNSWConfigUpdateResponse(BaseModel):
         config: New HNSW configuration after update
     """
 
-    status: str = Field(..., description="Operation status")
-    message: str = Field(..., description="Human-readable message")
-    migration: MigrationInfo = Field(..., description="Migration statistics")
-    config: HNSWConfig = Field(..., description="New HNSW configuration")
-
-    class ConfigDict:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "status": "success",
                 "message": "HNSW configuration updated successfully",
@@ -171,3 +169,9 @@ class HNSWConfigUpdateResponse(BaseModel):
                 },
             }
         }
+    )
+
+    status: str = Field(..., description="Operation status")
+    message: str = Field(..., description="Human-readable message")
+    migration: MigrationInfo = Field(..., description="Migration statistics")
+    config: HNSWConfig = Field(..., description="New HNSW configuration")

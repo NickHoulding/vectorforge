@@ -6,6 +6,7 @@ __pycache__/
 data/
 tests/data/
 .venv/
+.ruff_cache/
 
 # ChromaDB
 chroma_data/
@@ -19,19 +20,3 @@ htmlcov/
 benchmarks/results/*
 !benchmarks/results/0001_baseline.json
 .benchmarks/
-
-# C++ build artifacts (if needed in future)
-*.so
-*.o
-*.a
-*.dylib
-cpp/cmake-build-*/
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-install_manifest.txt
-Makefile
-
-# Python C++ extensions
-vectorforge/*.so
-vectorforge/*.dylib

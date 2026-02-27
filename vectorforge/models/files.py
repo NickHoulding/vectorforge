@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FileUploadResponse(BaseModel):
@@ -15,20 +15,21 @@ class FileUploadResponse(BaseModel):
         status: Upload operation result (typically 'indexed').
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "filename": "textbook.pdf",
+                "chunks_created": 5,
+                "document_ids": ["abc-123", "def-456", "ghi-789"],
+                "status": "indexed",
+            }
+        }
+    )
+
     filename: str = Field(..., description="Name of uploaded file")
     chunks_created: int = Field(..., description="Number of text chunks created")
     doc_ids: list[str] = Field(..., description="List of document IDs created")
     status: str = Field(..., description="Upload operation status")
-
-    class ConfigDict:
-        json_schema_extra = {
-            "example": {
-                "filename": "textbook.pdf",
-                "chunks_created": 5,
-                "document_ids": ["abc-123", "def-456", "ghi-789", ...],
-                "status": "indexed",
-            }
-        }
 
 
 class FileDeleteResponse(BaseModel):
@@ -44,20 +45,21 @@ class FileDeleteResponse(BaseModel):
         status: Deletion operation result (e.g., 'deleted', 'not_found').
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "filename": "textbook.pdf",
+                "chunks_deleted": 5,
+                "document_ids": ["abc-123", "def-456", "ghi-789"],
+                "status": "deleted",
+            }
+        }
+    )
+
     filename: str = Field(..., description="Name of deleted file")
     chunks_deleted: int = Field(..., description="Number of chunks deleted")
     doc_ids: list[str] = Field(..., description="List of deleted document IDs")
     status: str = Field(..., description="Delete operation status")
-
-    class ConfigDict:
-        json_schema_extra = {
-            "example": {
-                "filename": "textbook.pdf",
-                "chunks_deleted": 5,
-                "document_ids": ["abc-123", "def-456", "ghi-789", ...],
-                "status": "deleted" "",
-            }
-        }
 
 
 class FileListResponse(BaseModel):
@@ -71,11 +73,12 @@ class FileListResponse(BaseModel):
         filenames: Sorted list of unique source file names.
     """
 
-    filenames: list[str] = Field(..., description="List of indexed filenames")
-
-    class ConfigDict:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "filenames": ["textbook.pdf", "research_paper.pdf", "notes.txt"]
             }
         }
+    )
+
+    filenames: list[str] = Field(..., description="List of indexed filenames")

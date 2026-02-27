@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 
 import chromadb
 import numpy as np
+from chromadb.api import ClientAPI
 from sentence_transformers import SentenceTransformer
 
 from vectorforge import __version__
@@ -112,41 +113,49 @@ class VectorEngine:
         API layer, which converts them to appropriate HTTP responses.
 
     Attributes:
-        chroma_client: ChromaDB PersistentClient for database operations.
         collection: ChromaDB collection storing documents and embeddings.
+        model: Loaded SentenceTransformer model instance (shared across collections).
+        chroma_client: ChromaDB PersistentClient for database operations.
         model_name: Name of the sentence transformer model being used.
-        model: Loaded SentenceTransformer model instance.
         metrics: EngineMetrics instance tracking usage and performance.
 
     Example:
-        >>> engine = VectorEngine()
+        >>> from collection_manager import CollectionManager
+        >>> manager = CollectionManager()
+        >>> engine = manager.get_engine("my_collection")
         >>> doc_id = engine.add_doc("Hello world", {"source_file": "test.txt"})
         >>> results = engine.search("greeting", top_k=5)
     """
 
-    def __init__(self) -> None:
-        """Initialize the VectorEngine with ChromaDB backend.
+    def __init__(
+        self,
+        collection: chromadb.Collection,
+        model: SentenceTransformer,
+        chroma_client: ClientAPI,
+    ) -> None:
+        """Initialize the VectorEngine for a specific collection.
 
-        Creates a vector database using ChromaDB for storage and retrieval,
-        with the 'all-MiniLM-L6-v2' sentence transformer model for embedding
-        generation. Initializes metrics tracking.
+        Args:
+            collection: ChromaDB collection to operate on
+            model: Shared SentenceTransformer model
+            chroma_client: ChromaDB client for HNSW migration operations
+
+        Note:
+            This constructor is called by CollectionManager, not directly. For
+            multi-collection support, use CollectionManager.get_engine() instead.
         """
-        chroma_path: str = VFGConfig.CHROMA_PERSIST_DIR
-
-        if not os.path.isabs(chroma_path):
-            chroma_path = os.path.abspath(chroma_path)
-
-        os.makedirs(chroma_path, exist_ok=True)
-
-        self.chroma_path: str = chroma_path  # Store for use in metrics methods
-        self.chroma_client = chromadb.PersistentClient(path=chroma_path)
-        self.collection = self.chroma_client.get_or_create_collection(
-            name=VFGConfig.CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
-        )
+        self.collection = collection
         self.model_name: str = VFGConfig.MODEL_NAME
-        self.model: SentenceTransformer = SentenceTransformer(self.model_name)
+        self.model: SentenceTransformer = model
+        self.chroma_client = chroma_client
         self.metrics: EngineMetrics = EngineMetrics()
-        self._migration_in_progress: bool = False
+        self.migration_in_progress: bool = False
+
+        settings = getattr(chroma_client, "_settings", None)
+        if settings and hasattr(settings, "persist_directory"):
+            self.chroma_path: str = settings.persist_directory
+        else:
+            self.chroma_path = VFGConfig.CHROMA_PERSIST_DIR
 
     def search(
         self,
@@ -566,6 +575,7 @@ class VectorEngine:
             OSError: If there's an error accessing disk or ChromaDB client.
         """
         disk_bytes, disk_mb = self._get_chromadb_disk_size()
+        max_batch_size = self.chroma_client.get_max_batch_size()
 
         return {
             "version": chromadb.__version__,
@@ -574,7 +584,7 @@ class VectorEngine:
             "disk_size_bytes": disk_bytes,
             "disk_size_mb": round(disk_mb, 2),
             "persist_directory": self.chroma_path,
-            "max_batch_size": self.chroma_client.get_max_batch_size(),
+            "max_batch_size": max_batch_size,
         }
 
     def get_hnsw_config(self) -> dict[str, Any]:
@@ -647,10 +657,10 @@ class VectorEngine:
             >>> result = engine.update_hnsw_config({"ef_search": 150})
             >>> print(f"Migrated {result['migration']['documents_migrated']} docs")
         """
-        if self._migration_in_progress:
+        if self.migration_in_progress:
             raise RuntimeError("HNSW configuration migration already in progress")
 
-        self._migration_in_progress = True
+        self.migration_in_progress = True
         start_time = time.perf_counter()
         new_collection = None
 
@@ -668,12 +678,10 @@ class VectorEngine:
                 "hnsw:search_ef": new_config.get("ef_search", 100),
                 "hnsw:M": new_config.get("max_neighbors", 16),
                 "hnsw:resize_factor": new_config.get("resize_factor", 1.2),
-                "hnsw:batch_size": new_config.get("sync_threshold", 1000),
+                "hnsw:sync_threshold": new_config.get("sync_threshold", 1000),
             }
 
-            temp_collection_name = (
-                f"{VFGConfig.CHROMA_COLLECTION_NAME}_temp_{uuid.uuid4().hex[:8]}"
-            )
+            temp_collection_name = f"{old_collection.name}_temp_{uuid.uuid4().hex[:8]}"
             logger.info(f"Creating temporary collection: {temp_collection_name}")
 
             new_collection = self.chroma_client.create_collection(
@@ -789,4 +797,4 @@ class VectorEngine:
             raise
 
         finally:
-            self._migration_in_progress = False
+            self.migration_in_progress = False
