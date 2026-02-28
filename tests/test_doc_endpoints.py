@@ -1,4 +1,10 @@
-"""Tests for document management endpoints"""
+"""Tests for document management endpoints.
+
+Covers:
+    POST   /collections/{collection_name}/documents
+    GET    /collections/{collection_name}/documents/{doc_id}
+    DELETE /collections/{collection_name}/documents/{doc_id}
+"""
 
 from vectorforge.config import VFGConfig
 

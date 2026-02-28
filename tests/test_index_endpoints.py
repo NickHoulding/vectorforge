@@ -1,4 +1,9 @@
-"""Tests for index management endpoints"""
+"""Tests for index management endpoints.
+
+Covers:
+    GET /collections/{collection_name}/stats
+    PUT /collections/{collection_name}/config/hnsw?confirm=true
+"""
 
 import os
 

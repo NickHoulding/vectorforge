@@ -1,4 +1,10 @@
-"""Tests for file processing and management endpoints"""
+"""Tests for file processing and management endpoints.
+
+Covers:
+    GET    /collections/{collection_name}/files/list
+    POST   /collections/{collection_name}/files/upload
+    DELETE /collections/{collection_name}/files/{filename}
+"""
 
 import io
 

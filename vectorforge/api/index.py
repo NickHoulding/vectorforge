@@ -1,4 +1,9 @@
-"""Index Management Endpoints"""
+"""Index Management Endpoints
+
+Covers:
+    GET /collections/{collection_name}/stats
+    PUT /collections/{collection_name}/config/hnsw?confirm=true
+"""
 
 from typing import Any
 

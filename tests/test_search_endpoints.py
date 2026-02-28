@@ -1,4 +1,9 @@
-"""Tests for search endpoints"""
+"""Tests for search endpoints.
+
+Covers:
+    POST /collections/{collection_name}/search
+    POST /collections/{collection_name}/search  (with filters)
+"""
 
 from vectorforge.config import VFGConfig
 

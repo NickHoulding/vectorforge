@@ -1,4 +1,10 @@
-"""Document Management Endpoints"""
+"""Document Management Endpoints
+
+Covers:
+    POST   /collections/{collection_name}/documents
+    GET    /collections/{collection_name}/documents/{doc_id}
+    DELETE /collections/{collection_name}/documents/{doc_id}
+"""
 
 from typing import Any
 

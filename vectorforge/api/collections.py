@@ -2,6 +2,12 @@
 
 Provides REST API for creating, listing, and deleting collections.
 Enables multi-tenancy and multi-index use cases.
+
+Covers:
+    GET    /collections
+    POST   /collections
+    GET    /collections/{name}
+    DELETE /collections/{name}?confirm=true
 """
 
 from fastapi import APIRouter, HTTPException, Query, status

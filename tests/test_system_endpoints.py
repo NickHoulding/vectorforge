@@ -1,4 +1,11 @@
-"""Tests for system monitoring endpoints"""
+"""Tests for system monitoring endpoints.
+
+Covers:
+    GET /health
+    GET /health/ready
+    GET /health/live
+    GET /collections/{collection_name}/metrics
+"""
 
 import io
 import re

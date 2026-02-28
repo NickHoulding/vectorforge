@@ -1,4 +1,11 @@
-"""Health and Metrics Endpoints"""
+"""Health and Metrics Endpoints
+
+Covers:
+    GET /health
+    GET /health/ready
+    GET /health/live
+    GET /collections/{collection_name}/metrics
+"""
 
 from typing import Any
 
