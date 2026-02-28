@@ -6,6 +6,7 @@ from typing import Any, Generator
 
 import chromadb
 import pytest
+from chromadb.api.shared_system_client import SharedSystemClient
 from fastapi.testclient import TestClient
 from httpx import Response
 from sentence_transformers import SentenceTransformer
@@ -91,12 +92,17 @@ def shared_model() -> SentenceTransformer:
 @pytest.fixture
 def vector_engine(
     shared_model: SentenceTransformer, use_temp_chroma_dir: str
-) -> VectorEngine:
+) -> Generator[VectorEngine, Any, None]:
     """Create a fresh VectorEngine for each test with a pre-loaded model.
 
     Reuses the session-scoped model to avoid expensive model reloading.
     Creates a new engine instance with clean state and default HNSW
     configuration for test isolation.
+
+    Tears down by clearing ChromaDB's shared system cache so that the
+    PersistentClient's file handles are released promptly. Without this,
+    each test leaks 3-4 file descriptors and the container's default ulimit
+    of 1024 is exhausted after ~110 tests.
     """
     chroma_client = chromadb.PersistentClient(path=use_temp_chroma_dir)
     collection = chroma_client.get_or_create_collection(
@@ -106,7 +112,8 @@ def vector_engine(
         collection=collection, model=shared_model, chroma_client=chroma_client
     )
 
-    return engine_instance
+    yield engine_instance
+    SharedSystemClient.clear_system_cache()
 
 
 @pytest.fixture

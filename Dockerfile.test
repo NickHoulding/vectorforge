@@ -12,4 +12,4 @@ RUN uv sync --frozen
 COPY tests/ ./tests/
 COPY pytest.ini ./
 
-CMD ["pytest", "tests/", "-v"]
+CMD ["sh", "-c", "ulimit -n 65536 && .venv/bin/pytest tests/ -v"]
