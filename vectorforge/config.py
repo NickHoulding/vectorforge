@@ -115,7 +115,7 @@ class VFGConfig:
     MAX_COLLECTION_NAME_LENGTH: int = 64
     """Maximum length for collection names."""
 
-    MIN_COLLECTION_NAME_LENGTH: int = 1
+    MIN_COLLECTION_NAME_LENGTH: int = 3
     """Minimum length for collection names."""
 
     MAX_DESCRIPTION_LENGTH: int = 500

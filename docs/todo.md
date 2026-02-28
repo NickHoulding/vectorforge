@@ -1,5 +1,4 @@
 ## Todo
-- [ ] **Bridge testing gaps in test_collections.py** Make comprehensive
 - [ ] **Deploy on DigitalOcean**
 - [ ] **Pivot metric persistence for lifetime tracking instead of current session-scoped setup**
 - [ ] **Work on updating benchmark suite to benchmark new ChromaDB integrated version**
