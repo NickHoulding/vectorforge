@@ -343,13 +343,21 @@ def test_create_collection_max_length_name_succeeds(client: TestClient) -> None:
 
 
 def test_create_collection_min_length_name_succeeds(client: TestClient) -> None:
-    """Name at exactly MIN_COLLECTION_NAME_LENGTH characters is accepted.
-
-    Note: ChromaDB itself requires at least 3 characters, so the effective
-    minimum accepted end-to-end is 3, regardless of VFGConfig.MIN_COLLECTION_NAME_LENGTH.
-    """
+    """Name at exactly MIN_COLLECTION_NAME_LENGTH (3) characters is accepted."""
     response = client.post("/collections", json={"name": "abc"})
     assert response.status_code == 201
+
+
+def test_create_collection_one_char_name_returns_422(client: TestClient) -> None:
+    """Name of 1 character is rejected with 422 (below MIN_COLLECTION_NAME_LENGTH=3)."""
+    response = client.post("/collections", json={"name": "x"})
+    assert response.status_code == 422
+
+
+def test_create_collection_two_char_name_returns_422(client: TestClient) -> None:
+    """Name of 2 characters is rejected with 422 (below MIN_COLLECTION_NAME_LENGTH=3)."""
+    response = client.post("/collections", json={"name": "ab"})
+    assert response.status_code == 422
 
 
 def test_create_collection_name_with_hyphens_and_underscores(
@@ -712,3 +720,105 @@ def test_delete_collection_does_not_bleed_into_sibling(
 
     stats_a = client.get(f"/collections/{col_a}/stats").json()
     assert stats_a["total_documents"] == 5
+
+
+def test_list_collections_total_decreases_after_delete(client: TestClient) -> None:
+    """total decrements correctly after a collection is deleted."""
+    client.post("/collections", json={"name": "temp_col_1"})
+    client.post("/collections", json={"name": "temp_col_2"})
+
+    before = client.get("/collections").json()["total"]
+    assert before == 3
+
+    client.delete("/collections/temp_col_1", params={"confirm": True})
+
+    after = client.get("/collections").json()["total"]
+    assert after == 2
+
+
+def test_get_collection_document_count_decreases_after_delete(
+    client: TestClient,
+) -> None:
+    """document_count reflects documents removed via DELETE /documents/{id}."""
+    client.post("/collections", json={"name": "shrink_col"})
+
+    client.post(
+        "/collections/shrink_col/documents",
+        json={"content": "doc to keep", "metadata": {}},
+    )
+    r2 = client.post(
+        "/collections/shrink_col/documents",
+        json={"content": "doc to delete", "metadata": {}},
+    )
+    doc_id = r2.json()["id"]
+
+    assert client.get("/collections/shrink_col").json()["document_count"] == 2
+    client.delete(f"/collections/shrink_col/documents/{doc_id}")
+    assert client.get("/collections/shrink_col").json()["document_count"] == 1
+
+
+def test_search_returns_result_from_correct_collection(
+    client: TestClient, col_a: str, col_b: str
+) -> None:
+    """Search in col_a returns col_a's doc; search in col_b returns col_b's doc."""
+    client.post(
+        f"/collections/{col_a}/documents",
+        json={"content": "quantum physics and particle accelerators", "metadata": {}},
+    )
+    client.post(
+        f"/collections/{col_b}/documents",
+        json={"content": "ancient roman history and the colosseum", "metadata": {}},
+    )
+
+    resp_a = client.post(
+        f"/collections/{col_a}/search",
+        json={"query": "quantum physics", "top_k": 1},
+    )
+    assert resp_a.json()["count"] == 1
+    assert "quantum" in resp_a.json()["results"][0]["content"].lower()
+
+    resp_b = client.post(
+        f"/collections/{col_b}/search",
+        json={"query": "quantum physics", "top_k": 1},
+    )
+    assert resp_b.json()["count"] == 1
+    assert "roman" in resp_b.json()["results"][0]["content"].lower()
+
+
+def test_file_list_shows_uploaded_file_in_correct_collection(
+    client: TestClient,
+) -> None:
+    """Files uploaded to a non-default collection appear in that collection's list."""
+    client.post("/collections", json={"name": "file_col"})
+
+    file_content = b"content for the file list positive test"
+    client.post(
+        "/collections/file_col/files/upload",
+        files={"file": ("positive_test.txt", io.BytesIO(file_content), "text/plain")},
+    )
+
+    response = client.get("/collections/file_col/files/list")
+    assert response.status_code == 200
+    assert "positive_test.txt" in response.json()["filenames"]
+
+
+def test_create_collection_metadata_key_with_vf_prefix_survives(
+    client: TestClient,
+) -> None:
+    """A user metadata key that starts with 'vf:' is stored and returned intact.
+
+    Internally, all user keys are namespaced under 'vf:meta:', so a user key
+    'vf:description' is stored as 'vf:meta:vf:description' and returned as
+    'vf:description' — it does NOT overwrite the internal vf:description field.
+    """
+    payload = {
+        "name": "prefix_col",
+        "description": "the real description",
+        "metadata": {"vf:description": "user value, not internal"},
+    }
+    response = client.post("/collections", json=payload)
+    assert response.status_code == 201
+
+    data = client.get("/collections/prefix_col").json()
+    assert data["description"] == "the real description"
+    assert data["metadata"]["vf:description"] == "user value, not internal"
