@@ -2,7 +2,7 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![FastMCP](https://img.shields.io/badge/FastMCP-2.14+-green.svg)
-![Version](https://img.shields.io/badge/version-0.9.0-orange.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)
 
 > Model Context Protocol server for VectorForge - Enable semantic search capabilities in AI assistants like Claude Desktop.
 
@@ -533,7 +533,7 @@ You: Check the health of VectorForge
 
 Claude: [Calls check_health tool]
 ✓ VectorForge API is healthy
-- Version: 0.9.0
+- Version: 1.0.0
 - Status: healthy
 
 You: Get the current metrics

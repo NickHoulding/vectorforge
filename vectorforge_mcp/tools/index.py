@@ -10,7 +10,7 @@ from ..utils import build_success_response
 
 
 @mcp.tool(
-    description="Get lightweight index health check: document counts, embedding dimension, deletion ratio, compaction status."
+    description="Get index health check: document count, embedding dimension, and HNSW configuration."
 )
 @handle_tool_errors
 def get_index_stats(
@@ -22,7 +22,7 @@ def get_index_stats(
         collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
-        Dictionary with index statistics including document counts, embedding dimension, and compaction status.
+        Dictionary with index statistics including document count, embedding dimension, and HNSW configuration.
     """
     response: IndexStatsResponse = index.get_collection_stats(
         collection_name=collection_name

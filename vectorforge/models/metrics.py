@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -40,17 +38,11 @@ class PerformanceMetrics(BaseModel):
     total_queries: int = Field(..., description="Total queries executed")
     avg_query_time_ms: float = Field(..., ge=0, description="Average query latency")
     total_query_time_ms: float = Field(..., ge=0, description="Cumulative query time")
-    min_query_time_ms: Optional[float] = Field(None, ge=0, description="Fastest query")
-    max_query_time_ms: Optional[float] = Field(None, ge=0, description="Slowest query")
-    p50_query_time_ms: Optional[float] = Field(
-        None, ge=0, description="Median query time"
-    )
-    p95_query_time_ms: Optional[float] = Field(
-        None, ge=0, description="95th percentile"
-    )
-    p99_query_time_ms: Optional[float] = Field(
-        None, ge=0, description="99th percentile"
-    )
+    min_query_time_ms: float | None = Field(None, ge=0, description="Fastest query")
+    max_query_time_ms: float | None = Field(None, ge=0, description="Slowest query")
+    p50_query_time_ms: float | None = Field(None, ge=0, description="Median query time")
+    p95_query_time_ms: float | None = Field(None, ge=0, description="95th percentile")
+    p99_query_time_ms: float | None = Field(None, ge=0, description="99th percentile")
 
 
 class UsageMetrics(BaseModel):
@@ -92,11 +84,9 @@ class TimestampMetrics(BaseModel):
     """
 
     engine_created_at: str = Field(..., description="Engine initialization time")
-    last_query_at: Optional[str] = Field(None, description="Most recent query")
-    last_document_added_at: Optional[str] = Field(
-        None, description="Most recent addition"
-    )
-    last_file_uploaded_at: Optional[str] = Field(
+    last_query_at: str | None = Field(None, description="Most recent query")
+    last_document_added_at: str | None = Field(None, description="Most recent addition")
+    last_file_uploaded_at: str | None = Field(
         None, description="Most recent file upload"
     )
 
@@ -116,7 +106,7 @@ class SystemInfo(BaseModel):
 
     model_name: str = Field(..., description="Embedding model name")
     model_dimension: int = Field(..., description="Embedding dimension")
-    uptime_seconds: Optional[float] = Field(None, ge=0, description="Engine uptime")
+    uptime_seconds: float | None = Field(None, ge=0, description="Engine uptime")
     version: str = Field(..., description="vectorforge version")
 
 
@@ -166,6 +156,7 @@ class MetricsResponse(BaseModel):
             "example": {
                 "index": {
                     "total_documents": 1500,
+                    "total_documents_peak": 1500,
                 },
                 "performance": {
                     "total_queries": 5420,
@@ -194,7 +185,7 @@ class MetricsResponse(BaseModel):
                     "model_name": "all-MiniLM-L6-v2",
                     "model_dimension": 384,
                     "uptime_seconds": 22523.45,
-                    "version": "0.9.0",
+                    "version": "1.0.0",
                 },
                 "chromadb": {
                     "version": "0.4.22",

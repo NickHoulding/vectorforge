@@ -37,7 +37,7 @@ def check_health() -> dict[str, Any]:
         ```json
         {
             "status": "healthy",
-            "version": "0.9.0",
+            "version": "1.0.0",
             "chromadb_heartbeat": 1234567890,
             "total_collections": 5
         }

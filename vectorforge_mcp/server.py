@@ -2,7 +2,7 @@ import logging
 
 from vectorforge_mcp.config import MCPConfig
 from vectorforge_mcp.instance import mcp
-from vectorforge_mcp.tools import documents, files, index, search, system
+from vectorforge_mcp.tools import collections, documents, files, index, search, system
 
 
 def main() -> None:

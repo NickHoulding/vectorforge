@@ -1,6 +1,6 @@
 """Index Management Endpoints"""
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -67,7 +67,7 @@ def get_collection_stats(collection_name: str) -> IndexStatsResponse:
 def update_collection_hnsw_config(
     collection_name: str,
     config: HNSWConfigUpdate,
-    confirm: Optional[bool] = Query(None, description="Must be true to confirm"),
+    confirm: bool | None = Query(None, description="Must be true to confirm"),
 ) -> HNSWConfigUpdateResponse:
     """
     Update HNSW index configuration for a specific collection (requires collection recreation)

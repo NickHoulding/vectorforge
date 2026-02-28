@@ -62,7 +62,7 @@ async def upload_file(collection_name: str, file: UploadFile) -> FileUploadRespo
 
     Args:
         collection_name: Name of the collection
-        file: File to upload (supports PDF, TXT, DOCX, MD, etc.)
+        file: File to upload (.pdf and .txt only)
 
     Returns:
         FileUploadResponse: Upload confirmation with chunk count and document IDs

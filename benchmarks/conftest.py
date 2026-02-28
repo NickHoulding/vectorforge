@@ -321,7 +321,7 @@ def pytest_benchmark_update_json(
         benchmarks: Benchmark results
         output_json: JSON output dictionary to update
     """
-    output_json["vectorforge_version"] = "0.9.0"
+    output_json["vectorforge_version"] = "1.0.0"
     output_json["benchmark_scales"] = SCALES
 
 

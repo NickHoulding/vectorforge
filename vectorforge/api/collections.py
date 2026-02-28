@@ -4,8 +4,6 @@ Provides REST API for creating, listing, and deleting collections.
 Enables multi-tenancy and multi-index use cases.
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, HTTPException, Query, status
 
 from vectorforge.api import manager
@@ -149,7 +147,7 @@ def get_collection(collection_name: str) -> CollectionInfo:
 @handle_api_errors
 def delete_collection(
     collection_name: str,
-    confirm: Optional[bool] = Query(None, description="Must be 'true' to confirm"),
+    confirm: bool | None = Query(None, description="Must be 'true' to confirm"),
 ) -> CollectionDeleteResponse:
     """
     Delete a collection and all its documents

@@ -20,7 +20,7 @@ class FileUploadResponse(BaseModel):
             "example": {
                 "filename": "textbook.pdf",
                 "chunks_created": 5,
-                "document_ids": ["abc-123", "def-456", "ghi-789"],
+                "doc_ids": ["abc-123", "def-456", "ghi-789"],
                 "status": "indexed",
             }
         }
@@ -50,7 +50,7 @@ class FileDeleteResponse(BaseModel):
             "example": {
                 "filename": "textbook.pdf",
                 "chunks_deleted": 5,
-                "document_ids": ["abc-123", "def-456", "ghi-789"],
+                "doc_ids": ["abc-123", "def-456", "ghi-789"],
                 "status": "deleted",
             }
         }

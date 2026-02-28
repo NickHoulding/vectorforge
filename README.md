@@ -3,7 +3,7 @@
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.121.2+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.9.0-orange.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)
 
 > A high-performance vector database with semantic search capabilities, powered by ChromaDB, built with FastAPI and sentence transformers.
 
@@ -150,7 +150,7 @@ Perfect for building:
 
 ## Performance
 
-**Baseline:** Python implementation v0.9.0 (tag: `v0.9.0-python-baseline`)
+**Baseline:** Python implementation v1.0.0 (tag: `v1.0.0-python-baseline`)
 
 VectorForge delivers sub-20ms search latency for 10K documents using pure Python and NumPy. Performance scales linearly with index size for the current brute-force cosine similarity implementation.
 
@@ -390,7 +390,7 @@ uv sync
 3. **Verify installation**
 ```bash
 python -c "import vectorforge; print(vectorforge.__version__)"
-# Should output: 0.9.0
+# Should output: 1.0.0
 ```
 
 ### **How to Run**
@@ -643,7 +643,7 @@ curl -X POST http://localhost:3001/index/save
   "total_size_mb": 1.45,
   "documents_saved": 100,
   "embeddings_saved": 100,
-  "version": "0.9.0"
+  "version": "1.0.0"
 }
 ```
 
@@ -676,7 +676,7 @@ curl http://localhost:3001/health
 ```json
 {
   "status": "healthy",
-  "version": "0.9.0"
+  "version": "1.0.0"
 }
 ```
 

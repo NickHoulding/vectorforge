@@ -21,13 +21,6 @@ class MCPConfig:
     """Description of the MCP server."""
 
     # =============================================================================
-    # VectorForge API Connection
-    # =============================================================================
-
-    VECTORFORGE_API_BASE_URL: str = "http://localhost:3001"
-    """Base URL for VectorForge API connections (documentation only)."""
-
-    # =============================================================================
     # Logging Configuration
     # =============================================================================
 
@@ -53,11 +46,6 @@ class MCPConfig:
             raise ValueError("SERVER_DESCRIPTION must be a string")
         if len(cls.SERVER_DESCRIPTION) == 0:
             raise ValueError("SERVER_DESCRIPTION cannot be empty")
-
-        if not isinstance(cls.VECTORFORGE_API_BASE_URL, str):
-            raise ValueError("VECTORFORGE_API_BASE_URL must be a string")
-        if not cls.VECTORFORGE_API_BASE_URL.startswith("http"):
-            raise ValueError("VECTORFORGE_API_BASE_URL must start with 'http'")
 
         if not isinstance(cls.LOG_LEVEL, int):
             raise ValueError("LOG_LEVEL must be an int")

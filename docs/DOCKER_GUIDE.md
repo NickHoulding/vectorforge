@@ -929,7 +929,7 @@ docker run --rm -p 3001:3001 vectorforge:latest
 ```bash
 curl http://localhost:3001/health
 
-# Expected: {"status":"healthy","version":"0.9.0"}
+# Expected: {"status":"healthy","version":"1.0.0"}
 
 curl http://localhost:3001/health/ready
 

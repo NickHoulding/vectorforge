@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -103,20 +101,20 @@ class HNSWConfigUpdate(BaseModel):
         }
     )
 
-    space: Optional[str] = Field(
+    space: str | None = Field(
         default="cosine", description="Distance metric (cosine, l2, ip)"
     )
-    ef_construction: Optional[int] = Field(
+    ef_construction: int | None = Field(
         default=100, description="Build-time search depth"
     )
-    ef_search: Optional[int] = Field(default=100, description="Query-time search depth")
-    max_neighbors: Optional[int] = Field(
+    ef_search: int | None = Field(default=100, description="Query-time search depth")
+    max_neighbors: int | None = Field(
         default=16, description="Maximum connections per node (M)"
     )
-    resize_factor: Optional[float] = Field(
+    resize_factor: float | None = Field(
         default=1.2, description="Dynamic index growth factor"
     )
-    sync_threshold: Optional[int] = Field(
+    sync_threshold: int | None = Field(
         default=1000, description="Batch size for persistence"
     )
 

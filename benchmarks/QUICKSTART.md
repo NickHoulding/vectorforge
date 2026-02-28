@@ -144,11 +144,11 @@ cd python
 uv run pytest benchmarks/test_search_benchmarks.py -k "small or medium" --benchmark-only
 
 # Full benchmark suite (takes ~5-10 minutes)
-uv run pytest benchmarks/ --benchmark-only --benchmark-save=v0.9.0
+uv run pytest benchmarks/ --benchmark-only --benchmark-save=v1.0.0
 
 # Compare after optimization
 # ... make changes ...
-uv run pytest benchmarks/ --benchmark-only --benchmark-compare=v0.9.0
+uv run pytest benchmarks/ --benchmark-only --benchmark-compare=v1.0.0
 ```
 
 ## Troubleshooting

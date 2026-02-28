@@ -1,6 +1,6 @@
 """Pydantic models for collection management."""
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -26,15 +26,15 @@ class CollectionCreateRequest(BaseModel):
         pattern=r"^[a-zA-Z0-9_-]+$",
         description="Collection name (alphanumeric, _, - only)",
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None,
         max_length=VFGConfig.MAX_DESCRIPTION_LENGTH,
         description="Human-readable description",
     )
-    hnsw_config: Optional[HNSWConfigUpdate] = Field(
+    hnsw_config: HNSWConfigUpdate | None = Field(
         None, description="HNSW index configuration"
     )
-    metadata: Optional[dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         None, description="Custom metadata key-value pairs"
     )
 
@@ -67,7 +67,7 @@ class CollectionInfo(BaseModel):
     id: str = Field(..., description="ChromaDB collection UUID")
     document_count: int = Field(..., description="Number of documents", ge=0)
     created_at: str = Field(..., description="Creation timestamp (ISO format)")
-    description: Optional[str] = Field(None, description="Human-readable description")
+    description: str | None = Field(None, description="Human-readable description")
     hnsw_config: HNSWConfig = Field(..., description="HNSW index configuration")
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Custom metadata"

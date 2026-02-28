@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import cast
 
 import fitz
 from fastapi import UploadFile
@@ -74,7 +74,7 @@ def chunk_text(
     text: str,
     chunk_size: int = VFGConfig.DEFAULT_CHUNK_SIZE,
     overlap: int = VFGConfig.DEFAULT_CHUNK_OVERLAP,
-) -> List[str]:
+) -> list[str]:
     """Split text into overlapping chunks for semantic processing.
 
     Divides a long text document into smaller chunks with configurable size and
@@ -102,15 +102,15 @@ def chunk_text(
     if overlap >= chunk_size:
         raise ValueError("overlap must be less than chunk_size")
 
-    chunks: List[str] = []
+    chunks: list[str] = []
     start: int = 0
 
     while start < len(text):
         end: int = min(start + chunk_size, len(text))
-        chunk_text: str = text[start:end].strip()
+        chunk: str = text[start:end].strip()
 
-        if chunk_text:
-            chunks.append(chunk_text)
+        if chunk:
+            chunks.append(chunk)
 
         start = end - overlap if end < len(text) else len(text)
 

@@ -354,7 +354,7 @@ class VectorEngine:
 
         self.metrics.docs_added += 1
         self.metrics.total_doc_size_bytes += len(content)
-        self.metrics.last_doc_added_at = datetime.now().isoformat()
+        self.metrics.last_doc_added_at = datetime.now(timezone.utc).isoformat()
 
         # Update peak document count
         current_count = self.collection.count()
@@ -364,7 +364,9 @@ class VectorEngine:
         if metadata and metadata.get("source_file"):
             if metadata.get("chunk_index") == 0:
                 self.metrics.files_uploaded += 1
-                self.metrics.last_file_uploaded_at = datetime.now().isoformat()
+                self.metrics.last_file_uploaded_at = datetime.now(
+                    timezone.utc
+                ).isoformat()
 
             self.metrics.chunks_created += 1
 
@@ -520,7 +522,7 @@ class VectorEngine:
     def _update_query_metrics(self, elapsed_ms: float) -> None:
         """Helper to update query metrics."""
         self.metrics.total_query_time_ms += elapsed_ms
-        self.metrics.last_query_at = datetime.now().isoformat()
+        self.metrics.last_query_at = datetime.now(timezone.utc).isoformat()
         self.metrics.query_times.append(elapsed_ms)
 
         if len(self.metrics.query_times) > self.metrics.max_query_history:
