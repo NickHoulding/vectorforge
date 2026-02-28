@@ -23,8 +23,8 @@ class CollectionCreateRequest(BaseModel):
         ...,
         min_length=VFGConfig.MIN_COLLECTION_NAME_LENGTH,
         max_length=VFGConfig.MAX_COLLECTION_NAME_LENGTH,
-        pattern=r"^[a-zA-Z0-9_-]+$",
-        description="Collection name (alphanumeric, _, - only)",
+        pattern=VFGConfig.COLLECTION_NAME_PATTERN,
+        description="Collection name (alphanumeric, _, - only; must start and end with alphanumeric)",
     )
     description: str | None = Field(
         None,

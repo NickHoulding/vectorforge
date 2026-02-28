@@ -121,6 +121,9 @@ class VFGConfig:
     MAX_DESCRIPTION_LENGTH: int = 500
     """Maximum character length of a collection's description."""
 
+    COLLECTION_NAME_PATTERN: str = r"^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$"
+    """Regex pattern for valid collection names."""
+
     MAX_METADATA_PAIRS: int = 20
     """Maximum number of key-value pairs for collection metadata."""
 

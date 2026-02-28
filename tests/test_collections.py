@@ -822,3 +822,147 @@ def test_create_collection_metadata_key_with_vf_prefix_survives(
     data = client.get("/collections/prefix_col").json()
     assert data["description"] == "the real description"
     assert data["metadata"]["vf:description"] == "user value, not internal"
+
+
+def test_delete_and_recreate_same_name_starts_empty(client: TestClient) -> None:
+    """Re-creating a collection with the same name after deletion starts with 0 documents.
+
+    Guards against silent data-bleed where ChromaDB might retain data from a
+    previously deleted collection that shares the same name.
+    """
+    client.post("/collections", json={"name": "recycle_col"})
+    for i in range(3):
+        client.post(
+            "/collections/recycle_col/documents",
+            json={"content": f"leftover doc {i}", "metadata": {}},
+        )
+    assert client.get("/collections/recycle_col").json()["document_count"] == 3
+
+    client.delete("/collections/recycle_col?confirm=true")
+
+    client.post("/collections", json={"name": "recycle_col"})
+    data = client.get("/collections/recycle_col").json()
+    assert data["document_count"] == 0
+
+
+def test_create_collection_empty_description_returns_null(client: TestClient) -> None:
+    """An empty-string description is treated as absent and returned as null.
+
+    The manager uses ``if description:`` which is falsy for ``""``, so the
+    empty string is never stored and the response carries ``description: null``.
+    This test pins that intentional (if surprising) behaviour.
+    """
+    response = client.post(
+        "/collections", json={"name": "empty_desc_col", "description": ""}
+    )
+    assert response.status_code == 201
+    assert response.json()["collection"]["description"] is None
+
+
+def test_create_collection_metadata_null_value_coerced_to_string(
+    client: TestClient,
+) -> None:
+    """A JSON null metadata value is coerced to the string ``"None"``.
+
+    The manager calls ``str(value)`` unconditionally, so ``None`` becomes the
+    four-character string ``"None"``.  This test pins that behaviour so any
+    future change (e.g. filtering nulls) is caught explicitly.
+    """
+    payload = {"name": "null_meta_col", "metadata": {"key": None}}
+    response = client.post("/collections", json=payload)
+    assert response.status_code == 201
+    assert response.json()["collection"]["metadata"]["key"] == "None"
+
+
+def test_create_collection_hnsw_space_l2_round_trips(client: TestClient) -> None:
+    """A non-default HNSW space (``l2``) is stored and returned correctly.
+
+    All other HNSW tests use the default ``cosine`` space; this test verifies
+    that the ``space`` field is not hard-coded anywhere in the pipeline.
+    """
+    payload = {"name": "l2_space_col", "hnsw_config": {"space": "l2"}}
+    response = client.post("/collections", json=payload)
+    assert response.status_code == 201
+    assert response.json()["collection"]["hnsw_config"]["space"] == "l2"
+
+    get_data = client.get("/collections/l2_space_col").json()
+    assert get_data["hnsw_config"]["space"] == "l2"
+
+
+def test_create_collection_name_with_dot_returns_422(client: TestClient) -> None:
+    """A name containing a dot is rejected by the regex validator (HTTP 422)."""
+    response = client.post("/collections", json={"name": "my.col"})
+    assert response.status_code == 422
+
+
+def test_create_collection_name_with_slash_returns_422(client: TestClient) -> None:
+    """A name containing a slash in the POST body is rejected (HTTP 422)."""
+    response = client.post("/collections", json={"name": "my/col"})
+    assert response.status_code == 422
+
+
+def test_create_collection_name_with_spaces_returns_422(client: TestClient) -> None:
+    """A name containing spaces is rejected by the regex validator (HTTP 422)."""
+    response = client.post("/collections", json={"name": "my col"})
+    assert response.status_code == 422
+
+
+def test_create_collection_name_with_unicode_returns_422(client: TestClient) -> None:
+    """A name containing non-ASCII characters is rejected (HTTP 422)."""
+    response = client.post("/collections", json={"name": "café"})
+    assert response.status_code == 422
+
+
+def test_create_collection_name_leading_hyphen_returns_422(client: TestClient) -> None:
+    """A name starting with a hyphen is rejected with 422.
+
+    ChromaDB requires names to start with ``[a-zA-Z0-9]``; the Pydantic regex
+    mirrors this constraint so the error is caught before reaching ChromaDB.
+    """
+    response = client.post("/collections", json={"name": "-abc"})
+    assert response.status_code == 422
+
+
+def test_create_collection_name_leading_underscore_returns_422(
+    client: TestClient,
+) -> None:
+    """A name starting with an underscore is rejected with 422.
+
+    Same constraint as the leading-hyphen case: must start with ``[a-zA-Z0-9]``.
+    """
+    response = client.post("/collections", json={"name": "_abc"})
+    assert response.status_code == 422
+
+
+def test_create_collection_name_all_digits_succeeds(client: TestClient) -> None:
+    """A name composed entirely of digits is accepted by the regex."""
+    response = client.post("/collections", json={"name": "123"})
+    assert response.status_code == 201
+
+
+def test_create_collection_metadata_at_max_pairs_succeeds(client: TestClient) -> None:
+    """Metadata with exactly MAX_METADATA_PAIRS entries is accepted (HTTP 201).
+
+    Complements the existing over-limit test; together they pin the boundary.
+    """
+    at_limit = {f"key_{i}": f"val_{i}" for i in range(VFGConfig.MAX_METADATA_PAIRS)}
+    response = client.post(
+        "/collections", json={"name": "max_meta_col", "metadata": at_limit}
+    )
+    assert response.status_code == 201
+    meta = response.json()["collection"]["metadata"]
+    assert len(meta) == VFGConfig.MAX_METADATA_PAIRS
+
+
+def test_delete_collection_confirm_integer_one_succeeds(client: TestClient) -> None:
+    """``?confirm=1`` is coerced to ``True`` by FastAPI and permits deletion."""
+    client.post("/collections", json={"name": "int_confirm_col"})
+    response = client.delete("/collections/int_confirm_col", params={"confirm": 1})
+    assert response.status_code == 200
+
+
+def test_delete_collection_confirm_integer_zero_returns_400(client: TestClient) -> None:
+    """``?confirm=0`` is coerced to ``False`` by FastAPI and blocks deletion."""
+    client.post("/collections", json={"name": "int_zero_col"})
+    response = client.delete("/collections/int_zero_col", params={"confirm": 0})
+    assert response.status_code == 400

@@ -104,9 +104,9 @@ class CollectionManager:
                 f"Collection name must be at most {VFGConfig.MAX_COLLECTION_NAME_LENGTH} characters"
             )
 
-        if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        if not re.match(VFGConfig.COLLECTION_NAME_PATTERN, name):
             raise ValueError(
-                "Collection name must contain only alphanumeric characters, underscores, and hyphens"
+                "Collection name must start and end with an alphanumeric character and contain only alphanumeric characters, underscores, and hyphens"
             )
 
     def collection_exists(self, name: str) -> bool:
