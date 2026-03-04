@@ -1,3 +1,5 @@
+"""Pydantic request and response models for document management."""
+
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field

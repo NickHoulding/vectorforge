@@ -1,3 +1,5 @@
+"""MCP tools for uploading, listing, and deleting indexed files."""
+
 import os
 from typing import Any
 

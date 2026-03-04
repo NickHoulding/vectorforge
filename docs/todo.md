@@ -1,5 +1,5 @@
 ## Todo
-- [ ] **Deploy on DigitalOcean**
+- [ ] **Create __slots__ for VectorEngine class for memory efficiency**
 - [ ] **Pivot metric persistence for lifetime tracking instead of current session-scoped setup**
 - [ ] **Work on updating benchmark suite to benchmark new ChromaDB integrated version**
 

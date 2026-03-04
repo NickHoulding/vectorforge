@@ -1,10 +1,4 @@
-"""Document Management Endpoints
-
-Covers:
-    POST   /collections/{collection_name}/documents
-    GET    /collections/{collection_name}/documents/{doc_id}
-    DELETE /collections/{collection_name}/documents/{doc_id}
-"""
+"""FastAPI router for document CRUD endpoints."""
 
 from typing import Any
 

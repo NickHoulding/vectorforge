@@ -1,10 +1,4 @@
-"""File Management Endpoints
-
-Covers:
-    GET    /collections/{collection_name}/files/list
-    POST   /collections/{collection_name}/files/upload
-    DELETE /collections/{collection_name}/files/{filename}
-"""
+"""File upload, listing, and deletion endpoints for collections."""
 
 from typing import Any
 

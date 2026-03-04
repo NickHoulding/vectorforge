@@ -1,3 +1,5 @@
+"""MCP tools for retrieving index statistics."""
+
 from typing import Any
 
 from vectorforge.api import index

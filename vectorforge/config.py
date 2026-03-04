@@ -1,3 +1,5 @@
+"""Central configuration for VectorForge, loaded from environment variables."""
+
 import os
 
 

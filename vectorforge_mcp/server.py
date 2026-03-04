@@ -1,3 +1,5 @@
+"""MCP server entry point — registers all tool modules and runs the server."""
+
 import logging
 
 from vectorforge_mcp.config import MCPConfig

@@ -1,9 +1,4 @@
-"""Search Endpoints
-
-Covers:
-    POST /collections/{collection_name}/search
-    POST /collections/{collection_name}/search  (with filters)
-"""
+"""Semantic search endpoints for querying collections."""
 
 from fastapi import APIRouter
 

@@ -1,11 +1,4 @@
-"""Health and Metrics Endpoints
-
-Covers:
-    GET /health
-    GET /health/ready
-    GET /health/live
-    GET /collections/{collection_name}/metrics
-"""
+"""Health check and metrics endpoints."""
 
 from typing import Any
 
@@ -31,24 +24,10 @@ router: APIRouter = APIRouter()
 @router.get("/health")
 @handle_api_errors
 def check_health() -> dict[str, Any]:
-    """
-    API health check
-
-    Simple endpoint to verify the API is running and responsive. Returns a
-    success status for monitoring and load balancer health checks.
+    """Verify the API is running and return basic health information.
 
     Returns:
-        dict: Health status object
-
-    Example Response:
-        ```json
-        {
-            "status": "healthy",
-            "version": "1.0.0",
-            "chromadb_heartbeat": 1234567890,
-            "total_collections": 5
-        }
-        ```
+        Dictionary with status, version, chromadb_heartbeat, and total_collections.
     """
     default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
     heartbeat = default_engine.chroma_client.heartbeat()
@@ -67,9 +46,12 @@ async def readiness_check() -> dict[str, str | int]:
     """Readiness probe for container orchestration.
 
     Checks if VectorForge is fully initialized and ready to handle requests.
-    Returns 200 if ready, 503 if not ready.
 
-    Used by Docker/Kubernetes to know when to send traffic to this container.
+    Returns:
+        Dictionary with status, document count, and model name.
+
+    Raises:
+        HTTPException: 503 if the service is not yet ready.
     """
     try:
         default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
@@ -89,8 +71,10 @@ async def readiness_check() -> dict[str, str | int]:
 async def liveness_check() -> dict[str, str]:
     """Liveness probe for container orchestration.
 
-    Simple check that the API is responding.
-    Returns 200 if alive, used by Docker/Kubernetes to detect hung processes.
+    Simple check used by Docker/Kubernetes to detect hung processes.
+
+    Returns:
+        Dictionary with a static alive status.
     """
     return {"status": "alive"}
 
@@ -99,28 +83,21 @@ async def liveness_check() -> dict[str, str]:
 @require_collection
 @handle_api_errors
 def get_collection_metrics(collection_name: str) -> MetricsResponse:
-    """
-    Get comprehensive metrics for a specific collection
+    """Return comprehensive metrics for a specific collection.
 
-    Returns detailed performance, usage, and system statistics including:
-    - Index statistics (documents)
-    - Performance metrics (query times, percentiles)
-    - Usage statistics (operations performed, document sizes)
-    - System information and uptime
-    - ChromaDB statistics (version, storage, collection info)
-
-    This endpoint provides complete observability into the vector engine's state
-    and performance characteristics for a specific collection.
+    Gathers index statistics, query performance, usage counters, system info,
+    and ChromaDB storage details for the named collection.
 
     Args:
-        collection_name: Name of the collection
+        collection_name: Name of the collection to query.
 
     Returns:
-        MetricsResponse: Comprehensive metrics across all categories
+        MetricsResponse with index, performance, usage, timestamps, system,
+        and chromadb sub-objects.
 
     Raises:
-        HTTPException: 404 if collection not found
-        HTTPException: 500 if metrics collection fails
+        HTTPException: 404 if the collection does not exist.
+        HTTPException: 500 if metrics collection fails.
     """
     engine = manager.get_engine(collection_name)
     metrics: dict[str, Any] = engine.get_metrics()

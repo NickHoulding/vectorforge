@@ -17,7 +17,14 @@ import sys
 
 
 def run_command(cmd: list[str]) -> int:
-    """Run a command and return exit code."""
+    """Run a subprocess command and return its exit code.
+
+    Args:
+        cmd: Command and arguments to execute as a list of strings.
+
+    Returns:
+        Exit code returned by the subprocess.
+    """
     print(f"Running: {' '.join(cmd)}")
     print("-" * 80)
     result = subprocess.run(cmd)
@@ -27,7 +34,11 @@ def run_command(cmd: list[str]) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(
+    """Parse CLI arguments and run the selected VectorForge benchmarks.
+
+    Returns:
+        Exit code from the underlying pytest benchmark run.
+    """
         description="VectorForge Benchmark Runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""

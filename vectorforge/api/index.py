@@ -1,9 +1,4 @@
-"""Index Management Endpoints
-
-Covers:
-    GET /collections/{collection_name}/stats
-    PUT /collections/{collection_name}/config/hnsw?confirm=true
-"""
+"""Index statistics and HNSW configuration endpoints for collections."""
 
 from typing import Any
 

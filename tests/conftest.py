@@ -28,7 +28,15 @@ def anyio_backend() -> str:
 
 @pytest.fixture(autouse=True)
 def use_temp_chroma_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[str, Any, None]:
+    """Redirect ChromaDB to a temporary directory for each test.
 
+    Automatically runs before every test. Sets the CHROMA_DATA_DIR environment
+    variable to a fresh temporary path so each test gets isolated on-disk storage
+    that is cleaned up automatically on teardown.
+
+    Yields:
+        Absolute path to the temporary ChromaDB directory.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         chroma_path = os.path.join(tmpdir, "chroma_test")
         monkeypatch.setenv("CHROMA_DATA_DIR", chroma_path)
@@ -118,7 +126,11 @@ def vector_engine(
 
 @pytest.fixture
 def sample_doc() -> dict[str, Any]:
-    """Reusable sample document data"""
+    """Provide a minimal reusable sample document for tests.
+
+    Returns:
+        Dictionary with 'content' and 'metadata' keys.
+    """
     return {
         "content": "This is a test document content",
         "metadata": {"source_file": "test.txt", "chunk_index": 0},

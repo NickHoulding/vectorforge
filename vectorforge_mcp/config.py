@@ -1,3 +1,5 @@
+"""Configuration for the VectorForge MCP server, loaded from environment variables."""
+
 import logging
 
 

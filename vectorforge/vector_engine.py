@@ -1,3 +1,8 @@
+"""Core vector engine backed by ChromaDB and sentence-transformers.
+
+Contains VectorEngine and EngineMetrics for document storage, embedding, and semantic search.
+"""
+
 import logging
 import os
 import time
@@ -520,7 +525,11 @@ class VectorEngine:
         }
 
     def _update_query_metrics(self, elapsed_ms: float) -> None:
-        """Helper to update query metrics."""
+        """Record a completed query's execution time in the rolling metrics window.
+
+        Args:
+            elapsed_ms: Query duration in milliseconds.
+        """
         self.metrics.total_query_time_ms += elapsed_ms
         self.metrics.last_query_at = datetime.now(timezone.utc).isoformat()
         self.metrics.query_times.append(elapsed_ms)

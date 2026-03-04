@@ -1,3 +1,5 @@
+"""API server configuration loaded from environment variables."""
+
 import os
 
 

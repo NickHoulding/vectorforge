@@ -1,3 +1,5 @@
+"""MCP tools for system health checks and metrics."""
+
 from typing import Any
 
 from vectorforge.api import system

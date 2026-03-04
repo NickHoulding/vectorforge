@@ -1,3 +1,5 @@
+"""MCP tools for semantic search across indexed documents."""
+
 from typing import Any
 
 from vectorforge.api import search

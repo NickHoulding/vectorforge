@@ -1,3 +1,5 @@
+"""Pydantic models for index statistics and HNSW configuration."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 

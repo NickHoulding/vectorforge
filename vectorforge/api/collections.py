@@ -1,13 +1,6 @@
-"""Collection Management Endpoints
+"""FastAPI router for collection management endpoints.
 
-Provides REST API for creating, listing, and deleting collections.
-Enables multi-tenancy and multi-index use cases.
-
-Covers:
-    GET    /collections
-    POST   /collections
-    GET    /collections/{name}
-    DELETE /collections/{name}?confirm=true
+Handles create, list, get, and delete operations for named collections.
 """
 
 from fastapi import APIRouter, HTTPException, Query, status

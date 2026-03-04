@@ -1,3 +1,5 @@
+"""Pydantic models for system and collection metrics responses."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 

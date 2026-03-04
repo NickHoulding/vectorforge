@@ -1,3 +1,5 @@
+"""Text extraction and chunking utilities for document pre-processing."""
+
 from typing import cast
 
 import fitz

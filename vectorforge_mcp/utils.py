@@ -1,3 +1,5 @@
+"""Shared response-building helpers for MCP tool handlers."""
+
 from typing import Any
 
 from fastapi import HTTPException

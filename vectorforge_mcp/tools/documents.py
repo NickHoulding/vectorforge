@@ -1,3 +1,5 @@
+"""MCP tools for managing VectorForge documents."""
+
 from typing import Any
 
 from vectorforge.api import documents

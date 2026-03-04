@@ -1,3 +1,5 @@
+"""Pydantic model and validator for user-supplied collection metadata."""
+
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator

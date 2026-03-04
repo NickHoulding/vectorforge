@@ -1,9 +1,4 @@
-"""
-VectorForge API Models
-
-Pydantic models for request/response validation organized by domain.
-All models are re-exported here for backward compatibility.
-"""
+"""Pydantic models for request/response validation, organized by domain and re-exported here."""
 
 from .collections import (
     CollectionCreateRequest,

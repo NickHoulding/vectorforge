@@ -1,3 +1,5 @@
+"""Pydantic request and response models for file upload and deletion."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
