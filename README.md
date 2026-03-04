@@ -22,7 +22,6 @@
 - [Usage](#usage)
 - [Development Process](#development-process)
 - [Known Limitations](#known-limitations--future-improvements)
-- [Contributing](#contributing)
 - [License](#license)
 
 ---
