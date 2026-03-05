@@ -125,7 +125,7 @@ def get_collection_metrics(collection_name: str) -> MetricsResponse:
         total_doc_size_bytes=metrics["total_doc_size_bytes"],
     )
     timestamp_metrics: TimestampMetrics = TimestampMetrics(
-        engine_created_at=metrics["created_at"],
+        engine_created_at=metrics["lifetime_created_at"],
         last_query_at=metrics["last_query_at"],
         last_document_added_at=metrics["last_doc_added_at"],
         last_file_uploaded_at=metrics["last_file_uploaded_at"],

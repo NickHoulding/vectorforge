@@ -5,8 +5,10 @@ import uuid
 from collections import deque
 from datetime import datetime
 
+import chromadb
 import numpy as np
 import pytest
+from chromadb.api.shared_system_client import SharedSystemClient
 
 from vectorforge.config import VFGConfig
 from vectorforge.vector_engine import EngineMetrics, VectorEngine
@@ -863,7 +865,7 @@ def test_get_metrics_includes_all_categories(vector_engine):
     assert "docs_added" in metrics
     assert "total_documents" in metrics
     assert "model_name" in metrics
-    assert "created_at" in metrics
+    assert "lifetime_created_at" in metrics
 
 
 def test_get_metrics_includes_query_stats(vector_engine):
@@ -909,10 +911,10 @@ def test_get_metrics_includes_timestamps(vector_engine):
 
     metrics = vector_engine.get_metrics()
 
-    assert "created_at" in metrics
+    assert "lifetime_created_at" in metrics
     assert "last_query_at" in metrics
     assert "last_doc_added_at" in metrics
-    assert metrics["created_at"] is not None
+    assert metrics["lifetime_created_at"] is not None
     assert metrics["last_query_at"] is not None
 
 
@@ -1000,7 +1002,7 @@ def test_engine_metrics_initialization():
     assert metrics.total_doc_size_bytes == 0
     assert metrics.last_query_at is None
     assert metrics.last_doc_added_at is None
-    assert metrics.created_at is not None
+    assert metrics.lifetime_created_at is not None
 
 
 def test_engine_metrics_to_dict():
@@ -1032,10 +1034,10 @@ def test_engine_metrics_query_times_max_history():
 
 
 def test_engine_metrics_created_at_is_iso_format():
-    """Test that created_at timestamp is in ISO format."""
+    """Test that lifetime_created_at timestamp is in ISO format."""
     metrics = EngineMetrics()
 
-    created = datetime.fromisoformat(metrics.created_at)
+    created = datetime.fromisoformat(metrics.lifetime_created_at)
     assert created is not None
 
 
@@ -1542,3 +1544,181 @@ def test_update_hnsw_config_raises_if_already_in_progress(vector_engine):
             vector_engine.update_hnsw_config({"ef_search": 150})
     finally:
         vector_engine.migration_in_progress = False
+
+
+# =============================================================================
+# Lifetime Persistence Tests
+# =============================================================================
+
+
+def test_metrics_persist_after_engine_restart(shared_model, use_temp_chroma_dir):
+    """Counters survive engine restart by loading from SQLite on re-init."""
+    # First engine instance
+    client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection1 = client1.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine1 = VectorEngine(
+        collection=collection1, model=shared_model, chroma_client=client1
+    )
+
+    engine1.add_doc("First document", {"source_file": "a.txt", "chunk_index": 0})
+    engine1.add_doc("Second document", {"source_file": "a.txt", "chunk_index": 1})
+    engine1.search("document")
+    engine1.search("first")
+
+    assert engine1.metrics.docs_added == 2
+    assert engine1.metrics.total_queries == 2
+
+    SharedSystemClient.clear_system_cache()
+
+    # Second engine instance (restart)
+    client2 = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection2 = client2.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine2 = VectorEngine(
+        collection=collection2, model=shared_model, chroma_client=client2
+    )
+
+    assert engine2.metrics.docs_added == 2, "docs_added should survive restart"
+    assert engine2.metrics.total_queries == 2, "total_queries should survive restart"
+    assert engine2.metrics.files_uploaded == 1, "files_uploaded should survive restart"
+    assert engine2.metrics.chunks_created == 2, "chunks_created should survive restart"
+
+    SharedSystemClient.clear_system_cache()
+
+
+def test_lifetime_created_at_persists_across_restart(shared_model, use_temp_chroma_dir):
+    """lifetime_created_at from the first init is preserved after restart."""
+    client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection1 = client1.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine1 = VectorEngine(
+        collection=collection1, model=shared_model, chroma_client=client1
+    )
+    original_created_at = engine1.metrics.lifetime_created_at
+
+    SharedSystemClient.clear_system_cache()
+
+    client2 = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection2 = client2.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine2 = VectorEngine(
+        collection=collection2, model=shared_model, chroma_client=client2
+    )
+
+    assert (
+        engine2.metrics.lifetime_created_at == original_created_at
+    ), "lifetime_created_at must not change on restart"
+
+    SharedSystemClient.clear_system_cache()
+
+
+def test_query_times_deque_is_session_scoped(shared_model, use_temp_chroma_dir):
+    """query_times rolling window resets on restart; lifetime totals do not."""
+    client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection1 = client1.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine1 = VectorEngine(
+        collection=collection1, model=shared_model, chroma_client=client1
+    )
+    engine1.add_doc("Some content", {})
+    engine1.search("content")
+    engine1.search("content")
+
+    assert len(engine1.metrics.query_times) == 2
+    assert engine1.metrics.total_queries == 2
+    assert engine1.metrics.total_query_time_ms > 0
+
+    saved_total_time = engine1.metrics.total_query_time_ms
+    SharedSystemClient.clear_system_cache()
+
+    client2 = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection2 = client2.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine2 = VectorEngine(
+        collection=collection2, model=shared_model, chroma_client=client2
+    )
+
+    # Session-scoped deque resets to empty.
+    assert (
+        len(engine2.metrics.query_times) == 0
+    ), "query_times deque should reset on restart"
+    # Lifetime counters persist.
+    assert engine2.metrics.total_queries == 2, "total_queries should persist"
+    assert engine2.metrics.total_query_time_ms == pytest.approx(
+        saved_total_time, rel=1e-6
+    )
+
+    SharedSystemClient.clear_system_cache()
+
+
+def test_delete_metrics_persist_after_restart(shared_model, use_temp_chroma_dir):
+    """docs_deleted and total_doc_size_bytes survive an engine restart."""
+    client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection1 = client1.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine1 = VectorEngine(
+        collection=collection1, model=shared_model, chroma_client=client1
+    )
+    doc_id = engine1.add_doc("Content to delete", {})
+    engine1.delete_doc(doc_id)
+
+    assert engine1.metrics.docs_added == 1
+    assert engine1.metrics.docs_deleted == 1
+
+    SharedSystemClient.clear_system_cache()
+
+    client2 = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    collection2 = client2.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    engine2 = VectorEngine(
+        collection=collection2, model=shared_model, chroma_client=client2
+    )
+
+    assert engine2.metrics.docs_added == 1, "docs_added should persist"
+    assert engine2.metrics.docs_deleted == 1, "docs_deleted should persist"
+    assert (
+        engine2.metrics.total_doc_size_bytes == 0
+    ), "total_doc_size_bytes should persist"
+
+    SharedSystemClient.clear_system_cache()
+
+
+def test_cumulative_metrics_accumulate_across_multiple_restarts(
+    shared_model, use_temp_chroma_dir
+):
+    """Counters accumulate correctly across three successive engine restarts."""
+    for session in range(3):
+        SharedSystemClient.clear_system_cache()
+        client = chromadb.PersistentClient(path=use_temp_chroma_dir)
+        collection = client.get_or_create_collection(
+            name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+        )
+        engine = VectorEngine(
+            collection=collection, model=shared_model, chroma_client=client
+        )
+        engine.add_doc(f"Session {session} document", {})
+        engine.search("document")
+
+    # After 3 sessions, counters should reflect all three.
+    SharedSystemClient.clear_system_cache()
+    final_client = chromadb.PersistentClient(path=use_temp_chroma_dir)
+    final_collection = final_client.get_or_create_collection(
+        name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    final_engine = VectorEngine(
+        collection=final_collection, model=shared_model, chroma_client=final_client
+    )
+
+    assert final_engine.metrics.docs_added == 3, "3 docs across 3 sessions"
+    assert final_engine.metrics.total_queries == 3, "3 queries across 3 sessions"
+
+    SharedSystemClient.clear_system_cache()

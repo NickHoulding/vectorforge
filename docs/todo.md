@@ -1,5 +1,4 @@
 ## Todo
-- [ ] **Pivot metric persistence for lifetime tracking instead of current session-scoped setup**
 - [ ] **Work on updating benchmark suite to benchmark new ChromaDB integrated version**
 
 ### README Todos

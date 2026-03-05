@@ -19,6 +19,7 @@ from sentence_transformers import SentenceTransformer
 
 from vectorforge import __version__
 from vectorforge.config import VFGConfig
+from vectorforge.metrics_store import MetricsStore
 from vectorforge.models import SearchResult
 
 logger = logging.getLogger(__name__)
@@ -33,30 +34,30 @@ class EngineMetrics:
     statistics, and timestamps for various engine operations.
 
     Note:
-        Metrics are SESSION-SCOPED and reset when the VectorEngine is reinitialized.
-        Only `total_documents` (retrieved from ChromaDB) persists across engine
-        restarts. All counters, timestamps, and performance history represent
-        activity during the current session.
+        Counters and timestamps use a **hybrid persistence model**:
 
-        This means:
-        - `docs_added` tracks documents added in this session (resets to 0)
-        - `total_documents` tracks all documents in ChromaDB (persists)
-        - After restart: `total_documents` may exceed `docs_added`
+        - ``total_queries``, ``docs_added``, ``docs_deleted``, ``chunks_created``,
+          ``files_uploaded``, ``total_query_time_ms``, ``total_doc_size_bytes``,
+          ``total_documents_peak``, ``lifetime_created_at``, and the ``last_*``
+          timestamps are **lifetime values** persisted in SQLite and survive engine
+          restarts.
+        - ``query_times`` (the rolling deque used for p50/p95/p99 computation) is
+          **session-scoped** and resets on restart.
 
     Attributes:
-        total_queries: Total number of search queries executed.
-        docs_added: Total number of documents added to the index.
-        docs_deleted: Total number of documents marked for deletion.
-        chunks_created: Total number of document chunks created from files.
-        files_uploaded: Total number of files uploaded and processed.
-        total_query_time_ms: Cumulative time spent on all queries in milliseconds.
-        total_doc_size_bytes: Total size of all document content in bytes.
-        total_documents_peak: Maximum number of documents reached during this session.
-        created_at: ISO timestamp when the engine was initialized.
+        total_queries: Lifetime count of search queries executed.
+        docs_added: Lifetime count of documents added to the index.
+        docs_deleted: Lifetime count of documents deleted from the index.
+        chunks_created: Lifetime count of document chunks created from files.
+        files_uploaded: Lifetime count of files uploaded and processed.
+        total_query_time_ms: Lifetime cumulative time spent on queries in milliseconds.
+        total_doc_size_bytes: Net size of all currently stored document content in bytes.
+        total_documents_peak: Lifetime maximum document count ever reached.
+        lifetime_created_at: ISO timestamp of first engine initialisation for this collection.
         last_query_at: ISO timestamp of the most recent query, or None.
         last_doc_added_at: ISO timestamp of the most recent document addition, or None.
         last_file_uploaded_at: ISO timestamp of the most recent file upload, or None.
-        query_times: Rolling window of recent query execution times in milliseconds.
+        query_times: Session-scoped rolling window of recent query times in milliseconds.
         max_query_history: Maximum number of query times to retain in the rolling window.
     """
 
@@ -75,14 +76,14 @@ class EngineMetrics:
     total_documents_peak: int = 0
 
     # Timestamps
-    created_at: str = field(
+    lifetime_created_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     last_query_at: str | None = None
     last_doc_added_at: str | None = None
     last_file_uploaded_at: str | None = None
 
-    # Query performance history
+    # Query performance history (session-scoped only)
     query_times: deque[float] = field(default_factory=deque)
     max_query_history: int = VFGConfig.MAX_QUERY_HISTORY
 
@@ -142,6 +143,7 @@ class VectorEngine:
         "metrics",
         "migration_in_progress",
         "chroma_path",
+        "_metrics_store",
     )
 
     def __init__(
@@ -165,7 +167,6 @@ class VectorEngine:
         self.model_name: str = VFGConfig.MODEL_NAME
         self.model: SentenceTransformer = model
         self.chroma_client = chroma_client
-        self.metrics: EngineMetrics = EngineMetrics()
         self.migration_in_progress: bool = False
 
         settings = getattr(chroma_client, "_settings", None)
@@ -173,6 +174,46 @@ class VectorEngine:
             self.chroma_path: str = settings.persist_directory
         else:
             self.chroma_path = VFGConfig.CHROMA_PERSIST_DIR
+
+        db_path = os.path.join(self.chroma_path, "metrics.db")
+        self._metrics_store: MetricsStore = MetricsStore(db_path)
+        self.metrics: EngineMetrics = self._load_metrics(collection.name)
+
+    def _load_metrics(self, collection_name: str) -> EngineMetrics:
+        """Load lifetime metrics from SQLite or seed a new zero row.
+
+        On first run for a collection, inserts a zero-valued row with the
+        current timestamp. On subsequent runs, restores all persisted counters
+        and timestamps into a fresh ``EngineMetrics`` instance (with an empty
+        session-scoped ``query_times`` deque).
+
+        Args:
+            collection_name: Name of the ChromaDB collection.
+
+        Returns:
+            ``EngineMetrics`` populated from the persisted row.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        self._metrics_store.insert(collection_name, now)
+        row = self._metrics_store.load(collection_name)
+
+        if row is None:
+            return EngineMetrics(lifetime_created_at=now)
+
+        return EngineMetrics(
+            total_queries=row.get("total_queries", 0),
+            docs_added=row.get("docs_added", 0),
+            docs_deleted=row.get("docs_deleted", 0),
+            chunks_created=row.get("chunks_created", 0),
+            files_uploaded=row.get("files_uploaded", 0),
+            total_query_time_ms=row.get("total_query_time_ms", 0.0),
+            total_doc_size_bytes=row.get("total_doc_size_bytes", 0),
+            total_documents_peak=row.get("total_documents_peak", 0),
+            lifetime_created_at=row.get("created_at", now),
+            last_query_at=row.get("last_query_at"),
+            last_doc_added_at=row.get("last_doc_added_at"),
+            last_file_uploaded_at=row.get("last_file_uploaded_at"),
+        )
 
     def search(
         self,
@@ -205,7 +246,6 @@ class VectorEngine:
             raise ValueError("Search query cannot be empty")
 
         start_time: float = time.perf_counter()
-        self.metrics.total_queries += 1
 
         if self.collection.count() == 0:
             elapsed_ms: float = (time.perf_counter() - start_time) * 1000
@@ -371,7 +411,6 @@ class VectorEngine:
         self.metrics.total_doc_size_bytes += len(content)
         self.metrics.last_doc_added_at = datetime.now(timezone.utc).isoformat()
 
-        # Update peak document count
         current_count = self.collection.count()
         if current_count > self.metrics.total_documents_peak:
             self.metrics.total_documents_peak = current_count
@@ -384,6 +423,19 @@ class VectorEngine:
                 ).isoformat()
 
             self.metrics.chunks_created += 1
+
+        self._metrics_store.save(
+            self.collection.name,
+            {
+                "docs_added": self.metrics.docs_added,
+                "total_doc_size_bytes": self.metrics.total_doc_size_bytes,
+                "last_doc_added_at": self.metrics.last_doc_added_at,
+                "total_documents_peak": self.metrics.total_documents_peak,
+                "files_uploaded": self.metrics.files_uploaded,
+                "last_file_uploaded_at": self.metrics.last_file_uploaded_at,
+                "chunks_created": self.metrics.chunks_created,
+            },
+        )
 
         return doc_id
 
@@ -412,6 +464,13 @@ class VectorEngine:
             )
             self.collection.delete(ids=[doc_id])
             self.metrics.docs_deleted += 1
+            self._metrics_store.save(
+                self.collection.name,
+                {
+                    "docs_deleted": self.metrics.docs_deleted,
+                    "total_doc_size_bytes": self.metrics.total_doc_size_bytes,
+                },
+            )
             success = True
 
         return success
@@ -466,7 +525,7 @@ class VectorEngine:
                 - Performance: avg/min/max/p50/p95/p99 query times
                 - Index stats: total_documents
                 - System info: model_name, model_dimension, uptime_seconds
-                - Timestamps: created_at, last_query_at, last_doc_added_at, etc.
+                - Timestamps: lifetime_created_at, last_query_at, last_doc_added_at, etc.
         """
         metrics_dict: dict[str, Any] = self.metrics.to_dict()
 
@@ -495,7 +554,7 @@ class VectorEngine:
 
         embedding_dim: int = self.model.get_sentence_embedding_dimension() or 0
 
-        created: datetime = datetime.fromisoformat(self.metrics.created_at)
+        created: datetime = datetime.fromisoformat(self.metrics.lifetime_created_at)
         uptime: float = (datetime.now(timezone.utc) - created).total_seconds()
 
         metrics_dict.update(
@@ -537,15 +596,28 @@ class VectorEngine:
     def _update_query_metrics(self, elapsed_ms: float) -> None:
         """Record a completed query's execution time in the rolling metrics window.
 
+        Also increments the lifetime ``total_queries`` counter and flushes
+        cumulative counters to SQLite for persistence across restarts.
+
         Args:
             elapsed_ms: Query duration in milliseconds.
         """
+        self.metrics.total_queries += 1
         self.metrics.total_query_time_ms += elapsed_ms
         self.metrics.last_query_at = datetime.now(timezone.utc).isoformat()
         self.metrics.query_times.append(elapsed_ms)
 
         if len(self.metrics.query_times) > self.metrics.max_query_history:
             self.metrics.query_times.popleft()
+
+        self._metrics_store.save(
+            self.collection.name,
+            {
+                "total_queries": self.metrics.total_queries,
+                "total_query_time_ms": self.metrics.total_query_time_ms,
+                "last_query_at": self.metrics.last_query_at,
+            },
+        )
 
     def _get_chromadb_disk_size(self) -> tuple[int, float]:
         """Calculate total disk usage of ChromaDB data directory.

@@ -10,31 +10,37 @@ class IndexMetrics(BaseModel):
 
     Attributes:
         total_documents: Active documents currently in the index.
-        total_documents_peak: Maximum document count reached during this session.
+        total_documents_peak: Lifetime maximum document count ever reached.
     """
 
     total_documents: int = Field(..., description="Active documents in index")
     total_documents_peak: int = Field(
-        ..., ge=0, description="Peak document count this session"
+        ..., ge=0, description="Lifetime peak document count"
     )
 
 
 class PerformanceMetrics(BaseModel):
     """Query execution performance statistics.
 
-    Comprehensive metrics about search query performance, including average,
-    minimum, maximum, and percentile latencies. Useful for monitoring and
-    optimizing search performance.
+    Comprehensive lifetime metrics about search query performance, including
+    average, minimum, maximum, and percentile latencies. Useful for monitoring
+    and optimizing search performance.
+
+    Note:
+        ``total_queries`` and ``total_query_time_ms`` are lifetime counters that
+        persist across restarts. Percentile values (p50/p95/p99) and min/max are
+        computed from a session-scoped rolling window of the last
+        ``MAX_QUERY_HISTORY`` queries and reset on engine restart.
 
     Attributes:
-        total_queries: Cumulative count of search queries executed.
+        total_queries: Lifetime count of search queries executed.
         avg_query_time_ms: Mean query execution time in milliseconds.
-        total_query_time_ms: Sum of all query execution times.
-        min_query_time_ms: Fastest query execution time (if queries exist).
-        max_query_time_ms: Slowest query execution time (if queries exist).
-        p50_query_time_ms: Median query time (50th percentile).
-        p95_query_time_ms: 95th percentile query time.
-        p99_query_time_ms: 99th percentile query time.
+        total_query_time_ms: Lifetime sum of all query execution times.
+        min_query_time_ms: Fastest query in the current session window (if queries exist).
+        max_query_time_ms: Slowest query in the current session window (if queries exist).
+        p50_query_time_ms: Median query time (50th percentile) for current session window.
+        p95_query_time_ms: 95th percentile query time for current session window.
+        p99_query_time_ms: 99th percentile query time for current session window.
     """
 
     total_queries: int = Field(..., description="Total queries executed")
@@ -50,16 +56,15 @@ class PerformanceMetrics(BaseModel):
 class UsageMetrics(BaseModel):
     """System operation and usage statistics.
 
-    Tracks the volume of various operations performed on the vector database.
-    With ChromaDB, compaction is handled internally so compaction counts are
-    not tracked.
+    Tracks lifetime counts of various operations performed on the vector
+    database. All counters persist across engine restarts.
 
     Attributes:
-        documents_added: Total number of documents added to the index.
-        documents_deleted: Total number of documents deleted from the index.
-        chunks_created: Total document chunks created from file uploads.
-        files_uploaded: Total number of files processed and indexed.
-        total_doc_size_bytes: Total size of all document content in bytes.
+        documents_added: Lifetime count of documents added to the index.
+        documents_deleted: Lifetime count of documents deleted from the index.
+        chunks_created: Lifetime count of document chunks created from file uploads.
+        files_uploaded: Lifetime count of files processed and indexed.
+        total_doc_size_bytes: Net size of all currently stored document content in bytes.
     """
 
     documents_added: int = Field(..., description="Total documents added")
@@ -75,11 +80,11 @@ class TimestampMetrics(BaseModel):
     """Event timestamps for monitoring and debugging.
 
     Tracks when key operations occurred in the vector database lifecycle.
-    With ChromaDB, compaction is handled internally so compaction timestamps
-    are not tracked.
+    All timestamps are lifetime values that persist across restarts.
 
     Attributes:
-        engine_created_at: ISO timestamp when the engine was initialized.
+        engine_created_at: ISO timestamp of the very first engine initialisation
+            for this collection (persists across restarts).
         last_query_at: ISO timestamp of most recent search query (if any).
         last_document_added_at: ISO timestamp of most recent document addition (if any).
         last_file_uploaded_at: ISO timestamp of most recent file upload (if any).
@@ -144,11 +149,15 @@ class MetricsResponse(BaseModel):
     categories. This is the primary metrics endpoint providing detailed insights
     into index health, query performance, resource usage, and system state.
 
+    All counters and timestamps are **lifetime values** that survive engine
+    restarts. Only rolling-window percentile statistics (p50/p95/p99) are
+    session-scoped.
+
     Attributes:
-        index: Index health and compaction metrics.
-        performance: Query execution performance statistics.
-        usage: Operation counts and usage patterns.
-        timestamps: Event timing information.
+        index: Index health metrics including lifetime peak document count.
+        performance: Lifetime query counts and session-window percentile stats.
+        usage: Lifetime operation counts and storage usage.
+        timestamps: Lifetime event timestamps.
         system: System configuration and version details.
         chromadb: ChromaDB-specific operational metrics.
     """

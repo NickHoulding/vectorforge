@@ -1,6 +1,7 @@
 """Shared test fixtures for VectorForge test suite"""
 
 import os
+import sqlite3
 import tempfile
 from typing import Any, Generator
 
@@ -61,6 +62,10 @@ def reset_engine() -> Generator[None, Any, None]:
     Clears all documents from the ChromaDB collection and resets
     HNSW configuration to defaults. Also deletes any non-default
     collections created by prior tests.
+
+    Also wipes the metrics.db row for the default collection so that
+    lifetime-persistent counters start at zero for every test, matching
+    the behaviour of a brand-new collection.
     """
     default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
 
@@ -83,6 +88,16 @@ def reset_engine() -> Generator[None, Any, None]:
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     default_engine.collection = collection
+
+    db_path = default_engine._metrics_store.db_path
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "DELETE FROM metrics WHERE collection_name = ?",
+            (VFGConfig.DEFAULT_COLLECTION_NAME,),
+        )
+    default_engine.metrics = default_engine._load_metrics(
+        VFGConfig.DEFAULT_COLLECTION_NAME
+    )
 
     yield
 
