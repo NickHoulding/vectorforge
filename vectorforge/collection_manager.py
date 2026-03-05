@@ -39,6 +39,14 @@ class CollectionManager:
         >>> collections = manager.list_collections()
     """
 
+    __slots__ = (
+        "chroma_path",
+        "chroma_client",
+        "model",
+        "_engine_cache",
+        "_cache_lock",
+    )
+
     META_DESCRIPTION_KEY = "vf:description"
     META_CREATED_AT_KEY = "vf:created_at"
     META_PREFIX = "vf:meta:"

@@ -39,6 +39,7 @@ def main():
     Returns:
         Exit code from the underlying pytest benchmark run.
     """
+    parser = argparse.ArgumentParser(
         description="VectorForge Benchmark Runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""

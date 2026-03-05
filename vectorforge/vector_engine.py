@@ -134,6 +134,16 @@ class VectorEngine:
         >>> results = engine.search("greeting", top_k=5)
     """
 
+    __slots__ = (
+        "collection",
+        "model_name",
+        "model",
+        "chroma_client",
+        "metrics",
+        "migration_in_progress",
+        "chroma_path",
+    )
+
     def __init__(
         self,
         collection: chromadb.Collection,
