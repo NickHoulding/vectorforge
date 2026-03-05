@@ -1553,7 +1553,6 @@ def test_update_hnsw_config_raises_if_already_in_progress(vector_engine):
 
 def test_metrics_persist_after_engine_restart(shared_model, use_temp_chroma_dir):
     """Counters survive engine restart by loading from SQLite on re-init."""
-    # First engine instance
     client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
     collection1 = client1.get_or_create_collection(
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
@@ -1572,7 +1571,6 @@ def test_metrics_persist_after_engine_restart(shared_model, use_temp_chroma_dir)
 
     SharedSystemClient.clear_system_cache()
 
-    # Second engine instance (restart)
     client2 = chromadb.PersistentClient(path=use_temp_chroma_dir)
     collection2 = client2.get_or_create_collection(
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
@@ -1645,11 +1643,9 @@ def test_query_times_deque_is_session_scoped(shared_model, use_temp_chroma_dir):
         collection=collection2, model=shared_model, chroma_client=client2
     )
 
-    # Session-scoped deque resets to empty.
     assert (
         len(engine2.metrics.query_times) == 0
     ), "query_times deque should reset on restart"
-    # Lifetime counters persist.
     assert engine2.metrics.total_queries == 2, "total_queries should persist"
     assert engine2.metrics.total_query_time_ms == pytest.approx(
         saved_total_time, rel=1e-6
@@ -1708,7 +1704,6 @@ def test_cumulative_metrics_accumulate_across_multiple_restarts(
         engine.add_doc(f"Session {session} document", {})
         engine.search("document")
 
-    # After 3 sessions, counters should reflect all three.
     SharedSystemClient.clear_system_cache()
     final_client = chromadb.PersistentClient(path=use_temp_chroma_dir)
     final_collection = final_client.get_or_create_collection(

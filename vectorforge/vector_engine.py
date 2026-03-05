@@ -61,21 +61,14 @@ class EngineMetrics:
         max_query_history: Maximum number of query times to retain in the rolling window.
     """
 
-    # Counters
     total_queries: int = 0
     docs_added: int = 0
     docs_deleted: int = 0
     chunks_created: int = 0
     files_uploaded: int = 0
-
-    # Performance tracking
     total_query_time_ms: float = 0.0
-
-    # Storage tracking
     total_doc_size_bytes: int = 0
     total_documents_peak: int = 0
-
-    # Timestamps
     lifetime_created_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -83,7 +76,7 @@ class EngineMetrics:
     last_doc_added_at: str | None = None
     last_file_uploaded_at: str | None = None
 
-    # Query performance history (session-scoped only)
+    # Session-scoped only: resets on restart, not persisted to SQLite.
     query_times: deque[float] = field(default_factory=deque)
     max_query_history: int = VFGConfig.MAX_QUERY_HISTORY
 
@@ -620,17 +613,16 @@ class VectorEngine:
         )
 
     def _get_chromadb_disk_size(self) -> tuple[int, float]:
-        """Calculate total disk usage of ChromaDB data directory.
+        """Calculate total disk usage of the ChromaDB data directory.
 
-        Walks the entire chroma_data directory tree and sums file sizes.
-        Called on every metrics request per user requirement.
+        Walks the entire persist directory tree and sums file sizes.
 
         Returns:
-            Tuple of (bytes, megabytes) for storage usage.
+            Tuple of (bytes, megabytes) for total storage usage.
 
         Raises:
             FileNotFoundError: If the ChromaDB persist directory does not exist.
-            OSError: If there's an error accessing the directory or files.
+            OSError: If there is an error accessing the directory or its files.
         """
         chroma_path = self.chroma_path
 
