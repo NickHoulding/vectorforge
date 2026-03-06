@@ -221,7 +221,7 @@ python benchmarks/run_benchmarks.py --metrics --hnsw
 # Available flags:
 #   --search, --indexing, --file-processing, --persistence,
 #   --scaling, --metrics, --hnsw
-# 
+#
 #   --all           Include slow tests
 #   --save NAME     Save results as baseline
 #   --compare NAME  Compare against saved baseline
