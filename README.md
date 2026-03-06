@@ -958,7 +958,10 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   collection is fully verified, then atomically swap
 
 #### Longer-term
-- [ ] **Hybrid search** — combine vector similarity with keyword (BM25) scoring
+- [ ] **Hybrid search** — combine vector similarity with keyword (BM25) scoring; ChromaDB has
+  built-in hybrid search capabilities worth evaluating
+- [ ] **Custom distance functions** — expose ChromaDB's support for `l2` and inner product (`ip`)
+  distance metrics in addition to the current cosine-only configuration
 - [ ] **Rate limiting and authentication** — API key or OAuth2 support
 - [ ] **Multi-tenancy** — per-tenant collection isolation with access controls
 - [ ] **Distributed deployment** — stateless API nodes pointing at a shared ChromaDB server
