@@ -857,26 +857,111 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 ## Known Limitations & Future Improvements
 
-**TODO: Fill in with current limitations, performance improvements, and scalability considerations**
-<!--
-Fill in with:
-- Current limitations you're aware of
-- Features you plan to add
-- Performance improvements on the roadmap
-- Scalability considerations
--->
+### Current Limitations
 
-### Potential Enhancements:
-- [ ] Support for more file formats (DOCX, HTML, Markdown)
-- [ ] Batch document operations
-- [ ] Advanced filtering with operators (>, <, IN, regex)
-- [ ] Hybrid search (vector + keyword)
-- [ ] Distributed deployment support
-- [ ] Custom embedding model configuration
-- [ ] Real-time index updates via WebSockets
-- [ ] Rate limiting and authentication
-- [ ] Multi-tenancy support
-- [ ] Vector quantization for memory optimization
+#### Metadata
+- **No `None` values in metadata.** ChromaDB rejects `None` as a metadata value. Passing
+  `{"author": None}` in a document's metadata dict will produce an HTTP 500 instead of a
+  validation error. VectorForge does not validate metadata values before sending them to ChromaDB.
+- **List metadata values cannot be filtered.** ChromaDB stores list values but does not support
+  membership testing in `where` clauses. A filter like `{"tags": "python"}` returns zero results
+  even if the document has `{"tags": ["python", "ml"]}`. Tags and similar multi-value fields must
+  be stored as space-joined strings and filtered accordingly.
+- **No nested metadata objects.** ChromaDB only accepts `str`, `int`, `float`, and `bool` as leaf
+  metadata values. Nested dicts are not supported.
+
+#### Search and Filtering
+- **AND-only filter logic.** The `filters` parameter always combines multiple conditions with
+  `$and`. There is no way to express OR conditions, range queries, `$in`, `$ne`, or `$contains`
+  through the current API, even though ChromaDB supports all of these natively.
+- **Exact equality only.** Filters do not accept operator expressions (e.g.
+  `{"score": {"$gte": 10}}`). Only exact equality matching is available.
+- **`top_k` is capped at 100.** `MAX_TOP_K = 100` is enforced at the API layer. Requests
+  requiring more than 100 results must be paginated manually.
+
+#### File Processing
+- **PDF and TXT only.** No support for `.docx`, `.md`, `.html`, `.csv`, `.rtf`, or other formats.
+- **No OCR.** PDF extraction reads the text layer only. Scanned PDFs (image-only) return no
+  content and produce a 400 error.
+- **UTF-8 only for text files.** `.txt` files with Latin-1 or other encodings produce an HTTP 500
+  instead of a helpful error message.
+- **No per-chunk size limit in file uploads.** The `MAX_CONTENT_LENGTH` (10,000 chars) is
+  enforced by the Pydantic model for `POST /doc/add` but not for the file upload path. File
+  chunks are fixed at 500 characters by default and cannot be configured via the API.
+
+#### Performance
+- **Synchronous SQLite write on every operation.** Every `add_doc`, `delete_doc`, and `search`
+  call triggers a blocking SQLite round-trip (open connection → WAL pragma → UPDATE → commit →
+  close). At high indexing throughput this is the primary bottleneck — a 100-chunk file upload
+  triggers 100 separate SQLite connections. There is no batching or async write path.
+- **`GET /metrics` triggers a full directory scan.** `_get_chromadb_disk_size()` calls
+  `os.walk()` across the entire ChromaDB data directory on every metrics request. In a
+  multi-collection deployment this scans data for all collections, not just the requested one.
+  There is no caching or TTL.
+- **No concurrent request safety for in-memory counters.** The engine's metrics counters
+  (`total_queries`, `docs_added`, etc.) are plain integers with no locking. Concurrent requests
+  share a single `VectorEngine` instance and can produce lost updates on these counters.
+
+#### HNSW Migration
+- **Blocks the calling request.** `PUT /index/config/hnsw` runs the migration synchronously in
+  the request handler. Large indexes may time out at the HTTP layer before the migration
+  completes.
+- **Requires up to 3× disk space.** At peak, three copies of the index exist simultaneously
+  (original, temp, and final collections).
+- **No rollback on partial failure.** If the migration fails after the original collection has
+  been deleted, that collection's data is not automatically restored. Recovery requires a backup
+  or a clean re-index.
+
+#### Configuration
+- **`MODEL_NAME` is hardcoded.** The embedding model (`all-MiniLM-L6-v2`) cannot be changed via
+  environment variable. Switching models requires a code change and a full re-index because stored
+  embeddings are dimension-specific (384d).
+- **Chunk size is not API-configurable.** `DEFAULT_CHUNK_SIZE` (500) and `DEFAULT_CHUNK_OVERLAP`
+  (50) are hardcoded constants. Different chunking strategies for different file types are not
+  supported.
+
+#### Deployment
+- **Single-process only.** The `migration_in_progress` flag and in-memory metrics state are
+  per-process. Running multiple uvicorn workers or replicas will cause split state. Scale to
+  one replica before running HNSW migrations.
+- **Docker health check does not verify readiness.** The Dockerfile's `HEALTHCHECK` calls
+  `/health/live`, which returns `{"status": "alive"}` unconditionally without verifying that
+  ChromaDB is accessible or the model is loaded. Use `/health/ready` for a meaningful readiness
+  check.
+
+---
+
+### Future Improvements
+
+#### Near-term
+- [ ] **Async metrics writes** — buffer SQLite writes and flush in the background to eliminate
+  the per-operation blocking write overhead
+- [ ] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, `$ne`,
+  `$contains` operators through the search API
+- [ ] **OR filter logic** — support `$or` alongside the existing `$and` behavior
+- [ ] **Metadata validation** — reject `None` values and unsupported types before they reach
+  ChromaDB, with descriptive 422 errors
+- [ ] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
+  parameters
+- [ ] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather
+  than scanning on every metrics request
+
+#### Medium-term
+- [ ] **Additional file formats** — DOCX, Markdown, HTML, CSV
+- [ ] **OCR support** — fallback to Tesseract or similar for scanned PDFs
+- [ ] **Custom embedding models** — allow `MODEL_NAME` to be configured at startup via env var;
+  handle dimension mismatch detection on collection open
+- [ ] **Batch document API** — single endpoint to add/delete multiple documents atomically
+- [ ] **Async HNSW migration** — run migration in the background with a status-polling endpoint,
+  eliminating the request-timeout risk on large indexes
+- [ ] **Non-destructive migration fallback** — keep the original collection until the final
+  collection is fully verified, then atomically swap
+
+#### Longer-term
+- [ ] **Hybrid search** — combine vector similarity with keyword (BM25) scoring
+- [ ] **Rate limiting and authentication** — API key or OAuth2 support
+- [ ] **Multi-tenancy** — per-tenant collection isolation with access controls
+- [ ] **Distributed deployment** — stateless API nodes pointing at a shared ChromaDB server
 
 ---
 
