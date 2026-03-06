@@ -1,166 +1,158 @@
-# VectorForge Benchmarking - Quick Start
+# VectorForge Benchmarking Quick Start
 
-## Installation
+## Prerequisites
 
-Ensure dev dependencies are installed:
 ```bash
-cd python
 uv sync --group dev
 ```
 
-## Quick Commands
+## The Fastest Sanity Check
 
-### Run Fast Benchmarks (Recommended for Development)
-```bash
-uv run pytest benchmarks/ --benchmark-only -m "not slow"
-```
-
-### Run All Benchmarks
-```bash
-uv run pytest benchmarks/ --benchmark-only
-```
-
-### Run Specific Benchmark Suite
-```bash
-# Search benchmarks
-uv run pytest benchmarks/test_search_benchmarks.py --benchmark-only
-
-# Indexing benchmarks
-uv run pytest benchmarks/test_indexing_benchmarks.py --benchmark-only
-
-# File processing benchmarks
-uv run pytest benchmarks/test_file_processing_benchmarks.py --benchmark-only
-
-# Persistence benchmarks
-uv run pytest benchmarks/test_persistence_benchmarks.py --benchmark-only
-
-# Scaling benchmarks
-uv run pytest benchmarks/test_scaling_benchmarks.py --benchmark-only
-```
-
-### Save and Compare Results
-```bash
-# Save baseline
-uv run pytest benchmarks/ --benchmark-only --benchmark-save=baseline
-
-# Compare against baseline (after making changes)
-uv run pytest benchmarks/ --benchmark-only --benchmark-compare=baseline
-
-# Compare and fail if performance regresses >20%
-uv run pytest benchmarks/ --benchmark-only --benchmark-compare=baseline --benchmark-compare-fail=mean:20%
-```
-
-### Run Specific Tests
-```bash
-# Run tests matching pattern
-uv run pytest benchmarks/ --benchmark-only -k "search_latency"
-
-# Run only small scale tests
-uv run pytest benchmarks/ --benchmark-only -k "small"
-
-# Run specific test
-uv run pytest benchmarks/test_search_benchmarks.py::test_search_latency_small --benchmark-only
-```
-
-## Understanding Results
-
-Example output:
-```
-Name (time in ms)           Min     Max    Mean  StdDev  Median     IQR  Outliers  OPS
-test_search_small         5.13   6.56   5.33    0.24    5.25    0.17     20;16  187.75
-```
-
-- **Mean**: Average time (focus on this for general performance)
-- **Median**: 50th percentile (less affected by outliers)
-- **Min/Max**: Best and worst case
-- **StdDev**: Consistency (lower is better)
-- **OPS**: Operations per second
-- **Outliers**: Unusual measurements
-
-## Key Metrics by Test Type
-
-### Search Performance
-- Query latency: How fast can we search?
-- Scales: tiny (10 docs) → xlarge (50k docs)
-- Top-k impact: Does result count matter?
-
-### Indexing Performance
-- Documents/second: How fast can we add documents?
-- Batch efficiency: Single vs batch insertion
-- Compaction overhead: Impact of deletions
-
-### File Processing
-- Extraction speed: PDF/text parsing
-- Chunking throughput: Text splitting performance
-
-### Persistence
-- Save/load time: Disk I/O performance
-- File sizes: Compression effectiveness
-- Round-trip: Complete save→load cycle
-
-### Scaling
-- Performance curves: How does it scale?
-- Memory usage: Resource consumption
-- Real-world workflows: End-to-end scenarios
-
-## Typical Development Workflow
-
-1. **Baseline**: Before making changes
-   ```bash
-   uv run pytest benchmarks/ --benchmark-only -m "not slow" --benchmark-save=before_changes
-   ```
-
-2. **Make your changes**: Optimize code, refactor, etc.
-
-3. **Compare**: After changes
-   ```bash
-   uv run pytest benchmarks/ --benchmark-only -m "not slow" --benchmark-compare=before_changes
-   ```
-
-4. **Analyze**: Look for improvements or regressions
-   - Green = faster (good!)
-   - Red = slower (investigate)
-   - Focus on mean/median values
-
-5. **Iterate**: Repeat as needed
-
-## Tips
-
-- **First run slow**: Model loading happens on first run. Subsequent runs are faster.
-- **Close apps**: For consistent results, close heavy applications
-- **Warm up**: Benchmarks automatically warm up, but first overall run may vary
-- **Use `-m "not slow"`**: Skip large-scale tests during development
-- **Save results**: Track performance over time with `--benchmark-save`
-
-## Next Steps
-
-See `benchmarks/README.md` for comprehensive documentation.
-
-## Example Session
+Run all 112 non-slow tests without benchmark timing (just verify nothing is broken):
 
 ```bash
-# Quick check - how's search performance?
-cd python
-uv run pytest benchmarks/test_search_benchmarks.py -k "small or medium" --benchmark-only
-
-# Full benchmark suite (takes ~5-10 minutes)
-uv run pytest benchmarks/ --benchmark-only --benchmark-save=v1.0.0
-
-# Compare after optimization
-# ... make changes ...
-uv run pytest benchmarks/ --benchmark-only --benchmark-compare=v1.0.0
+pytest benchmarks/ -m "not slow" --benchmark-disable -q
+# ~8 minutes, 112 passed
 ```
+
+## Standard Benchmark Run
+
+```bash
+# All non-slow benchmarks with timing output
+pytest benchmarks/ -m "not slow" --benchmark-only
+
+# Single suite
+pytest benchmarks/test_search_benchmarks.py --benchmark-only
+
+# With verbose test names
+pytest benchmarks/ -m "not slow" --benchmark-only -v
+```
+
+## Run Specific Suites
+
+```bash
+# Search performance
+pytest benchmarks/test_search_benchmarks.py --benchmark-only
+
+# Indexing throughput
+pytest benchmarks/test_indexing_benchmarks.py --benchmark-only
+
+# File chunking and PDF extraction
+pytest benchmarks/test_file_processing_benchmarks.py --benchmark-only
+
+# Disk size, cold-start, persistent write overhead
+pytest benchmarks/test_persistence_benchmarks.py --benchmark-only
+
+# Latency curves, memory growth, realistic workflows
+pytest benchmarks/test_scaling_benchmarks.py --benchmark-only
+
+# SQLite metrics subsystem overhead
+pytest benchmarks/test_metrics_benchmarks.py --benchmark-only
+
+# HNSW blue-green migration timing
+pytest benchmarks/test_hnsw_migration_benchmarks.py --benchmark-only
+```
+
+Or use the runner script with flags:
+
+```bash
+python benchmarks/run_benchmarks.py --search
+python benchmarks/run_benchmarks.py --metrics --hnsw
+python benchmarks/run_benchmarks.py --all   # includes slow tests
+```
+
+## Filter Tests
+
+```bash
+# By expression
+pytest benchmarks/ -m "not slow" --benchmark-only -k "latency"
+pytest benchmarks/ -m "not slow" --benchmark-only -k "small or medium"
+
+# One specific test
+pytest benchmarks/test_search_benchmarks.py::test_search_latency_small --benchmark-only
+```
+
+## Baseline and Regression Workflow
+
+```bash
+# 1. Save a baseline before your changes
+pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-save=before_my_change
+
+# 2. Make your changes...
+
+# 3. Compare
+pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-compare=before_my_change
+
+# 4. Enforce a regression gate (CI)
+pytest benchmarks/ -m "not slow" --benchmark-only \
+  --benchmark-compare=before_my_change \
+  --benchmark-compare-fail=mean:20%
+```
+
+## Reading the Output
+
+```
+Name (time in ms)              Min     Max    Mean  StdDev  Median     IQR  Outliers  OPS
+test_search_latency_small    10.23   15.67   11.45    1.23   11.34    0.89      5;2   87.3
+```
+
+| Column | Meaning |
+|--------|---------|
+| **Mean** | Average time — use this for comparisons |
+| **Median** | 50th percentile — more robust to outliers |
+| **StdDev/IQR** | Consistency — lower is better |
+| **OPS** | Operations per second (1 / mean) |
+| **Outliers** | Rounds outside 1.5×IQR; high counts mean system noise |
+
+## Key Facts About This Suite
+
+- **Model load is not timed.** `SentenceTransformer` loads once at session start (~5s), not inside
+  any benchmark.
+- **`_bulk_populate` is used for all fixture setup** — not `add_doc`. Bypasses per-document SQLite
+  writes and batch-encodes everything in one pass. 67× faster than `add_doc` loops.
+- **`large` (10k) and `xlarge` (50k) tests are `@pytest.mark.slow`** and never run by default.
+- **Insertion benchmarks always use a fresh engine per round** via `make_ephemeral_engine()` or
+  `pedantic(iterations=1)` — index state does not accumulate across rounds.
+- **PersistentClient tests clean up file descriptors** by calling
+  `SharedSystemClient.clear_system_cache()` on teardown.
+
+## Slow Tests (Large Scale)
+
+```bash
+# Only slow tests
+pytest benchmarks/ -m "slow" --benchmark-only
+
+# Everything
+pytest benchmarks/ --benchmark-only
+```
+
+Slow tests include 10k-doc search latency, 10k-doc HNSW migration, memory growth at 1k–10k docs,
+and batch insertion of 1,000 documents.
 
 ## Troubleshooting
 
-**Issue**: Tests failing to import
-- **Fix**: `uv sync --group dev`
+**Tests fail to import**
+```bash
+uv sync --group dev
+```
 
-**Issue**: Out of memory on large tests
-- **Fix**: Use `-m "not slow"` or increase system RAM
+**Out of memory on large tests**
+```
+Use -m "not slow" to skip xlarge/large fixtures
+```
 
-**Issue**: Inconsistent results
-- **Fix**: Increase rounds with `--benchmark-min-rounds=10`
+**Inconsistent results**
+```bash
+pytest benchmarks/ --benchmark-only --benchmark-min-rounds=10
+# Also: close background applications
+```
 
-**Issue**: Want faster feedback
-- **Fix**: Run specific tests with `-k pattern`
+**Want timing data as JSON**
+```bash
+pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-json=results/run.json
+```
+
+---
+
+See `benchmarks/README.md` for full documentation including rationale, architecture decisions, and
+per-suite descriptions.

@@ -9,6 +9,8 @@ Usage:
     python run_benchmarks.py --save baseline    # Save baseline
     python run_benchmarks.py --compare baseline # Compare against baseline
     python run_benchmarks.py --search           # Run only search benchmarks
+    python run_benchmarks.py --metrics          # Run only metrics benchmarks
+    python run_benchmarks.py --hnsw             # Run only HNSW migration benchmarks
 """
 
 import argparse
@@ -50,6 +52,8 @@ Examples:
   %(prog)s --compare baseline       # Compare with baseline
   %(prog)s --search                 # Only search benchmarks
   %(prog)s --indexing --all         # All indexing benchmarks
+  %(prog)s --metrics                # Only metrics overhead benchmarks
+  %(prog)s --hnsw                   # Only HNSW migration benchmarks
   %(prog)s --json results.json      # Save JSON output
         """,
     )
@@ -70,10 +74,22 @@ Examples:
         help="Run only file processing benchmarks",
     )
     parser.add_argument(
-        "--persistence", action="store_true", help="Run only persistence benchmarks"
+        "--persistence",
+        action="store_true",
+        help="Run only persistence benchmarks (disk size, cold-start, checkpoints)",
     )
     parser.add_argument(
         "--scaling", action="store_true", help="Run only scaling benchmarks"
+    )
+    parser.add_argument(
+        "--metrics",
+        action="store_true",
+        help="Run only metrics overhead benchmarks (SQLite write latency, disk scan)",
+    )
+    parser.add_argument(
+        "--hnsw",
+        action="store_true",
+        help="Run only HNSW migration benchmarks",
     )
 
     # Benchmark options
@@ -112,6 +128,10 @@ Examples:
         test_files.append("test_persistence_benchmarks.py")
     if args.scaling:
         test_files.append("test_scaling_benchmarks.py")
+    if args.metrics:
+        test_files.append("test_metrics_benchmarks.py")
+    if args.hnsw:
+        test_files.append("test_hnsw_migration_benchmarks.py")
 
     if test_files:
         cmd[1] = " ".join([f"benchmarks/{f}" for f in test_files])

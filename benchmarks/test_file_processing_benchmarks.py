@@ -11,12 +11,20 @@ Metrics tracked:
 - Extraction speed (KB/s, MB/s)
 - Chunking speed (chunks/sec)
 - Total processing time
+
+Notes on compatibility with the ChromaDB-integrated version:
+- Pure-function tests (``chunk_text``, ``extract_pdf``) have no VectorEngine
+  dependency and are unchanged.
+- End-to-end tests use the ``empty_engine`` fixture which is now backed by
+  an EphemeralClient; no constructor changes were needed in these tests since
+  they receive the engine as an already-constructed fixture argument.
 """
 
 import fitz
 from faker import Faker
 
 from vectorforge.doc_processor import chunk_text, extract_pdf
+from vectorforge.vector_engine import VectorEngine
 
 # ============================================================================
 # Text Chunking Benchmarks
@@ -149,7 +157,9 @@ def test_extract_pdf_synthetic_large(benchmark):
 # ============================================================================
 
 
-def test_e2e_process_text_file(benchmark, sample_text_medium: str, empty_engine):
+def test_e2e_process_text_file(
+    benchmark, sample_text_medium: str, empty_engine: VectorEngine
+):
     """Benchmark end-to-end text file processing and indexing."""
 
     def process_and_index():
@@ -163,7 +173,7 @@ def test_e2e_process_text_file(benchmark, sample_text_medium: str, empty_engine)
     benchmark.pedantic(process_and_index, iterations=3, rounds=3)
 
 
-def test_e2e_process_pdf_file(benchmark, empty_engine):
+def test_e2e_process_pdf_file(benchmark, empty_engine: VectorEngine):
     """Benchmark end-to-end PDF processing and indexing."""
     fake = Faker()
     doc = fitz.open()

@@ -4,17 +4,34 @@ Tests query latency across different:
 - Index sizes (tiny, small, medium, large, xlarge)
 - Query complexities (simple, medium, complex)
 - Top-k values (1, 5, 10, 50, 100)
-- Cold vs warm queries
+- Warm queries and throughput measurement
+- Filtered vs. unfiltered search
 
 Metrics tracked:
 - Query latency (mean, min, max, p50, p95, p99)
 - Queries per second
 - Memory usage during search
+
+Notes on removed tests vs. the pre-ChromaDB suite:
+- ``test_search_cold_engine``: removed — it measured model loading time, not search
+  latency. Model loading is now handled by CollectionManager and not directly
+  benchmarkable through VectorEngine alone.
+- ``test_search_after_compaction`` / ``test_search_before_compaction``: removed —
+  ChromaDB manages compaction automatically; there is no explicit compaction call
+  and no ``deleted_docs`` attribute on VectorEngine.
+- Filtered search tests previously called ``VectorEngine()`` directly; they now
+  use ``make_ephemeral_engine`` to build properly constructed engines.
 """
+
+from typing import Callable
 
 import pytest
 
-from benchmarks.conftest import SCALES, generate_documents
+from benchmarks.conftest import (
+    SCALES,
+    _bulk_populate,
+    generate_documents,
+)
 from vectorforge.vector_engine import VectorEngine
 
 # ============================================================================
@@ -187,29 +204,14 @@ def test_search_empty_index(
 
 
 # ============================================================================
-# Cold vs Warm Performance
+# Warm Query Performance
 # ============================================================================
-
-
-def test_search_cold_engine(benchmark, simple_queries: list[str]):
-    """Benchmark first search on a new engine (cold start)."""
-
-    def run_cold_search():
-        engine = VectorEngine()
-        docs = generate_documents(SCALES["small"])
-
-        for doc in docs:
-            engine.add_doc(doc["content"], doc["metadata"])
-
-        engine.search(query=simple_queries[0], top_k=10)
-
-    benchmark.pedantic(run_cold_search, iterations=3, rounds=3)
 
 
 def test_search_warm_engine(
     benchmark, engine_small: VectorEngine, simple_queries: list[str]
 ):
-    """Benchmark search on warm engine (model already loaded)."""
+    """Benchmark search on warm engine (several prior queries already executed)."""
     for _ in range(5):
         engine_small.search(query=simple_queries[0], top_k=10)
 
@@ -243,35 +245,26 @@ def test_search_throughput_qps(
 
 
 def test_search_after_deletions(
-    benchmark, engine_medium: VectorEngine, simple_queries: list[str]
+    benchmark,
+    make_ephemeral_engine: Callable[[], VectorEngine],
+    simple_queries: list[str],
 ):
-    """Benchmark search performance after deleting 25% of documents."""
-    doc_ids = list(engine_medium.documents.keys())
-    delete_count = len(doc_ids) // 4
+    """Benchmark search performance after deleting 25% of documents.
 
-    for doc_id in doc_ids[:delete_count]:
-        engine_medium.delete_doc(doc_id)
+    Populates a medium index, deletes 25% of docs, then benchmarks search.
+    Uses collection.get() to retrieve current doc IDs since VectorEngine no
+    longer maintains an in-memory ``documents`` dict.
+    """
+    engine = make_ephemeral_engine()
+    _bulk_populate(engine, generate_documents(SCALES["medium"]))
+
+    all_ids = engine.collection.get(include=[])["ids"]
+    delete_count = len(all_ids) // 4
+    for doc_id in all_ids[:delete_count]:
+        engine.delete_doc(doc_id)
 
     query = simple_queries[0]
-    benchmark(engine_medium.search, query=query, top_k=10)
-
-
-def test_search_after_compaction(
-    benchmark, engine_medium: VectorEngine, simple_queries: list[str]
-):
-    """Benchmark search performance after compaction."""
-    doc_ids = list(engine_medium.documents.keys())
-    delete_count = len(doc_ids) // 3  # Delete 33% to exceed 25% threshold
-
-    for doc_id in doc_ids[:delete_count]:
-        engine_medium.delete_doc(doc_id)
-
-    assert (
-        len(engine_medium.deleted_docs) == 0
-    ), "Compaction should have cleared deleted_docs"
-
-    query = simple_queries[0]
-    benchmark(engine_medium.search, query=query, top_k=10)
+    benchmark(engine.search, query=query, top_k=10)
 
 
 # ============================================================================
@@ -279,15 +272,26 @@ def test_search_after_compaction(
 # ============================================================================
 
 
-def test_search_with_filters_small_dataset(benchmark, simple_queries: list[str]):
+def test_search_with_filters_small_dataset(
+    benchmark,
+    make_ephemeral_engine: Callable[[], VectorEngine],
+    simple_queries: list[str],
+):
     """Benchmark filtered search on small dataset (100 docs)."""
-    engine = VectorEngine()
+    engine = make_ephemeral_engine()
 
-    for file_num in range(10):
-        for chunk_num in range(10):
-            content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
-            metadata = {"source_file": f"file_{file_num}.pdf", "chunk_index": chunk_num}
-            engine.add_doc(content, metadata)
+    docs = [
+        {
+            "content": f"Document about {simple_queries[file_num % len(simple_queries)]}",
+            "metadata": {
+                "source_file": f"file_{file_num}.pdf",
+                "chunk_index": chunk_num,
+            },
+        }
+        for file_num in range(10)
+        for chunk_num in range(10)
+    ]
+    _bulk_populate(engine, docs)
 
     query = simple_queries[0]
     filters = {"source_file": "file_5.pdf"}
@@ -295,15 +299,26 @@ def test_search_with_filters_small_dataset(benchmark, simple_queries: list[str])
 
 
 @pytest.mark.scale(size="medium")
-def test_search_with_filters_medium_dataset(benchmark, simple_queries: list[str]):
+def test_search_with_filters_medium_dataset(
+    benchmark,
+    make_ephemeral_engine: Callable[[], VectorEngine],
+    simple_queries: list[str],
+):
     """Benchmark filtered search on medium dataset (1,000 docs)."""
-    engine = VectorEngine()
+    engine = make_ephemeral_engine()
 
-    for file_num in range(50):
-        for chunk_num in range(20):
-            content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
-            metadata = {"source_file": f"file_{file_num}.pdf", "chunk_index": chunk_num}
-            engine.add_doc(content, metadata)
+    docs = [
+        {
+            "content": f"Document about {simple_queries[file_num % len(simple_queries)]}",
+            "metadata": {
+                "source_file": f"file_{file_num}.pdf",
+                "chunk_index": chunk_num,
+            },
+        }
+        for file_num in range(50)
+        for chunk_num in range(20)
+    ]
+    _bulk_populate(engine, docs)
 
     query = simple_queries[0]
     filters = {"source_file": "file_25.pdf", "chunk_index": 10}
@@ -312,19 +327,27 @@ def test_search_with_filters_medium_dataset(benchmark, simple_queries: list[str]
 
 @pytest.mark.scale(size="large")
 @pytest.mark.slow
-def test_search_with_filters_large_dataset(benchmark, simple_queries: list[str]):
+def test_search_with_filters_large_dataset(
+    benchmark,
+    make_ephemeral_engine: Callable[[], VectorEngine],
+    simple_queries: list[str],
+):
     """Benchmark filtered search on large dataset (10,000 docs)."""
-    engine = VectorEngine()
+    engine = make_ephemeral_engine()
 
-    for file_num in range(100):
-        for chunk_num in range(100):
-            content = f"Document about {simple_queries[file_num % len(simple_queries)]}"
-            metadata = {
+    docs = [
+        {
+            "content": f"Document about {simple_queries[file_num % len(simple_queries)]}",
+            "metadata": {
                 "source_file": f"file_{file_num}.pdf",
                 "chunk_index": chunk_num,
                 "category": simple_queries[chunk_num % len(simple_queries)],
-            }
-            engine.add_doc(content, metadata)
+            },
+        }
+        for file_num in range(100)
+        for chunk_num in range(100)
+    ]
+    _bulk_populate(engine, docs)
 
     query = simple_queries[0]
     filters = {
