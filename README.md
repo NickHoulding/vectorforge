@@ -891,8 +891,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 ### Future Improvements
 
-- [ ] **Metadata validation** — reject `None` values and unsupported types before they reach
-  ChromaDB, with descriptive 422 errors instead of silent HTTP 500s
+- [x] **Metadata validation** — reject `None` values and unsupported types before they reach ChromaDB, with descriptive 422 errors instead of silent HTTP 500s
 - [ ] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather
   than scanning the full data directory on every metrics request
 - [ ] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload

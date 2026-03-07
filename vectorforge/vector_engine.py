@@ -355,6 +355,30 @@ class VectorEngine:
 
         return doc
 
+    def _validate_metadata(self, metadata: dict[str, Any]) -> None:
+        """Validate that all metadata values are ChromaDB-compatible types.
+
+        Checks each value in the metadata dictionary against the set of types
+        ChromaDB accepts as leaf values. ``None`` is explicitly rejected before
+        the type check so the error message is unambiguous.
+
+        Args:
+            metadata: Metadata dictionary to validate.
+
+        Raises:
+            TypeError: If any value is ``None`` or not one of ``str``, ``int``,
+                ``float``, or ``bool``.
+        """
+        for key, value in metadata.items():
+            if value is None:
+                raise TypeError(
+                    f"Metadata value for key: {key} is None (None metadata values not allowed)."
+                )
+            elif type(value) not in VFGConfig.VALID_METADATA_TYPES:
+                raise TypeError(
+                    f"Invalid metadata value: {value} of type: {type(value)}."
+                )
+
     def add_doc(self, content: str, metadata: dict[str, Any] | None = None) -> str:
         """Add a new document to the vector index.
 
@@ -374,11 +398,15 @@ class VectorEngine:
         Raises:
             ValueError: If content is empty/whitespace, or if metadata contains
                 'source_file' without 'chunk_index' (or vice versa).
+            TypeError: If any metadata value is ``None`` or not a ChromaDB-supported
+                type (``str``, ``int``, ``float``, or ``bool``).
         """
         if not content.strip():
             raise ValueError("Document content cannot be empty")
         if metadata is None:
             metadata = {}
+
+        self._validate_metadata(metadata)
 
         has_source: bool = "source_file" in metadata
         has_chunk_index: bool = "chunk_index" in metadata

@@ -573,10 +573,10 @@ def test_doc_operations_update_all_relevant_metrics(client, sample_doc):
 
 
 def test_doc_add_metadata_with_array_values(client, sample_doc):
-    """Test that metadata can contain array values."""
+    """Test that metadata cannot contain array values."""
     sample_doc["metadata"]["tags"] = ["python", "api", "testing"]
     response = client.post("/collections/vectorforge/documents", json=sample_doc)
-    assert response.status_code == 201
+    assert response.status_code == 422
 
 
 def test_doc_add_metadata_with_numeric_values(client, sample_doc):

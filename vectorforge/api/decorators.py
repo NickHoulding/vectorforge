@@ -48,6 +48,10 @@ def handle_api_errors(func: F) -> F:
         except ValueError as e:
             logger.warning(f"ValueError: {e}")
             raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
+        
+        except TypeError as e:
+            logger.warning(f"TypeError: {e}")
+            raise HTTPException(status_code=422, detail=f"Invalid type: {str(e)}")
 
         except RuntimeError as e:
             error_msg = str(e)
@@ -74,6 +78,10 @@ def handle_api_errors(func: F) -> F:
         except ValueError as e:
             logger.warning(f"ValueError: {e}")
             raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
+        
+        except TypeError as e:
+            logger.warning(f"TypeError: {e}")
+            raise HTTPException(status_code=422, detail=f"Invalid type: {str(e)}")
 
         except RuntimeError as e:
             error_msg = str(e)

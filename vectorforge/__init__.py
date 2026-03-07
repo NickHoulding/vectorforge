@@ -5,7 +5,7 @@ try:
 
     __version__: str = version("vectorforge")
 except Exception:
-    __version__ = "1.0.0"
+    __version__ = "1.0.1"
 
 __all__: list[str] = ["__version__", "VectorEngine"]
 

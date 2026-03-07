@@ -129,6 +129,13 @@ class VFGConfig:
     MAX_METADATA_PAIRS: int = 20
     """Maximum number of key-value pairs for collection metadata."""
 
+    VALID_METADATA_TYPES: frozenset[type] = frozenset([str, int, float, bool])
+    """Permitted Python types for document metadata values.
+
+    ChromaDB rejects any metadata value that is not one of these four scalar
+    types. ``None`` and nested structures (lists, dicts) are not allowed.
+    """
+
     # =============================================================================
     # Configuration Class Validator
     # =============================================================================
@@ -229,3 +236,12 @@ class VFGConfig:
             raise ValueError(
                 "Each entry in SUPPORTED_FILE_EXTENSIONS must be a string starting with '.'"
             )
+
+        if isinstance(cls.VALID_METADATA_TYPES, set):
+            raise ValueError(
+                "ChromaDB only accepts str, int, float, and bool as metadata leaf metadata types."
+            )
+        if len(cls.VALID_METADATA_TYPES) == 0:
+            raise ValueError("Config must allow at least one valid metadata type.")
+        if not all(isinstance(typ, type) for typ in cls.VALID_METADATA_TYPES):
+            raise ValueError("Each entry in VALID_METADATA_TYPES must be a valid type.")
