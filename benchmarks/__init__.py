@@ -1,1 +1,1 @@
-"""Performance benchmarks for search, indexing, file processing, persistence, and scaling."""
+"""Performance benchmarks for search, indexing, and file processing."""
