@@ -57,20 +57,6 @@ Perfect for building:
 
 ---
 
-## Demo
-
-**Live Demo**: [TODO]
-
-<!-- Add GIF/Video Preview Here -->
-<!-- Recommended: Screen recording showing:
-  1. Document upload via API
-  2. Semantic search query
-  3. Relevant results returned
-  4. Metrics dashboard
--->
-
----
-
 ## Tech Stack
 
 ### **Core Technologies**
@@ -326,34 +312,6 @@ if has_source != has_chunk_index:
 ```
 
 **Rationale**: Maintains data integrity for file reconstruction.
-
----
-
-## Screenshots
-
-### **API Documentation (Swagger UI)**
-
-**TODO**
-<!-- Screenshot: http://localhost:3001/docs -->
-<!-- Should show: All endpoints organized by category with request/response schemas -->
-
-### **Search Results**
-
-**TODO**
-<!-- Screenshot: POST /search response -->
-<!-- Should show: JSON response with query, results array, similarity scores, metadata -->
-
-### **Metrics Dashboard**
-
-**TODO**
-<!-- Screenshot: GET /metrics response -->
-<!-- Should show: Comprehensive metrics including performance, usage, memory, timestamps -->
-
-### **File Upload Flow**
-
-**TODO**
-<!-- Screenshot: POST /file/upload response -->
-<!-- Should show: File uploaded, chunks created, document IDs returned -->
 
 ---
 
