@@ -891,38 +891,18 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 ### Future Improvements
 
-#### Near-term
-- [ ] **Async metrics writes** — buffer SQLite writes and flush in the background to eliminate
-  the per-operation blocking write overhead
-- [ ] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, `$ne`,
-  `$contains` operators through the search API
-- [ ] **OR filter logic** — support `$or` alongside the existing `$and` behavior
 - [ ] **Metadata validation** — reject `None` values and unsupported types before they reach
-  ChromaDB, with descriptive 422 errors
-- [ ] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
-  parameters
+  ChromaDB, with descriptive 422 errors instead of silent HTTP 500s
 - [ ] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather
-  than scanning on every metrics request
-
-#### Medium-term
-- [ ] **Additional file formats** — DOCX, Markdown, HTML, CSV
-- [ ] **OCR support** — fallback to Tesseract or similar for scanned PDFs
-- [ ] **Custom embedding models** — allow `MODEL_NAME` to be configured at startup via env var;
-  handle dimension mismatch detection on collection open
-- [ ] **Batch document API** — single endpoint to add/delete multiple documents atomically
-- [ ] **Async HNSW migration** — run migration in the background with a status-polling endpoint,
-  eliminating the request-timeout risk on large indexes
-- [ ] **Non-destructive migration fallback** — keep the original collection until the final
-  collection is fully verified, then atomically swap
-
-#### Longer-term
-- [ ] **Hybrid search** — combine vector similarity with keyword (BM25) scoring; ChromaDB has
-  built-in hybrid search capabilities worth evaluating
-- [ ] **Custom distance functions** — expose ChromaDB's support for `l2` and inner product (`ip`)
-  distance metrics in addition to the current cosine-only configuration
-- [ ] **Rate limiting and authentication** — API key or OAuth2 support
-- [ ] **Multi-tenancy** — per-tenant collection isolation with access controls
-- [ ] **Distributed deployment** — stateless API nodes pointing at a shared ChromaDB server
+  than scanning the full data directory on every metrics request
+- [ ] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
+  parameters, completing the intent signaled by `DEFAULT_CHUNK_SIZE` and `DEFAULT_CHUNK_OVERLAP`
+- [ ] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, `$ne`, and
+  `$contains` operators through the search API, completing the existing filter system
+- [ ] **Batch document API** — single endpoint to add/delete multiple documents atomically,
+  rounding out the existing document management surface
+- [ ] **Non-destructive migration fallback** — keep the original collection until the new
+  collection is fully verified before swapping, eliminating the data-loss risk on partial failure
 
 ---
 
