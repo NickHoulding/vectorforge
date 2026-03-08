@@ -173,7 +173,7 @@ class VectorEngine:
         self._metrics_store: MetricsStore = MetricsStore(db_path)
         self.metrics: EngineMetrics = self._load_metrics(collection.name)
 
-        self._cached_disk_size: dict[str, Any] | None = None
+        self._cached_disk_size: dict[str, Any] = {}
 
     def _load_metrics(self, collection_name: str) -> EngineMetrics:
         """Load lifetime metrics from SQLite or seed a new zero row.
@@ -664,8 +664,6 @@ class VectorEngine:
             if min_diff < VFGConfig.DISK_SIZE_TTL_MINS:
                 total_bytes, total_mb = self._cached_disk_size["size"]
                 return total_bytes, total_mb
-        else:
-            self._cached_disk_size = {}
 
         chroma_path = self.chroma_path
 
