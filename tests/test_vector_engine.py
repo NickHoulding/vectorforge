@@ -3,7 +3,7 @@
 import time
 import uuid
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 
 import chromadb
 import numpy as np
@@ -222,6 +222,60 @@ def test_add_doc_with_whitespace_only_content_raises_error(vector_engine):
     """Test that add_doc with whitespace-only content raises ValueError."""
     with pytest.raises(ValueError, match="content cannot be empty"):
         vector_engine.add_doc("   ", {})
+
+
+def test_add_doc_metadata_none_value_raises_type_error(vector_engine):
+    """Test that a None metadata value raises TypeError."""
+    with pytest.raises(TypeError, match="is None"):
+        vector_engine.add_doc("Content", {"author": None})
+
+
+def test_add_doc_metadata_list_value_raises_type_error(vector_engine):
+    """Test that a list metadata value raises TypeError."""
+    with pytest.raises(TypeError, match="Invalid metadata value"):
+        vector_engine.add_doc("Content", {"tags": ["python", "ml"]})
+
+
+def test_add_doc_metadata_dict_value_raises_type_error(vector_engine):
+    """Test that a nested dict metadata value raises TypeError."""
+    with pytest.raises(TypeError, match="Invalid metadata value"):
+        vector_engine.add_doc("Content", {"nested": {"key": "value"}})
+
+
+def test_add_doc_metadata_str_value_accepted(vector_engine):
+    """Test that a str metadata value is accepted."""
+    doc_id = vector_engine.add_doc("Content", {"author": "Alice"})
+    assert doc_id is not None
+
+
+def test_add_doc_metadata_int_value_accepted(vector_engine):
+    """Test that an int metadata value is accepted."""
+    doc_id = vector_engine.add_doc("Content", {"year": 2024})
+    assert doc_id is not None
+
+
+def test_add_doc_metadata_float_value_accepted(vector_engine):
+    """Test that a float metadata value is accepted."""
+    doc_id = vector_engine.add_doc("Content", {"score": 9.5})
+    assert doc_id is not None
+
+
+def test_add_doc_metadata_bool_value_accepted(vector_engine):
+    """Test that a bool metadata value is accepted."""
+    doc_id = vector_engine.add_doc("Content", {"active": True})
+    assert doc_id is not None
+
+
+def test_add_doc_metadata_none_value_error_includes_key_name(vector_engine):
+    """Test that the TypeError for a None value includes the offending key."""
+    with pytest.raises(TypeError, match="bad_key"):
+        vector_engine.add_doc("Content", {"bad_key": None})
+
+
+def test_add_doc_metadata_multiple_values_first_invalid_raises(vector_engine):
+    """Test that the first invalid value in a multi-key dict raises TypeError."""
+    with pytest.raises(TypeError):
+        vector_engine.add_doc("Content", {"ok": "valid", "bad": [1, 2, 3]})
 
 
 def test_add_doc_multiple_sequential(vector_engine):
@@ -1127,6 +1181,50 @@ def test_get_chromadb_disk_size_increases_with_data(vector_engine):
 
     final_bytes, _ = vector_engine._get_chromadb_disk_size()
     assert final_bytes >= initial_bytes
+
+
+def test_get_chromadb_disk_size_cache_is_empty_initially(vector_engine):
+    """Test that _cached_disk_size starts as an empty dict before first call."""
+    assert vector_engine._cached_disk_size == {}
+
+
+def test_get_chromadb_disk_size_populates_cache_after_first_call(vector_engine):
+    """Test that _cached_disk_size is populated after the first call."""
+    vector_engine._get_chromadb_disk_size()
+
+    assert "timestamp" in vector_engine._cached_disk_size
+    assert "size" in vector_engine._cached_disk_size
+
+
+def test_get_chromadb_disk_size_returns_cached_result_within_ttl(vector_engine):
+    """Test that a second call within the TTL returns the cached value without rescanning."""
+    first_result = vector_engine._get_chromadb_disk_size()
+    vector_engine.add_doc("New content that would change disk size" * 100, {})
+    second_result = vector_engine._get_chromadb_disk_size()
+
+    assert first_result == second_result
+
+
+def test_get_chromadb_disk_size_rescans_after_ttl_expires(vector_engine, monkeypatch):
+    """Test that an expired cache triggers a fresh directory scan."""
+    first_result = vector_engine._get_chromadb_disk_size()
+
+    expired_ts = (
+        datetime.timestamp(datetime.now(timezone.utc))
+        - (VFGConfig.DISK_SIZE_TTL_MINS + 1) * 60
+    )
+    vector_engine._cached_disk_size["timestamp"] = expired_ts
+
+    vector_engine.add_doc("Extra content to change disk size" * 100, {})
+    vector_engine._get_chromadb_disk_size()
+
+    assert vector_engine._cached_disk_size["timestamp"] > expired_ts
+
+
+def test_get_chromadb_disk_size_cache_stores_correct_size(vector_engine):
+    """Test that the cached size matches what is returned."""
+    result = vector_engine._get_chromadb_disk_size()
+    assert vector_engine._cached_disk_size["size"] == result
 
 
 def test_get_chromadb_metrics_returns_dict(vector_engine):

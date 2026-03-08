@@ -86,9 +86,11 @@ def chunk_text(
 
     Args:
         text: Input text to split into chunks.
-        chunk_size: Maximum number of characters per chunk. Defaults to 500.
+        chunk_size: Maximum number of characters per chunk. Defaults to
+            ``VFGConfig.DEFAULT_CHUNK_SIZE``.
         overlap: Number of characters to overlap between consecutive chunks.
-            Defaults to 50. Overlap helps maintain context across boundaries.
+            Defaults to ``VFGConfig.DEFAULT_CHUNK_OVERLAP``. Overlap helps
+            maintain context across boundaries.
 
     Returns:
         List of text chunks as strings, ordered sequentially from the original text.

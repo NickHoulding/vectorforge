@@ -844,8 +844,9 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 - **UTF-8 only for text files.** `.txt` files with Latin-1 or other encodings produce an HTTP 500
   instead of a helpful error message.
 - **No per-chunk size limit in file uploads.** The `MAX_CONTENT_LENGTH` (10,000 chars) is
-  enforced by the Pydantic model for `POST /doc/add` but not for the file upload path. File
-  chunks are fixed at 500 characters by default and cannot be configured via the API.
+  enforced by the Pydantic model for `POST /doc/add` but not for the file upload path. The upload
+  endpoint accepts `chunk_size` and `chunk_overlap` parameters (defaulting to 500 and 50 chars),
+  but does not validate that individual chunks stay within `MAX_CONTENT_LENGTH`.
 
 #### Performance
 - **Synchronous SQLite write on every operation.** Every `add_doc`, `delete_doc`, and `search`
@@ -874,9 +875,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 - **`MODEL_NAME` is hardcoded.** The embedding model (`all-MiniLM-L6-v2`) cannot be changed via
   environment variable. Switching models requires a code change and a full re-index because stored
   embeddings are dimension-specific (384d).
-- **Chunk size is not API-configurable.** `DEFAULT_CHUNK_SIZE` (500) and `DEFAULT_CHUNK_OVERLAP`
-  (50) are hardcoded constants. Different chunking strategies for different file types are not
-  supported.
+- **Chunk size is API-configurable via** `chunk_size` **and** `chunk_overlap` **parameters on the file upload endpoint.** `DEFAULT_CHUNK_SIZE` (500) and `DEFAULT_CHUNK_OVERLAP` (50) are used when omitted.
 
 #### Deployment
 - **Single-process only.** The `migration_in_progress` flag and in-memory metrics state are
@@ -893,7 +892,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 - [x] **Metadata validation** — reject `None` values and unsupported types before they reach ChromaDB, with descriptive 422 errors instead of silent HTTP 500s
 - [x] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather than scanning the full data directory on every metrics request
-- [ ] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
+- [x] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
   parameters, completing the intent signaled by `DEFAULT_CHUNK_SIZE` and `DEFAULT_CHUNK_OVERLAP`
 - [ ] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, `$ne`, and
   `$contains` operators through the search API, completing the existing filter system

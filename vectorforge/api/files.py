@@ -53,7 +53,12 @@ def list_files(collection_name: str) -> FileListResponse:
 )
 @require_collection
 @handle_api_errors
-async def upload_file(collection_name: str, file: UploadFile) -> FileUploadResponse:
+async def upload_file(
+    collection_name: str,
+    file: UploadFile,
+    chunk_size: int = VFGConfig.DEFAULT_CHUNK_SIZE,
+    chunk_overlap: int = VFGConfig.DEFAULT_CHUNK_OVERLAP,
+) -> FileUploadResponse:
     """
     Upload and index a file in a collection
 
@@ -61,23 +66,29 @@ async def upload_file(collection_name: str, file: UploadFile) -> FileUploadRespo
     and indexes each chunk as a separate document with embeddings for semantic search.
 
     Args:
-        collection_name: Name of the collection
-        file: File to upload (.pdf and .txt only)
+        collection_name: Name of the collection.
+        file: File to upload (.pdf and .txt only).
+        chunk_size: Maximum number of characters per chunk. Defaults to
+            ``VFGConfig.DEFAULT_CHUNK_SIZE``.
+        chunk_overlap: Number of overlapping characters between consecutive
+            chunks. Defaults to ``VFGConfig.DEFAULT_CHUNK_OVERLAP``.
 
     Returns:
-        FileUploadResponse: Upload confirmation with chunk count and document IDs
+        FileUploadResponse: Upload confirmation with chunk count and document IDs.
 
     Raises:
-        HTTPException: 404 if collection not found
-        HTTPException: 400 if file format is missing, too long, or unsupported
-        HTTPException: 400 if file has no content
-        HTTPException: 500 if processing or indexing fails
+        HTTPException: 404 if collection not found.
+        HTTPException: 400 if file format is missing, too long, or unsupported.
+        HTTPException: 400 if file has no content.
+        HTTPException: 500 if processing or indexing fails.
 
     Example:
         ```
         POST /collections/customer_docs/files/upload
         Content-Type: multipart/form-data
         file: document.pdf
+        chunk_size: 300
+        chunk_overlap: 30
         ```
     """
     if not file.filename:
@@ -96,7 +107,9 @@ async def upload_file(collection_name: str, file: UploadFile) -> FileUploadRespo
             status_code=400, detail="Uploaded file(s) contains no content"
         )
 
-    chunks: list[str] = chunk_text(text)
+    chunks: list[str] = chunk_text(
+        text=text, chunk_size=chunk_size, overlap=chunk_overlap
+    )
 
     for i, chunk in enumerate(chunks):
         doc_id: str = engine.add_doc(

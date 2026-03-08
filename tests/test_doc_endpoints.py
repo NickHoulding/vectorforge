@@ -160,6 +160,50 @@ def test_doc_add_metadata_with_only_chunk_index(client, sample_doc):
     assert response.status_code == 400
 
 
+def test_doc_add_metadata_none_value_returns_422(client):
+    """Test that a None metadata value is rejected with 422."""
+    response = client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Some content", "metadata": {"author": None}},
+    )
+    assert response.status_code == 422
+
+
+def test_doc_add_metadata_list_value_returns_422(client):
+    """Test that a list metadata value is rejected with 422."""
+    response = client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Some content", "metadata": {"tags": ["python", "ml"]}},
+    )
+    assert response.status_code == 422
+
+
+def test_doc_add_metadata_nested_dict_value_returns_422(client):
+    """Test that a nested dict metadata value is rejected with 422."""
+    response = client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Some content", "metadata": {"nested": {"key": "val"}}},
+    )
+    assert response.status_code == 422
+
+
+def test_doc_add_metadata_valid_types_all_accepted(client):
+    """Test that str, int, float, and bool metadata values are all accepted."""
+    response = client.post(
+        "/collections/vectorforge/documents",
+        json={
+            "content": "Some content",
+            "metadata": {
+                "str_field": "hello",
+                "int_field": 42,
+                "float_field": 3.14,
+                "bool_field": True,
+            },
+        },
+    )
+    assert response.status_code == 201
+
+
 def test_doc_add_with_special_characters_in_content(client, sample_doc):
     """Test that documents with special characters in content are accepted."""
     sample_doc["metadata"]["content"] = "!@#$%^&*()_~-=+,.<>/?;:\"'[]|\\"

@@ -862,3 +862,117 @@ def test_file_upload_exceeds_max_filename_length(upload_file):
 
     resp = upload_file(long_filename, b"Testing filename too long")
     assert resp.status_code == 400
+
+
+# =============================================================================
+# Configurable Chunking Tests
+# =============================================================================
+
+
+def test_file_upload_custom_chunk_size_accepted(client):
+    """Test that upload with a custom chunk_size returns 201."""
+    content = b"x" * 300
+    files = {"file": ("test.txt", io.BytesIO(content), "text/plain")}
+    resp = client.post(
+        "/collections/vectorforge/files/upload?chunk_size=100&chunk_overlap=10",
+        files=files,
+    )
+    assert resp.status_code == 201
+
+
+def test_file_upload_custom_chunk_size_produces_more_chunks(client):
+    """Test that a smaller chunk_size produces more chunks than the default."""
+    content = b"a" * (VFGConfig.DEFAULT_CHUNK_SIZE * 2)
+
+    files_default = {"file": ("default.txt", io.BytesIO(content), "text/plain")}
+    resp_default = client.post(
+        "/collections/vectorforge/files/upload",
+        files=files_default,
+    )
+    assert resp_default.status_code == 201
+    default_chunks = resp_default.json()["chunks_created"]
+
+    files_small = {"file": ("small.txt", io.BytesIO(content), "text/plain")}
+    resp_small = client.post(
+        "/collections/vectorforge/files/upload?chunk_size=100&chunk_overlap=0",
+        files=files_small,
+    )
+    assert resp_small.status_code == 201
+    small_chunks = resp_small.json()["chunks_created"]
+
+    assert small_chunks > default_chunks
+
+
+def test_file_upload_custom_chunk_size_limits_chunk_length(client):
+    """Test that no chunk exceeds the custom chunk_size."""
+    chunk_size = 100
+    content = b"y" * 1000
+
+    files = {"file": ("size_test.txt", io.BytesIO(content), "text/plain")}
+    resp = client.post(
+        f"/collections/vectorforge/files/upload?chunk_size={chunk_size}&chunk_overlap=0",
+        files=files,
+    )
+    assert resp.status_code == 201
+
+    for doc_id in resp.json()["doc_ids"]:
+        doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
+        assert doc_resp.status_code == 200
+        assert len(doc_resp.json()["content"]) <= chunk_size
+
+
+def test_file_upload_zero_overlap_produces_non_overlapping_chunks(client):
+    """Test that chunk_overlap=0 produces chunks with no overlap."""
+    content = "ABCDE" * 60
+
+    files = {"file": ("nooverlap.txt", content.encode("utf-8"), "text/plain")}
+    resp = client.post(
+        "/collections/vectorforge/files/upload?chunk_size=50&chunk_overlap=0",
+        files=files,
+    )
+    assert resp.status_code == 201
+
+    doc_ids = resp.json()["doc_ids"]
+    assert len(doc_ids) >= 2
+
+    resp0 = client.get(f"/collections/vectorforge/documents/{doc_ids[0]}")
+    resp1 = client.get(f"/collections/vectorforge/documents/{doc_ids[1]}")
+    chunk0 = resp0.json()["content"]
+    chunk1 = resp1.json()["content"]
+
+    assert not chunk1.startswith(chunk0[-1:] * 5)
+
+
+def test_file_upload_defaults_used_when_params_omitted(client):
+    """Test that omitting chunk params uses VFGConfig defaults."""
+    content = b"z" * (VFGConfig.DEFAULT_CHUNK_SIZE * 3)
+
+    files = {"file": ("defaults.txt", io.BytesIO(content), "text/plain")}
+    resp = client.post("/collections/vectorforge/files/upload", files=files)
+    assert resp.status_code == 201
+
+    assert resp.json()["chunks_created"] >= 3
+
+
+def test_file_upload_custom_chunk_overlap_creates_overlapping_chunks(client):
+    """Test that a non-zero chunk_overlap creates overlapping chunks."""
+    overlap = 20
+    chunk_size = 50
+    content = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" * 10
+
+    files = {"file": ("overlap.txt", content.encode("utf-8"), "text/plain")}
+    resp = client.post(
+        f"/collections/vectorforge/files/upload?chunk_size={chunk_size}&chunk_overlap={overlap}",
+        files=files,
+    )
+    assert resp.status_code == 201
+
+    doc_ids = resp.json()["doc_ids"]
+    assert len(doc_ids) >= 2
+
+    resp0 = client.get(f"/collections/vectorforge/documents/{doc_ids[0]}")
+    resp1 = client.get(f"/collections/vectorforge/documents/{doc_ids[1]}")
+    chunk0 = resp0.json()["content"]
+    chunk1 = resp1.json()["content"]
+
+    assert chunk0[-overlap:] == chunk1[:overlap]
