@@ -94,7 +94,7 @@ Perfect for building:
 ### **Semantic Search**
 - Vector similarity search using cosine distance
 - Configurable top-k results
-- **Metadata filtering** - Filter results by exact metadata field matching (AND logic)
+- **Metadata filtering** - Filter results by exact equality or operator expressions (`$gte`, `$lte`, `$ne`, `$in`) with AND logic; filter on document text with `document_filter` (`$contains`, `$not_contains`)
 - Real-time embedding generation
 - Query performance tracking with percentile metrics (p50, p95, p99)
 
@@ -456,10 +456,13 @@ curl -X POST http://localhost:3001/search \
 
 ### **3. Search with Metadata Filters**
 
-Filter search results by metadata fields using exact equality matching. All filters use AND logic (all must match).
+Filter search results using exact equality matching, operator expressions, or document-text
+filtering. All `filters` conditions use AND logic (all must match).
 
 **Key Features:**
 - **Exact matching**: Filters use case-sensitive equality comparison
+- **Operator expressions**: `$gte`, `$lte`, `$ne`, `$in` are supported inside `filters`
+- **Document-text filtering**: `document_filter` with `$contains` or `$not_contains` filters on document content
 - **AND logic**: Multiple filters require all to match
 - **Flexible filtering**: Filter by any metadata field independently
 - **No pairing required**: `source_file` and `chunk_index` can be used separately or together
@@ -533,6 +536,40 @@ curl -X POST http://localhost:3001/search \
 ```
 
 All filters must match (AND logic): author is "Alice" AND year is 2024 AND category is "AI".
+
+**5. Range and set operators in `filters`:**
+
+```bash
+curl -X POST http://localhost:3001/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "deep learning",
+    "top_k": 10,
+    "filters": {
+      "year": {"$gte": 2022},
+      "category": {"$in": ["AI", "ML"]},
+      "status": {"$ne": "draft"}
+    }
+  }'
+```
+
+Supported metadata operators: `$gte`, `$lte`, `$ne`, `$in`. The `$in` value must be a list of
+`str`, `int`, `float`, or `bool` values. Other operator expressions return HTTP 422.
+
+**6. Document-text filtering with `document_filter`:**
+
+```bash
+curl -X POST http://localhost:3001/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "neural networks",
+    "top_k": 10,
+    "document_filter": {"$contains": "Python"}
+  }'
+```
+
+`document_filter` filters on the document text content (not metadata). Supported operators:
+`$contains` and `$not_contains`. Can be combined with `filters`.
 
 **Example Response:**
 
@@ -830,10 +867,11 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 #### Search and Filtering
 - **AND-only filter logic.** The `filters` parameter always combines multiple conditions with
-  `$and`. There is no way to express OR conditions, range queries, `$in`, `$ne`, or `$contains`
-  through the current API, even though ChromaDB supports all of these natively.
-- **Exact equality only.** Filters do not accept operator expressions (e.g.
-  `{"score": {"$gte": 10}}`). Only exact equality matching is available.
+  `$and`. There is no way to express OR conditions through the current API, even though ChromaDB
+  supports them natively.
+- **No `$contains` on metadata fields.** ChromaDB's `$contains` operator only works against
+  document text, not metadata. Use `document_filter: {"$contains": "..."}` for text-content
+  filtering and `filters` with operator expressions (`$gte`, `$lte`, `$ne`, `$in`) for metadata.
 - **`top_k` is capped at 100.** `MAX_TOP_K = 100` is enforced at the API layer. Requests
   requiring more than 100 results must be paginated manually.
 
@@ -894,8 +932,9 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 - [x] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather than scanning the full data directory on every metrics request
 - [x] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
   parameters, completing the intent signaled by `DEFAULT_CHUNK_SIZE` and `DEFAULT_CHUNK_OVERLAP`
-- [ ] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, `$ne`, and
-  `$contains` operators through the search API, completing the existing filter system
+- [x] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, and `$ne`
+  operators through the `filters` field; add a separate `document_filter` field (`$contains`,
+  `$not_contains`) for document-text filtering (note: `$contains` is not a metadata operator)
 - [ ] **Batch document API** — single endpoint to add/delete multiple documents atomically,
   rounding out the existing document management surface
 - [ ] **Non-destructive migration fallback** — keep the original collection until the new

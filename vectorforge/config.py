@@ -69,6 +69,14 @@ class VFGConfig:
     MAX_TOP_K: int = 100
     """Maximum value for top_k parameter."""
 
+    VALID_FILTER_OPERATORS: frozenset[str] = frozenset(["$gte", "$lte", "$in", "$ne"])
+    """Permitted operators for metadata search filters."""
+
+    VALID_DOCUMENT_FILTER_OPERATORS: frozenset[str] = frozenset(
+        ["$contains", "$not_contains"]
+    )
+    """Permitted operators for document-text search filters (maps to ChromaDB where_document)."""
+
     # =============================================================================
     # Metrics Configuration
     # =============================================================================
@@ -132,8 +140,8 @@ class VFGConfig:
     MAX_METADATA_PAIRS: int = 20
     """Maximum number of key-value pairs for collection metadata."""
 
-    VALID_METADATA_TYPES: frozenset[type] = frozenset([str, int, float, bool])
-    """Permitted Python types for document metadata values.
+    VALID_SCALAR_TYPES: frozenset[type] = frozenset([str, int, float, bool])
+    """Permitted Python types for document metadata and filter values.
 
     ChromaDB rejects any metadata value that is not one of these four scalar
     types. ``None`` and nested structures (lists, dicts) are not allowed.
@@ -240,11 +248,39 @@ class VFGConfig:
                 "Each entry in SUPPORTED_FILE_EXTENSIONS must be a string starting with '.'"
             )
 
-        if isinstance(cls.VALID_METADATA_TYPES, set):
-            raise ValueError(
-                "ChromaDB only accepts str, int, float, and bool as metadata leaf metadata types."
-            )
-        if len(cls.VALID_METADATA_TYPES) == 0:
+        if not isinstance(cls.VALID_SCALAR_TYPES, frozenset):
+            raise ValueError("VALID_SCALAR_TYPES must be a frozenset.")
+        if len(cls.VALID_SCALAR_TYPES) == 0:
             raise ValueError("Config must allow at least one valid metadata type.")
-        if not all(isinstance(typ, type) for typ in cls.VALID_METADATA_TYPES):
-            raise ValueError("Each entry in VALID_METADATA_TYPES must be a valid type.")
+        if not all(isinstance(typ, type) for typ in cls.VALID_SCALAR_TYPES):
+            raise ValueError(
+                "Each entry in VALID_METADATA_TYPES must be a valid type (str, int, float, bool)."
+            )
+
+        if not isinstance(cls.VALID_FILTER_OPERATORS, frozenset):
+            raise ValueError("VALID_FILTER_OPERATORS must be a frozenset.")
+        if len(cls.VALID_FILTER_OPERATORS) == 0:
+            raise ValueError(
+                "Config must allow at least one valid search filter operator."
+            )
+        if not all(
+            isinstance(op, str) and op.startswith("$")
+            for op in cls.VALID_FILTER_OPERATORS
+        ):
+            raise ValueError(
+                "Each entry in VALID_FILTER_OPERATORS must be a string starting with '$'."
+            )
+
+        if not isinstance(cls.VALID_DOCUMENT_FILTER_OPERATORS, frozenset):
+            raise ValueError("VALID_DOCUMENT_FILTER_OPERATORS must be a frozenset.")
+        if len(cls.VALID_DOCUMENT_FILTER_OPERATORS) == 0:
+            raise ValueError(
+                "Config must allow at least one valid document filter operator."
+            )
+        if not all(
+            isinstance(op, str) and op.startswith("$")
+            for op in cls.VALID_DOCUMENT_FILTER_OPERATORS
+        ):
+            raise ValueError(
+                "Each entry in VALID_DOCUMENT_FILTER_OPERATORS must be a string starting with '$'."
+            )

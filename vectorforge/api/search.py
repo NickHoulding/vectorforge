@@ -1,5 +1,8 @@
 """Semantic search endpoints for querying collections."""
 
+from typing import cast
+
+from chromadb.api.types import WhereDocument
 from fastapi import APIRouter
 
 from vectorforge.api import manager
@@ -43,8 +46,16 @@ def search(collection_name: str, search_params: SearchQuery) -> SearchResponse:
     """
     engine = manager.get_engine(collection_name)
     query: str = search_params.query.strip()
+    doc_filter: WhereDocument | None = (
+        cast(WhereDocument, search_params.document_filter)
+        if search_params.document_filter
+        else None
+    )
     results: list[SearchResult] = engine.search(
-        query=query, top_k=search_params.top_k, filters=search_params.filters
+        query=query,
+        top_k=search_params.top_k,
+        filters=search_params.filters,
+        document_filter=doc_filter,
     )
 
     return SearchResponse(query=query, results=results, count=len(results))

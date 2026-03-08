@@ -15,6 +15,7 @@ from typing import Any
 import chromadb
 import numpy as np
 from chromadb.api import ClientAPI
+from chromadb.api.types import WhereDocument
 from sentence_transformers import SentenceTransformer
 
 from vectorforge import __version__
@@ -216,6 +217,7 @@ class VectorEngine:
         query: str,
         top_k: int = VFGConfig.DEFAULT_TOP_K,
         filters: dict[str, Any] | None = None,
+        document_filter: WhereDocument | None = None,
     ) -> list[SearchResult]:
         """Search the vector index for documents similar to the query.
 
@@ -228,7 +230,12 @@ class VectorEngine:
             top_k: Maximum number of results to return. Defaults to 10.
             filters: Optional metadata filters as key-value pairs. All filters
                     must match (AND logic). Matching is case-sensitive and
-                    uses exact equality. Example: {"source_file": "doc.pdf"}
+                    uses exact equality or operator expressions
+                    (``$gte``, ``$lte``, ``$ne``, ``$in``).
+                    Example: ``{"year": {"$gte": 2020}, "category": "AI"}``
+            document_filter: Optional document-text filter. Accepts
+                    ``$contains`` or ``$not_contains`` with a string value.
+                    Example: ``{"$contains": "machine learning"}``
 
         Returns:
             List of SearchResult objects sorted by similarity score in
@@ -266,6 +273,7 @@ class VectorEngine:
             query_embeddings=[normalized_query_embedding.tolist()],
             n_results=top_k,
             where=where_clause,
+            where_document=document_filter,
             include=["documents", "metadatas", "distances"],
         )
 
@@ -377,7 +385,7 @@ class VectorEngine:
                 raise TypeError(
                     f"Metadata value for key: {key} is None (None metadata values not allowed)."
                 )
-            elif type(value) not in VFGConfig.VALID_METADATA_TYPES:
+            elif type(value) not in VFGConfig.VALID_SCALAR_TYPES:
                 raise TypeError(
                     f"Invalid metadata value: {value} of type: {type(value)}."
                 )

@@ -593,3 +593,284 @@ def test_search_filters_validation(client):
         "/collections/vectorforge/search", json={"query": "test", "filters": {}}
     )
     assert response.status_code == 200
+
+
+# =============================================================================
+# Advanced Filter Operator Tests — Happy Path
+# =============================================================================
+
+
+def test_search_filter_gte_returns_matching_documents(client):
+    """Test that $gte operator returns only documents with field >= threshold."""
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Old article", "metadata": {"year": 2018}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Recent article", "metadata": {"year": 2022}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Newest article", "metadata": {"year": 2024}},
+    )
+
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "article", "top_k": 10, "filters": {"year": {"$gte": 2022}}},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    returned_years = {r["metadata"]["year"] for r in data["results"]}
+    assert returned_years == {2022, 2024}
+
+
+def test_search_filter_lte_returns_matching_documents(client):
+    """Test that $lte operator returns only documents with field <= threshold."""
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Old article", "metadata": {"year": 2018}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Recent article", "metadata": {"year": 2022}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Newest article", "metadata": {"year": 2024}},
+    )
+
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "article", "top_k": 10, "filters": {"year": {"$lte": 2022}}},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    returned_years = {r["metadata"]["year"] for r in data["results"]}
+    assert returned_years == {2018, 2022}
+
+
+def test_search_filter_ne_excludes_matching_document(client):
+    """Test that $ne operator excludes documents where the field equals the value."""
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Python tutorial", "metadata": {"language": "python"}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Java tutorial", "metadata": {"language": "java"}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Go tutorial", "metadata": {"language": "go"}},
+    )
+
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={
+            "query": "tutorial",
+            "top_k": 10,
+            "filters": {"language": {"$ne": "python"}},
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    returned_languages = {r["metadata"]["language"] for r in data["results"]}
+    assert "python" not in returned_languages
+    assert returned_languages == {"java", "go"}
+
+
+def test_search_filter_in_returns_only_listed_values(client):
+    """Test that $in operator returns only documents whose field is in the list."""
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Python tutorial", "metadata": {"language": "python"}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Java tutorial", "metadata": {"language": "java"}},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Go tutorial", "metadata": {"language": "go"}},
+    )
+
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={
+            "query": "tutorial",
+            "top_k": 10,
+            "filters": {"language": {"$in": ["python", "go"]}},
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    returned_languages = {r["metadata"]["language"] for r in data["results"]}
+    assert returned_languages == {"python", "go"}
+
+
+def test_search_filter_contains_matches_substring(client):
+    """Test that $contains document_filter returns documents whose text contains the substring."""
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Introduction to Python programming"},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Advanced Python techniques"},
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Introduction to Java programming"},
+    )
+
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={
+            "query": "programming guide",
+            "top_k": 10,
+            "document_filter": {"$contains": "Python"},
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    assert all("Python" in r["content"] for r in data["results"])
+
+
+def test_search_filter_operators_combine_with_exact_match(client):
+    """Test that an operator filter on one field ANDs correctly with an exact match on another."""
+    client.post(
+        "/collections/vectorforge/documents",
+        json={
+            "content": "Article one",
+            "metadata": {"category": "AI", "year": 2021},
+        },
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={
+            "content": "Article two",
+            "metadata": {"category": "AI", "year": 2024},
+        },
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={
+            "content": "Article three",
+            "metadata": {"category": "databases", "year": 2024},
+        },
+    )
+
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={
+            "query": "article",
+            "top_k": 10,
+            "filters": {"category": "AI", "year": {"$gte": 2023}},
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    result = data["results"][0]
+    assert result["metadata"]["category"] == "AI"
+    assert result["metadata"]["year"] == 2024
+
+
+def test_search_filter_in_with_no_match_returns_empty(client):
+    """Test that $in with a value not present in the index returns zero results."""
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Python tutorial", "metadata": {"language": "python"}},
+    )
+
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={
+            "query": "tutorial",
+            "top_k": 10,
+            "filters": {"language": {"$in": ["ruby", "rust"]}},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["count"] == 0
+
+
+# =============================================================================
+# Advanced Filter Operator Tests — Validation (422)
+# =============================================================================
+
+
+def test_search_filter_unknown_operator_returns_422(client):
+    """Test that an unrecognised operator key returns 422."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "filters": {"year": {"$foo": 2024}}},
+    )
+    assert response.status_code == 422
+
+
+def test_search_filter_in_with_non_list_returns_422(client):
+    """Test that $in with a non-list value returns 422."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "filters": {"language": {"$in": "python"}}},
+    )
+    assert response.status_code == 422
+
+
+def test_search_filter_in_with_invalid_item_types_returns_422(client):
+    """Test that $in containing non-scalar items (e.g. list of dicts) returns 422."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "filters": {"language": {"$in": [{"key": "val"}]}}},
+    )
+    assert response.status_code == 422
+
+
+def test_search_filter_gte_with_non_scalar_returns_422(client):
+    """Test that $gte with a non-scalar value (e.g. a list) returns 422."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "filters": {"year": {"$gte": [2020, 2024]}}},
+    )
+    assert response.status_code == 422
+
+
+def test_search_filter_contains_in_metadata_filters_returns_422(client):
+    """Test that $contains used as a metadata filter operator returns 422."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "filters": {"title": {"$contains": "Python"}}},
+    )
+    assert response.status_code == 422
+
+
+def test_search_document_filter_unknown_operator_returns_422(client):
+    """Test that an unrecognised document_filter operator returns 422."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "document_filter": {"$foo": "Python"}},
+    )
+    assert response.status_code == 422
+
+
+def test_search_document_filter_non_string_value_returns_422(client):
+    """Test that $contains with a non-string value in document_filter returns 422."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "document_filter": {"$contains": 42}},
+    )
+    assert response.status_code == 422

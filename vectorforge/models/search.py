@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from vectorforge.config import VFGConfig
 
@@ -18,6 +18,8 @@ class SearchQuery(BaseModel):
         query: The search text to find semantically similar documents.
         top_k: Maximum number of results to return (1-100, default: 10).
         filters: Optional metadata filters as key-value pairs for narrowing results.
+        document_filter: Optional document-text filter using ``$contains`` or
+            ``$not_contains``, e.g. ``{"$contains": "machine learning"}``.
     """
 
     model_config = ConfigDict(
@@ -45,6 +47,109 @@ class SearchQuery(BaseModel):
     filters: dict[str, Any] | None = Field(
         default=None, description="Optional metadata filters"
     )
+    document_filter: dict[str, str] | None = Field(
+        default=None,
+        description=(
+            "Optional document-text filter. "
+            "Accepts $contains or $not_contains with a string value, "
+            'e.g. {"$contains": "machine learning"}.'
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_filter_operators(self) -> "SearchQuery":
+        """Validate that operator expressions in filters are well-formed.
+
+        Each filter value may be either a scalar (exact equality match) or a
+        dict of operator expressions (e.g. ``{"$gte": 10}``). This validator
+        checks that only recognised operators are used and that each operator
+        receives a value of the correct type.
+
+        Returns:
+            SearchQuery: The validated model instance.
+
+        Raises:
+            ValueError: If an unknown operator is used, or an operator receives
+                a value of the wrong type.
+        """
+        if not self.filters:
+            return self
+
+        valid_scalar_types = VFGConfig.VALID_SCALAR_TYPES
+        valid_operators = VFGConfig.VALID_FILTER_OPERATORS
+
+        for field, filter_value in self.filters.items():
+            if not isinstance(filter_value, dict):
+                continue
+
+            operators_used = set(filter_value.keys())
+
+            for op in operators_used:
+                if op not in valid_operators:
+                    raise ValueError(
+                        f"filters[{field!r}] contains unknown operator {op!r}. "
+                        f"Allowed operators: {sorted(valid_operators)}"
+                    )
+
+            if "$in" in operators_used:
+                in_operand = filter_value["$in"]
+                if not isinstance(in_operand, list):
+                    raise ValueError(
+                        f"filters[{field!r}]['$in'] must be a list, "
+                        f"got {type(in_operand).__name__!r}"
+                    )
+                invalid_items = [
+                    item for item in in_operand if type(item) not in valid_scalar_types
+                ]
+                if invalid_items:
+                    bad_types = {type(item).__name__ for item in invalid_items}
+                    raise ValueError(
+                        f"filters[{field!r}]['$in'] contains unsupported value types: "
+                        f"{sorted(bad_types)}. "
+                        f"Allowed types: str, int, float, bool"
+                    )
+
+            for scalar_op in ("$gte", "$lte", "$ne"):
+                scalar_operand = filter_value.get(scalar_op)
+                if (
+                    scalar_operand is not None
+                    and type(scalar_operand) not in valid_scalar_types
+                ):
+                    raise ValueError(
+                        f"filters[{field!r}][{scalar_op!r}] must be a str, int, float, or bool, "
+                        f"got {type(scalar_operand).__name__!r}"
+                    )
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_document_filter(self) -> "SearchQuery":
+        """Validate that document_filter contains only recognised operators with string values.
+
+        Returns:
+            SearchQuery: The validated model instance.
+
+        Raises:
+            ValueError: If document_filter contains an unknown operator or a non-string value.
+        """
+        if not self.document_filter:
+            return self
+
+        valid_operators = VFGConfig.VALID_DOCUMENT_FILTER_OPERATORS
+
+        for op, operand in self.document_filter.items():
+            if op not in valid_operators:
+                raise ValueError(
+                    f"document_filter contains unknown operator {op!r}. "
+                    f"Allowed operators: {sorted(valid_operators)}"
+                )
+            if not isinstance(operand, str):
+                raise ValueError(
+                    f"document_filter[{op!r}] must be a str, "
+                    f"got {type(operand).__name__!r}"
+                )
+
+        return self
 
 
 class SearchResult(BaseModel):
