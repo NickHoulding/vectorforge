@@ -852,10 +852,10 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   call triggers a blocking SQLite round-trip (open connection → WAL pragma → UPDATE → commit →
   close). At high indexing throughput this is the primary bottleneck — a 100-chunk file upload
   triggers 100 separate SQLite connections. There is no batching or async write path.
-- **`GET /metrics` triggers a full directory scan.** `_get_chromadb_disk_size()` calls
-  `os.walk()` across the entire ChromaDB data directory on every metrics request. In a
-  multi-collection deployment this scans data for all collections, not just the requested one.
-  There is no caching or TTL.
+- **`GET /metrics` scans the full data directory across all collections.** `_get_chromadb_disk_size()` calls
+  `os.walk()` across the entire ChromaDB data directory. In a multi-collection deployment this
+  scans data for all collections, not just the requested one. Results are cached for
+  `DISK_SIZE_TTL_MINS` (default 5 minutes) to limit scan frequency.
 - **No concurrent request safety for in-memory counters.** The engine's metrics counters
   (`total_queries`, `docs_added`, etc.) are plain integers with no locking. Concurrent requests
   share a single `VectorEngine` instance and can produce lost updates on these counters.
@@ -892,8 +892,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 ### Future Improvements
 
 - [x] **Metadata validation** — reject `None` values and unsupported types before they reach ChromaDB, with descriptive 422 errors instead of silent HTTP 500s
-- [ ] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather
-  than scanning the full data directory on every metrics request
+- [x] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather than scanning the full data directory on every metrics request
 - [ ] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
   parameters, completing the intent signaled by `DEFAULT_CHUNK_SIZE` and `DEFAULT_CHUNK_OVERLAP`
 - [ ] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, `$ne`, and

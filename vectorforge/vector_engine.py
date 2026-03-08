@@ -137,6 +137,7 @@ class VectorEngine:
         "migration_in_progress",
         "chroma_path",
         "_metrics_store",
+        "_cached_disk_size",
     )
 
     def __init__(
@@ -171,6 +172,8 @@ class VectorEngine:
         db_path = os.path.join(self.chroma_path, "metrics.db")
         self._metrics_store: MetricsStore = MetricsStore(db_path)
         self.metrics: EngineMetrics = self._load_metrics(collection.name)
+
+        self._cached_disk_size: dict[str, Any] | None = None
 
     def _load_metrics(self, collection_name: str) -> EngineMetrics:
         """Load lifetime metrics from SQLite or seed a new zero row.
@@ -643,7 +646,9 @@ class VectorEngine:
     def _get_chromadb_disk_size(self) -> tuple[int, float]:
         """Calculate total disk usage of the ChromaDB data directory.
 
-        Walks the entire persist directory tree and sums file sizes.
+        Returns a cached result if it was computed within the last
+        ``VFGConfig.DISK_SIZE_TTL_MINS`` minutes; otherwise walks the full
+        persist directory tree, sums file sizes, and updates the cache.
 
         Returns:
             Tuple of (bytes, megabytes) for total storage usage.
@@ -652,6 +657,16 @@ class VectorEngine:
             FileNotFoundError: If the ChromaDB persist directory does not exist.
             OSError: If there is an error accessing the directory or its files.
         """
+        if self._cached_disk_size:
+            current_timestamp = datetime.timestamp(datetime.now(timezone.utc))
+            min_diff = (current_timestamp - self._cached_disk_size["timestamp"]) / 60
+
+            if min_diff < VFGConfig.DISK_SIZE_TTL_MINS:
+                total_bytes, total_mb = self._cached_disk_size["size"]
+                return total_bytes, total_mb
+        else:
+            self._cached_disk_size = {}
+
         chroma_path = self.chroma_path
 
         if not os.path.exists(chroma_path):
@@ -670,6 +685,12 @@ class VectorEngine:
             raise OSError(f"Error calculating ChromaDB disk size: {e}") from e
 
         total_mb = total_bytes / (1024 * 1024)
+
+        self._cached_disk_size["timestamp"] = datetime.timestamp(
+            datetime.now(timezone.utc)
+        )
+        self._cached_disk_size["size"] = (total_bytes, total_mb)
+
         return total_bytes, total_mb
 
     def get_chromadb_metrics(self) -> dict[str, Any]:

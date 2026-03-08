@@ -76,6 +76,9 @@ class VFGConfig:
     MAX_QUERY_HISTORY: int = 1_000
     """Maximum number of query times to retain for percentile calculations."""
 
+    DISK_SIZE_TTL_MINS: int = 5
+    """TTL in minutes for the cached ChromaDB disk size calculation."""
+
     # =============================================================================
     # Supported File Types
     # =============================================================================
