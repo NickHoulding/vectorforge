@@ -6,9 +6,11 @@ Covers:
 """
 
 import os
+from unittest.mock import patch
 
 import pytest
 
+from vectorforge.api import manager
 from vectorforge.config import VFGConfig
 
 TEST_DATA_PATH = os.path.join(os.path.dirname(__file__), "data")
@@ -386,3 +388,101 @@ def test_update_hnsw_config_response_structure(client):
     }
 
     assert set(config.keys()) == expected_config_fields
+
+
+def test_update_hnsw_config_response_includes_temp_verified(client):
+    """Test that migration response includes temp_verified field set to True."""
+    resp = client.put(
+        "/collections/vectorforge/config/hnsw?confirm=true",
+        json={"ef_search": 150},
+    )
+    assert resp.status_code == 200
+
+    migration = resp.json()["migration"]
+    assert "temp_verified" in migration
+    assert migration["temp_verified"] is True
+
+
+def test_update_hnsw_config_original_preserved_on_temp_add_failure(client):
+    """Test that original collection is intact when temp population fails.
+
+    If add() raises during migration to the temp collection, the original
+    collection must still have all its documents (it is never deleted).
+    """
+    for i in range(3):
+        client.post(
+            "/collections/vectorforge/documents",
+            json={"content": f"Preserved document {i}"},
+        )
+
+    engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
+    original_count = engine.collection.count()
+    assert original_count == 3
+
+    original_collection_name = engine.collection.name
+    real_create = engine.chroma_client.create_collection
+
+    def failing_create(name, metadata=None, **kwargs):
+        col = real_create(name=name, metadata=metadata, **kwargs)
+        if "_temp_" in name:
+            real_add = col.add
+
+            def raise_on_add(*args, **kwargs):
+                raise RuntimeError("Simulated failure during temp population")
+
+            col.add = raise_on_add
+        return col
+
+    with patch.object(
+        engine.chroma_client, "create_collection", side_effect=failing_create
+    ):
+        resp = client.put(
+            "/collections/vectorforge/config/hnsw?confirm=true",
+            json={"ef_search": 200},
+        )
+
+    assert resp.status_code == 500
+
+    engine2 = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
+    assert engine2.collection.name == original_collection_name
+    assert engine2.collection.count() == original_count
+
+
+def test_update_hnsw_config_temp_count_mismatch_preserves_original(client):
+    """Test that a temp count mismatch aborts migration and preserves original.
+
+    If the verified count of the temp collection does not match the expected
+    document count, the migration must raise without deleting the original.
+    """
+    for i in range(3):
+        client.post(
+            "/collections/vectorforge/documents",
+            json={"content": f"Safe document {i}"},
+        )
+
+    engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
+    original_count = engine.collection.count()
+    assert original_count == 3
+    original_collection_name = engine.collection.name
+
+    real_create = engine.chroma_client.create_collection
+
+    def create_with_bad_count(name, metadata=None, **kwargs):
+        col = real_create(name=name, metadata=metadata, **kwargs)
+        if "_temp_" in name:
+            col.count = lambda: original_count - 1
+        return col
+
+    with patch.object(
+        engine.chroma_client, "create_collection", side_effect=create_with_bad_count
+    ):
+        resp = client.put(
+            "/collections/vectorforge/config/hnsw?confirm=true",
+            json={"ef_search": 200},
+        )
+
+    assert resp.status_code == 500
+
+    engine2 = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
+    assert engine2.collection.name == original_collection_name
+    assert engine2.collection.count() == original_count
