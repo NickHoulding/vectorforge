@@ -106,9 +106,9 @@ def add_docs_batch(
     """
     Add multiple documents to a collection in a single batch request
 
-    Indexes each document individually, returning all assigned IDs. Documents
-    are validated before any are persisted; if any document fails validation
-    the entire request returns an error.
+    Batch-encodes all document embeddings in a single model.encode() call, then
+    persists all documents atomically. Documents are validated before any are
+    persisted; if any document fails validation the entire request returns an error.
 
     Args:
         collection_name: Name of the collection

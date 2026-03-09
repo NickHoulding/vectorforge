@@ -2477,15 +2477,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pybind11"
-version = "3.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2f/7b/a6d8dcb83c457e24a9df1e4d8fd5fb8034d4bbc62f3c324681e8a9ba57c2/pybind11-3.0.1.tar.gz", hash = "sha256:9c0f40056a016da59bab516efb523089139fcc6f2ba7e4930854c61efb932051", size = 546914, upload-time = "2025-08-22T20:09:27.265Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/8a/37362fc2b949d5f733a8b0f2ff51ba423914cabefe69f1d1b6aab710f5fe/pybind11-3.0.1-py3-none-any.whl", hash = "sha256:aa8f0aa6e0a94d3b64adfc38f560f33f15e589be2175e103c0a33c6bce55ee89", size = 293611, upload-time = "2025-08-22T20:09:25.235Z" },
-]
-
-[[package]]
 name = "pycparser"
 version = "3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3725,12 +3716,6 @@ wheels = [
 ]
 
 [[package]]
-name = "uuid"
-version = "1.30"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ce/63/f42f5aa951ebf2c8dac81f77a8edcc1c218640a2a35a03b9ff2d4aa64c3d/uuid-1.30.tar.gz", hash = "sha256:1f87cc004ac5120466f36c5beae48b4c48cc411968eed0eaecd3da82aa96193f", size = 5811, upload-time = "2007-05-26T11:13:24Z" }
-
-[[package]]
 name = "uvicorn"
 version = "0.40.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3800,15 +3785,11 @@ dependencies = [
     { name = "chromadb" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "isort" },
     { name = "mypy" },
-    { name = "pybind11" },
     { name = "pymupdf" },
-    { name = "pytest" },
     { name = "python-multipart" },
     { name = "requests" },
     { name = "sentence-transformers" },
-    { name = "uuid" },
     { name = "uvicorn" },
 ]
 
@@ -3816,8 +3797,10 @@ dependencies = [
 dev = [
     { name = "black" },
     { name = "faker" },
+    { name = "isort" },
     { name = "memory-profiler" },
     { name = "pre-commit" },
+    { name = "pytest" },
     { name = "pytest-benchmark" },
     { name = "pytest-cov" },
 ]
@@ -3830,15 +3813,11 @@ requires-dist = [
     { name = "chromadb", specifier = ">=0.5.0" },
     { name = "fastapi", specifier = ">=0.121.2" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "isort", specifier = ">=7.0.0" },
     { name = "mypy", specifier = ">=1.19.1" },
-    { name = "pybind11", specifier = ">=3.0.1" },
     { name = "pymupdf", specifier = ">=1.26.7" },
-    { name = "pytest", specifier = ">=8.0.0" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "sentence-transformers", specifier = ">=5.1.2" },
-    { name = "uuid", specifier = ">=1.30" },
     { name = "uvicorn", specifier = ">=0.38.0" },
 ]
 
@@ -3846,8 +3825,10 @@ requires-dist = [
 dev = [
     { name = "black", specifier = ">=24.0.0" },
     { name = "faker", specifier = ">=40.1.2" },
+    { name = "isort", specifier = ">=7.0.0" },
     { name = "memory-profiler", specifier = ">=0.61.0" },
     { name = "pre-commit", specifier = ">=4.0.0" },
+    { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-benchmark", specifier = ">=5.2.3" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
 ]

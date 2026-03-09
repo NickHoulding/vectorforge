@@ -3,7 +3,7 @@
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.121.2+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)
+![Version](https://img.shields.io/badge/version-1.0.3-orange.svg)
 
 > A high-performance vector database with semantic search capabilities, powered by ChromaDB, built with FastAPI and sentence transformers.
 
@@ -277,15 +277,27 @@ embedding = embedding / np.linalg.norm(embedding)
 #### **4. Modular Architecture**
 ```
 vectorforge/
-├── api.py              # FastAPI endpoints (presentation layer)
+├── api/                # FastAPI routers (presentation layer)
+│   ├── collections.py  # Collection CRUD
+│   ├── documents.py    # Document CRUD
+│   ├── files.py        # File upload
+│   ├── search.py       # Semantic search
+│   ├── index.py        # Stats & HNSW config
+│   ├── system.py       # Health & metrics
+│   ├── config.py       # Collection metadata config
+│   └── decorators.py   # Error handling & auth decorators
+├── models/             # Pydantic models (data layer)
+│   ├── collections.py
+│   ├── documents.py
+│   ├── files.py
+│   ├── search.py
+│   ├── index.py
+│   ├── metrics.py
+│   └── metadata.py
 ├── vector_engine.py    # Core vector operations (business logic)
-├── doc_processor.py    # Document processing utilities
-└── models/             # Pydantic models (data layer)
-    ├── documents.py
-    ├── files.py
-    ├── search.py
-    ├── index.py
-    └── metrics.py
+├── collection_manager.py
+├── doc_processor.py    # Text extraction and chunking
+└── metrics_store.py    # SQLite-backed metrics persistence
 ```
 
 **Rationale**: Separation of concerns enables testing and maintainability.
@@ -339,7 +351,6 @@ cd vectorforge
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Create virtual environment and install dependencies
-cd python
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv sync
@@ -348,15 +359,14 @@ uv sync
 3. **Verify installation**
 ```bash
 python -c "import vectorforge; print(vectorforge.__version__)"
-# Should output: 1.0.0
+# Should output: 1.0.3
 ```
 
 ### **How to Run**
 
 #### **Start the API Server**
 ```bash
-cd python
-uv run vectorforge/api.py
+uv run vectorforge-api
 ```
 
 The API will be available at:
@@ -395,7 +405,6 @@ VectorForge currently uses hardcoded defaults, but you can customize:
 | `API_PORT` | `3001` | Port for FastAPI server |
 | `DEFAULT_DATA_DIR` | `./data` | Directory for index persistence |
 | `MODEL_NAME` | `all-MiniLM-L6-v2` | Sentence transformer model |
-| `COMPACTION_THRESHOLD` | `0.25` | Deletion ratio triggering compaction |
 
 ---
 
@@ -404,7 +413,7 @@ VectorForge currently uses hardcoded defaults, but you can customize:
 ### **1. Add a Document**
 
 ```bash
-curl -X POST http://localhost:3001/doc/add \
+curl -X POST http://localhost:3001/collections/vectorforge/documents \
   -H "Content-Type: application/json" \
   -d '{
     "content": "Machine learning is a subset of artificial intelligence",
@@ -427,7 +436,7 @@ curl -X POST http://localhost:3001/doc/add \
 ### **2. Search Documents**
 
 ```bash
-curl -X POST http://localhost:3001/search \
+curl -X POST http://localhost:3001/collections/vectorforge/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What is AI?",
@@ -474,7 +483,7 @@ filtering. All `filters` conditions use AND logic (all must match).
 **1. Filter by source file (all chunks from a specific file):**
 
 ```bash
-curl -X POST http://localhost:3001/search \
+curl -X POST http://localhost:3001/collections/vectorforge/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "machine learning concepts",
@@ -490,7 +499,7 @@ Returns all matching chunks from `textbook.pdf`, regardless of chunk index.
 **2. Filter by chunk index (first chunks from all files):**
 
 ```bash
-curl -X POST http://localhost:3001/search \
+curl -X POST http://localhost:3001/collections/vectorforge/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "introduction",
@@ -506,7 +515,7 @@ Returns all matching first chunks (index 0) from any file. Useful for finding do
 **3. Filter by both (specific chunk from specific file):**
 
 ```bash
-curl -X POST http://localhost:3001/search \
+curl -X POST http://localhost:3001/collections/vectorforge/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "overview",
@@ -523,7 +532,7 @@ Returns only the first chunk from `guide.pdf` (if it matches the query).
 **4. Filter by custom metadata:**
 
 ```bash
-curl -X POST http://localhost:3001/search \
+curl -X POST http://localhost:3001/collections/vectorforge/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "recent research",
@@ -541,7 +550,7 @@ All filters must match (AND logic): author is "Alice" AND year is 2024 AND categ
 **5. Range and set operators in `filters`:**
 
 ```bash
-curl -X POST http://localhost:3001/search \
+curl -X POST http://localhost:3001/collections/vectorforge/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "deep learning",
@@ -560,7 +569,7 @@ Supported metadata operators: `$gte`, `$lte`, `$ne`, `$in`. The `$in` value must
 **6. Document-text filtering with `document_filter`:**
 
 ```bash
-curl -X POST http://localhost:3001/search \
+curl -X POST http://localhost:3001/collections/vectorforge/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "neural networks",
@@ -598,7 +607,7 @@ curl -X POST http://localhost:3001/search \
 ### **4. Upload a File**
 
 ```bash
-curl -X POST http://localhost:3001/file/upload \
+curl -X POST http://localhost:3001/collections/vectorforge/files/upload \
   -F "file=@document.pdf"
 ```
 
@@ -615,13 +624,13 @@ curl -X POST http://localhost:3001/file/upload \
 ### **5. Get Document by ID**
 
 ```bash
-curl http://localhost:3001/doc/550e8400-e29b-41d4-a716-446655440000
+curl http://localhost:3001/collections/vectorforge/documents/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ### **6. Delete Document**
 
 ```bash
-curl -X DELETE http://localhost:3001/doc/550e8400-e29b-41d4-a716-446655440000
+curl -X DELETE http://localhost:3001/collections/vectorforge/documents/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ### **6a. Batch Add Documents**
@@ -682,34 +691,10 @@ curl -X DELETE http://localhost:3001/collections/vectorforge/documents \
 
 Only IDs that actually existed are returned. If none of the requested IDs exist, HTTP 404 is returned. Batches are capped at `MAX_BATCH_SIZE` (default 100).
 
-### **7. Save Index**
+### **7. Get Metrics**
 
 ```bash
-curl -X POST http://localhost:3001/index/save
-```
-
-**Response:**
-```json
-{
-  "status": "saved",
-  "directory": "./data/chroma_data",
-  "total_size_mb": 1.45,
-  "documents_saved": 100,
-  "embeddings_saved": 100,
-  "version": "1.0.0"
-}
-```
-
-### **8. Load Index**
-
-```bash
-curl -X POST http://localhost:3001/index/load
-```
-
-### **9. Get Metrics**
-
-```bash
-curl http://localhost:3001/metrics
+curl http://localhost:3001/collections/vectorforge/metrics
 ```
 
 **Response includes:**
@@ -719,7 +704,7 @@ curl http://localhost:3001/metrics
 - Memory consumption
 - System information and uptime
 
-### **10. Health Check**
+### **8. Health Check**
 
 ```bash
 curl http://localhost:3001/health
@@ -729,7 +714,9 @@ curl http://localhost:3001/health
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0"
+  "version": "1.0.3",
+  "chromadb_heartbeat": 1234567890,
+  "total_collections": 1
 }
 ```
 
@@ -739,16 +726,17 @@ curl http://localhost:3001/health
 import httpx
 
 BASE_URL = "http://localhost:3001"
+COLLECTION = "vectorforge"
 
 # Add document
-response = httpx.post(f"{BASE_URL}/doc/add", json={
+response = httpx.post(f"{BASE_URL}/collections/{COLLECTION}/documents", json={
     "content": "Python is a high-level programming language",
     "metadata": {"topic": "programming"}
 })
 doc_id = response.json()["id"]
 
 # Search
-response = httpx.post(f"{BASE_URL}/search", json={
+response = httpx.post(f"{BASE_URL}/collections/{COLLECTION}/search", json={
     "query": "programming languages",
     "top_k": 3
 })
@@ -767,7 +755,7 @@ VectorForge uses ChromaDB's **Hierarchical Navigable Small World (HNSW)** algori
 ### **Getting Current Configuration**
 
 ```bash
-curl http://localhost:3001/index/stats
+curl http://localhost:3001/collections/vectorforge/stats
 ```
 
 **Response includes:**
@@ -792,7 +780,7 @@ curl http://localhost:3001/index/stats
 Update HNSW parameters via zero-downtime collection migration:
 
 ```bash
-curl -X PUT "http://localhost:3001/index/config/hnsw?confirm=true" \
+curl -X PUT "http://localhost:3001/collections/vectorforge/config/hnsw?confirm=true" \
   -H "Content-Type: application/json" \
   -d '{
     "ef_search": 150,
@@ -945,7 +933,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 - **UTF-8 only for text files.** `.txt` files with Latin-1 or other encodings produce an HTTP 500
   instead of a helpful error message.
 - **No per-chunk size limit in file uploads.** The `MAX_CONTENT_LENGTH` (10,000 chars) is
-  enforced by the Pydantic model for `POST /doc/add` but not for the file upload path. The upload
+  enforced by the Pydantic model for `POST /collections/{name}/documents` but not for the file upload path. The upload
   endpoint accepts `chunk_size` and `chunk_overlap` parameters (defaulting to 500 and 50 chars),
   but does not validate that individual chunks stay within `MAX_CONTENT_LENGTH`.
 

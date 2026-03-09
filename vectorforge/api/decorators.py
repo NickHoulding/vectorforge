@@ -20,7 +20,7 @@ def handle_api_errors(func: F) -> F:
     Catches and converts errors to appropriate HTTP responses:
     - ValueError -> 400 Bad Request
     - FileNotFoundError -> 404 Not Found
-    - RuntimeError -> 500 (migration in progress) or 503 (service unavailable)
+    - RuntimeError -> 503 (migration already in progress) or 500 (other runtime errors)
     - HTTPException -> re-raised as-is
     - Generic Exception -> 500 Internal Server Error
 

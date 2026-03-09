@@ -122,7 +122,7 @@ class VectorEngine:
         metrics: EngineMetrics instance tracking usage and performance.
 
     Example:
-        >>> from collection_manager import CollectionManager
+        >>> from vectorforge.collection_manager import CollectionManager
         >>> manager = CollectionManager()
         >>> engine = manager.get_engine("my_collection")
         >>> doc_ids = engine.add_docs([{"content": "Hello world", "metadata": {"source_file": "test.txt"}}])

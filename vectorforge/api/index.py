@@ -25,7 +25,8 @@ def get_collection_stats(collection_name: str) -> IndexStatsResponse:
 
     Lightweight endpoint for checking index health and size. Returns essential
     metrics including document counts, embedding dimension, and HNSW index
-    configuration. For comprehensive metrics, use GET /metrics instead.
+    configuration. For comprehensive metrics, use
+    GET /collections/{name}/metrics instead.
 
     Args:
         collection_name: Name of the collection
@@ -73,10 +74,13 @@ def update_collection_hnsw_config(
     Update HNSW index configuration for a specific collection (requires collection recreation)
 
     This endpoint performs a zero-downtime collection-level migration:
-    1. Creates new collection with updated HNSW settings
-    2. Migrates all documents with embeddings in batches
-    3. Atomically swaps to the new collection
-    4. Deletes old collection
+    1. Creates a temporary collection with the updated HNSW settings
+    2. Migrates all documents with embeddings in batches to the temp collection
+    3. Verifies temp collection document count matches the original
+    4. Deletes the old collection
+    5. Creates a new final collection under the original name with the new settings
+    6. Migrates documents from temp to final collection
+    7. Deletes the temporary collection and swaps the engine reference
 
     Note: This is collection-level blue-green migration within the same ChromaDB
     database. All collections share the same persistent storage volume.
