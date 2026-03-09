@@ -808,7 +808,8 @@ curl -X PUT "http://localhost:3001/index/config/hnsw?confirm=true" \
   "migration": {
     "documents_migrated": 1250,
     "time_taken_seconds": 8.47,
-    "old_collection_deleted": true
+    "old_collection_deleted": true,
+    "temp_verified": true
   },
   "config": {
     "space": "cosine",
@@ -823,12 +824,15 @@ curl -X PUT "http://localhost:3001/index/config/hnsw?confirm=true" \
 
 ### **How HNSW Migration Works**
 
-The migration performs a **collection-level blue-green style migration**:
+The migration performs a **non-destructive collection-level blue-green style migration**:
 
-1. Creates new collection with updated HNSW settings
-2. Migrates all documents + embeddings in batches (1000 docs/batch)
-3. Atomically swaps to the new collection
-4. Deletes the old collection
+1. Creates a temporary collection with the updated HNSW settings
+2. Migrates all documents + embeddings from the original to the temp collection in batches (1000 docs/batch)
+3. Verifies the temp collection document count matches the original — **the original is preserved until this check passes**
+4. Deletes the original collection (safe: temp is verified)
+5. Creates the final collection under the original name
+6. Migrates documents from temp to final, then verifies the final count
+7. Deletes the temp collection and swaps the engine reference
 
 **Note:** This is collection-level migration within the same ChromaDB database. All collections share the same Docker volume (`vectorforge-data:/data`).
 
@@ -914,9 +918,9 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 ### Current Limitations
 
 #### Metadata
-- **No `None` values in metadata.** ChromaDB rejects `None` as a metadata value. Passing
-  `{"author": None}` in a document's metadata dict will produce an HTTP 500 instead of a
-  validation error. VectorForge does not validate metadata values before sending them to ChromaDB.
+- **No `None` values in metadata.** ChromaDB rejects `None` as a metadata value. VectorForge
+  validates metadata before insertion and returns HTTP 422 with a descriptive error when `None`
+  is detected, rather than forwarding the value to ChromaDB.
 - **List metadata values cannot be filtered.** ChromaDB stores list values but does not support
   membership testing in `where` clauses. A filter like `{"tags": "python"}` returns zero results
   even if the document has `{"tags": ["python", "ml"]}`. Tags and similar multi-value fields must
@@ -966,9 +970,11 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   completes.
 - **Requires up to 3× disk space.** At peak, three copies of the index exist simultaneously
   (original, temp, and final collections).
-- **No rollback on partial failure.** If the migration fails after the original collection has
-  been deleted, that collection's data is not automatically restored. Recovery requires a backup
-  or a clean re-index.
+- **Partial rollback window after original deletion.** The original collection is preserved until
+  the temp collection is fully populated and its document count verified. Failures during temp
+  population leave the original intact. However, if a failure occurs after the original is deleted
+  (between the delete and the final collection being verified), that data cannot be automatically
+  restored. Recovery in that window requires a backup or a clean re-index.
 
 #### Configuration
 - **`MODEL_NAME` is hardcoded.** The embedding model (`all-MiniLM-L6-v2`) cannot be changed via
@@ -989,8 +995,10 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 ### Future Improvements
 
-- [x] **Metadata validation** — reject `None` values and unsupported types before they reach ChromaDB, with descriptive 422 errors instead of silent HTTP 500s
-- [x] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather than scanning the full data directory on every metrics request
+- [x] **Metadata validation** — reject `None` values and unsupported types before they reach
+  ChromaDB, with descriptive 422 errors instead of silent HTTP 500s
+- [x] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather
+  than scanning the full data directory on every metrics request
 - [x] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
   parameters, completing the intent signaled by `DEFAULT_CHUNK_SIZE` and `DEFAULT_CHUNK_OVERLAP`
 - [x] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, and `$ne`
@@ -998,7 +1006,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   `$not_contains`) for document-text filtering (note: `$contains` is not a metadata operator)
 - [x] **Batch document API** — single endpoint to add/delete multiple documents atomically,
   rounding out the existing document management surface
-- [ ] **Non-destructive migration fallback** — keep the original collection until the new
+- [x] **Non-destructive migration fallback** — keep the original collection until the new
   collection is fully verified before swapping, eliminating the data-loss risk on partial failure
 
 ---

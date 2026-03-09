@@ -634,8 +634,8 @@ class VectorEngine:
 
         Returns:
             Dictionary containing:
-                - total_documents: Total number of documents in the collection
-                - embedding_dimension: Dimensionality of embedding vectors
+                - total_documents: Total number of documents in the collection.
+                - embedding_dimension: Dimensionality of embedding vectors.
         """
         total_docs: int = self.collection.count()
 
@@ -785,14 +785,15 @@ class VectorEngine:
     def update_hnsw_config(self, new_config: dict[str, Any]) -> dict[str, Any]:
         """Update HNSW configuration with zero-downtime collection migration.
 
-        Performs a collection-level blue-green style migration by creating a new
-        collection with updated HNSW settings, migrating all documents in batches,
-        atomically swapping to the new collection, and cleaning up the old collection.
+        Performs a non-destructive blue-green style migration: the original collection
+        is preserved until the temporary collection has been fully populated and its
+        document count verified. Only after that verification succeeds is the original
+        collection deleted, eliminating the data-loss risk on partial failure.
 
-        This is a destructive operation that requires full collection recreation
-        because ChromaDB does not support modifying HNSW parameters after creation.
-        All collections share the same persistent storage (ChromaDB database), so
-        this is not infrastructure-level blue-green deployment with separate volumes.
+        This operation requires full collection recreation because ChromaDB does not
+        support modifying HNSW parameters after creation. All collections share the
+        same persistent storage (ChromaDB database), so this is not infrastructure-level
+        blue-green deployment with separate volumes.
 
         Args:
             new_config: Dictionary with HNSW parameters to update. All fields optional:
@@ -807,16 +808,20 @@ class VectorEngine:
             dict: Migration result containing:
                 - status: "success"
                 - message: Human-readable success message
-                - migration: Statistics (documents_migrated, time_taken_seconds, old_collection_deleted)
+                - migration: Statistics (documents_migrated, time_taken_seconds,
+                  old_collection_deleted, temp_verified)
                 - config: New HNSW configuration
 
         Raises:
-            RuntimeError: If migration is already in progress
-            Exception: If migration fails (old collection preserved)
+            RuntimeError: If migration is already in progress, or if the document
+                count in the temp or final collection does not match the original.
+                The original collection is preserved when the error occurs before
+                the old collection is deleted (i.e. during temp population).
 
         Example:
-            >>> result = engine.update_hnsw_config({"ef_search": 150})
-            >>> print(f"Migrated {result['migration']['documents_migrated']} docs")
+            result = engine.update_hnsw_config({"ef_search": 150})
+            print(f"Migrated {result['migration']['documents_migrated']} docs")
+            print(f"Temp verified: {result['migration']['temp_verified']}")
         """
         if self.migration_in_progress:
             raise RuntimeError("HNSW configuration migration already in progress")
@@ -910,6 +915,15 @@ class VectorEngine:
                             f"Migration progress: {migrated}/{doc_count} documents ({percent:.1f}%)"
                         )
 
+            temp_count = new_collection.count()
+            if temp_count != doc_count:
+                raise RuntimeError(
+                    f"Temp collection count mismatch: expected {doc_count}, got {temp_count}"
+                )
+            logger.info(
+                f"Temp collection verified: {temp_count} documents match expected count"
+            )
+
             original_name = old_collection.name
             logger.info(f"Deleting old collection: {original_name}")
             self.chroma_client.delete_collection(name=original_name)
@@ -936,6 +950,15 @@ class VectorEngine:
                     metadatas=temp_metadatas if temp_metadatas else None,
                 )
 
+            final_count = final_collection.count()
+            if final_count != doc_count:
+                raise RuntimeError(
+                    f"Final collection count mismatch: expected {doc_count}, got {final_count}"
+                )
+            logger.info(
+                f"Final collection verified: {final_count} documents match expected count"
+            )
+
             logger.info(f"Deleting temporary collection: {new_collection.name}")
             self.chroma_client.delete_collection(name=new_collection.name)
 
@@ -956,6 +979,7 @@ class VectorEngine:
                     "documents_migrated": doc_count,
                     "time_taken_seconds": round(elapsed_seconds, 2),
                     "old_collection_deleted": True,
+                    "temp_verified": True,
                 },
                 "config": new_hnsw_config,
             }

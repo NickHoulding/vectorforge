@@ -125,9 +125,11 @@ class MigrationInfo(BaseModel):
     """Migration statistics for HNSW config update.
 
     Attributes:
-        documents_migrated: Number of documents migrated to new collection
-        time_taken_seconds: Total migration time in seconds
-        old_collection_deleted: Whether old collection was cleaned up
+        documents_migrated: Number of documents migrated to new collection.
+        time_taken_seconds: Total migration time in seconds.
+        old_collection_deleted: Whether the original collection was cleaned up.
+        temp_verified: Whether the temp collection count was verified before
+            deleting the original, confirming a non-destructive migration.
     """
 
     documents_migrated: int = Field(
@@ -136,6 +138,10 @@ class MigrationInfo(BaseModel):
     time_taken_seconds: float = Field(..., description="Total migration time", ge=0.0)
     old_collection_deleted: bool = Field(
         ..., description="Whether old collection was cleaned up"
+    )
+    temp_verified: bool = Field(
+        ...,
+        description="Whether temp collection count was verified before deleting the original",
     )
 
 
@@ -158,6 +164,7 @@ class HNSWConfigUpdateResponse(BaseModel):
                     "documents_migrated": 1500,
                     "time_taken_seconds": 12.34,
                     "old_collection_deleted": True,
+                    "temp_verified": True,
                 },
                 "config": {
                     "space": "cosine",
