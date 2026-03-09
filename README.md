@@ -100,8 +100,9 @@ Perfect for building:
 
 ### **Document Management**
 - Add individual documents with custom metadata
+- Add multiple documents in a single batch request (up to 100 per call)
 - Retrieve documents by ID
-- Delete documents (ChromaDB handles deletion immediately)
+- Delete one or multiple documents in a single batch request
 - Automatic embedding generation and normalization
 - Content length validation (max 10,000 characters)
 
@@ -623,6 +624,64 @@ curl http://localhost:3001/doc/550e8400-e29b-41d4-a716-446655440000
 curl -X DELETE http://localhost:3001/doc/550e8400-e29b-41d4-a716-446655440000
 ```
 
+### **6a. Batch Add Documents**
+
+```bash
+curl -X POST http://localhost:3001/collections/vectorforge/documents/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "documents": [
+      {
+        "content": "Machine learning is a subset of artificial intelligence",
+        "metadata": {"source_file": "ml_intro.txt", "chunk_index": 0}
+      },
+      {
+        "content": "Deep learning uses multi-layered neural networks",
+        "metadata": {"source_file": "ml_intro.txt", "chunk_index": 1}
+      }
+    ]
+  }'
+```
+
+**Response:**
+```json
+{
+  "ids": [
+    "550e8400-e29b-41d4-a716-446655440000",
+    "661f9511-f30c-52e5-b827-557766551111"
+  ],
+  "status": "indexed"
+}
+```
+
+Batches are capped at `MAX_BATCH_SIZE` (default 100). Requests exceeding this limit return HTTP 422.
+
+### **6b. Batch Delete Documents**
+
+```bash
+curl -X DELETE http://localhost:3001/collections/vectorforge/documents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ids": [
+      "550e8400-e29b-41d4-a716-446655440000",
+      "661f9511-f30c-52e5-b827-557766551111"
+    ]
+  }'
+```
+
+**Response:**
+```json
+{
+  "ids": [
+    "550e8400-e29b-41d4-a716-446655440000",
+    "661f9511-f30c-52e5-b827-557766551111"
+  ],
+  "status": "deleted"
+}
+```
+
+Only IDs that actually existed are returned. If none of the requested IDs exist, HTTP 404 is returned. Batches are capped at `MAX_BATCH_SIZE` (default 100).
+
 ### **7. Save Index**
 
 ```bash
@@ -890,7 +949,9 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 - **Synchronous SQLite write on every operation.** Every `add_doc`, `delete_doc`, and `search`
   call triggers a blocking SQLite round-trip (open connection → WAL pragma → UPDATE → commit →
   close). At high indexing throughput this is the primary bottleneck — a 100-chunk file upload
-  triggers 100 separate SQLite connections. There is no batching or async write path.
+  triggers 100 separate SQLite connections. Batch add (`POST /documents/batch`) still issues one
+  SQLite write per document; only batch delete (`DELETE /documents`) consolidates to a single write.
+  There is no async write path.
 - **`GET /metrics` scans the full data directory across all collections.** `_get_chromadb_disk_size()` calls
   `os.walk()` across the entire ChromaDB data directory. In a multi-collection deployment this
   scans data for all collections, not just the requested one. Results are cached for
@@ -935,7 +996,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 - [x] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, and `$ne`
   operators through the `filters` field; add a separate `document_filter` field (`$contains`,
   `$not_contains`) for document-text filtering (note: `$contains` is not a metadata operator)
-- [ ] **Batch document API** — single endpoint to add/delete multiple documents atomically,
+- [x] **Batch document API** — single endpoint to add/delete multiple documents atomically,
   rounding out the existing document management surface
 - [ ] **Non-destructive migration fallback** — keep the original collection until the new
   collection is fully verified before swapping, eliminating the data-loss risk on partial failure

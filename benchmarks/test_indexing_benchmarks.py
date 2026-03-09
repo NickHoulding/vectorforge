@@ -18,8 +18,9 @@ def test_add_single_doc(benchmark, make_ephemeral_engine: Callable[[], VectorEng
     doc = generate_document(0)
 
     def add_doc():
+        """Create a fresh engine and add the pre-generated document."""
         engine = make_ephemeral_engine()
-        engine.add_doc(doc["content"], doc["metadata"])
+        engine.add_docs([doc])
 
     benchmark.pedantic(add_doc, iterations=1, rounds=5)
 
@@ -31,8 +32,9 @@ def test_batch_insert_100_docs(
     docs = generate_documents(100)
 
     def batch_insert():
+        """Create a fresh engine and insert all 100 pre-generated documents."""
         engine = make_ephemeral_engine()
         for doc in docs:
-            engine.add_doc(doc["content"], doc["metadata"])
+            engine.add_docs([doc])
 
     benchmark.pedantic(batch_insert, iterations=1, rounds=3)

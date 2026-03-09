@@ -7,7 +7,14 @@ from .collections import (
     CollectionInfo,
     CollectionListResponse,
 )
-from .documents import DocumentDetail, DocumentInput, DocumentResponse
+from .documents import (
+    BatchDeleteInput,
+    BatchDocumentInput,
+    BatchDocumentResponse,
+    DocumentDetail,
+    DocumentInput,
+    DocumentResponse,
+)
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
 from .index import (
     HNSWConfig,
@@ -32,6 +39,9 @@ __all__: list[str] = [
     "DocumentInput",
     "DocumentResponse",
     "DocumentDetail",
+    "BatchDocumentResponse",
+    "BatchDocumentInput",
+    "BatchDeleteInput",
     # Collections
     "CollectionCreateRequest",
     "CollectionCreateResponse",

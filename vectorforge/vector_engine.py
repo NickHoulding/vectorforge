@@ -10,12 +10,12 @@ import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 import chromadb
 import numpy as np
 from chromadb.api import ClientAPI
-from chromadb.api.types import WhereDocument
+from chromadb.api.types import Metadata, WhereDocument
 from sentence_transformers import SentenceTransformer
 
 from vectorforge import __version__
@@ -125,7 +125,7 @@ class VectorEngine:
         >>> from collection_manager import CollectionManager
         >>> manager = CollectionManager()
         >>> engine = manager.get_engine("my_collection")
-        >>> doc_id = engine.add_doc("Hello world", {"source_file": "test.txt"})
+        >>> doc_ids = engine.add_docs([{"content": "Hello world", "metadata": {"source_file": "test.txt"}}])
         >>> results = engine.search("greeting", top_k=5)
     """
 
@@ -390,71 +390,91 @@ class VectorEngine:
                     f"Invalid metadata value: {value} of type: {type(value)}."
                 )
 
-    def add_doc(self, content: str, metadata: dict[str, Any] | None = None) -> str:
-        """Add a new document to the vector index.
+    def add_docs(self, docs: list[dict[str, Any]]) -> list[str]:
+        """Add multiple documents to the vector index in a single batch operation.
 
-        Generates a unique ID, encodes the content, and adds the document to
-        the ChromaDB collection. Updates metrics for document additions, file
-        uploads, and chunk creation based on metadata.
+        Validates all documents before any are indexed, then batch-encodes
+        embeddings and adds them in a single ChromaDB call. Updates metrics
+        once for the entire batch.
 
         Args:
-            content: Text content of the document to index.
-            metadata: Optional metadata dictionary. Special handling for:
-                - source_file: Tracks file uploads when present
-                - chunk_index: When 0, increments files_uploaded counter
+            docs: List of document dicts, each with a required ``content`` key
+                and an optional ``metadata`` key. All documents are validated
+                before any are written; a validation error on any single document
+                aborts the whole batch.
 
         Returns:
-            Unique document ID (UUID v4) for the newly added document.
+            List of unique document IDs (UUID v4) in the same order as ``docs``.
 
         Raises:
-            ValueError: If content is empty/whitespace, or if metadata contains
-                'source_file' without 'chunk_index' (or vice versa).
+            ValueError: If any document's content is empty/whitespace, or if any
+                metadata contains 'source_file' without 'chunk_index' (or vice versa).
             TypeError: If any metadata value is ``None`` or not a ChromaDB-supported
                 type (``str``, ``int``, ``float``, or ``bool``).
         """
-        if not content.strip():
-            raise ValueError("Document content cannot be empty")
-        if metadata is None:
-            metadata = {}
+        contents: list[str] = []
+        metadatas: list[dict[str, Any]] = []
 
-        self._validate_metadata(metadata)
-
-        has_source: bool = "source_file" in metadata
-        has_chunk_index: bool = "chunk_index" in metadata
-
-        if has_source != has_chunk_index:
-            raise ValueError(
-                "Metadata must contain both 'source_file' and 'chunk_index' or neither"
+        for doc in docs:
+            content: str = doc.get("content", "")
+            raw_metadata = doc.get("metadata")
+            metadata: dict[str, Any] = (
+                raw_metadata if isinstance(raw_metadata, dict) else {}
             )
 
-        doc_id: str = str(uuid.uuid4())
-        embedding: np.ndarray = self.model.encode(content, convert_to_numpy=True)
-        normalized_embedding: np.ndarray = embedding / np.linalg.norm(embedding)
-        metadata_to_store = metadata if metadata else None
+            if not content.strip():
+                raise ValueError("Document content cannot be empty")
 
-        self.collection.add(
-            ids=[doc_id],
-            embeddings=[normalized_embedding.tolist()],
-            documents=[content],
-            metadatas=[metadata_to_store] if metadata_to_store else None,
+            self._validate_metadata(metadata)
+
+            has_source: bool = "source_file" in metadata
+            has_chunk_index: bool = "chunk_index" in metadata
+            if has_source != has_chunk_index:
+                raise ValueError(
+                    "Metadata must contain both 'source_file' and 'chunk_index' or neither"
+                )
+
+            contents.append(content)
+            metadatas.append(metadata)
+
+        doc_ids: list[str] = [str(uuid.uuid4()) for _ in contents]
+        embeddings: np.ndarray = self.model.encode(contents, convert_to_numpy=True)
+        norms: np.ndarray = np.linalg.norm(embeddings, axis=1, keepdims=True)
+        normalized: np.ndarray = embeddings / norms
+
+        metadatas_to_store: list[Metadata] | None = (
+            [cast(Metadata, m) for m in metadatas] if any(metadatas) else None
         )
 
-        self.metrics.docs_added += 1
-        self.metrics.total_doc_size_bytes += len(content)
-        self.metrics.last_doc_added_at = datetime.now(timezone.utc).isoformat()
+        self.collection.add(
+            ids=doc_ids,
+            embeddings=normalized.tolist(),
+            documents=contents,
+            metadatas=metadatas_to_store,
+        )
+
+        now: str = datetime.now(timezone.utc).isoformat()
+        files_uploaded_delta: int = 0
+        last_file_uploaded_at: str | None = None
+
+        for content, metadata in zip(contents, metadatas):
+            self.metrics.docs_added += 1
+            self.metrics.total_doc_size_bytes += len(content)
+
+            if metadata.get("source_file"):
+                if metadata.get("chunk_index") == 0:
+                    files_uploaded_delta += 1
+                    last_file_uploaded_at = now
+                self.metrics.chunks_created += 1
+
+        self.metrics.last_doc_added_at = now
+        self.metrics.files_uploaded += files_uploaded_delta
+        if last_file_uploaded_at:
+            self.metrics.last_file_uploaded_at = last_file_uploaded_at
 
         current_count = self.collection.count()
         if current_count > self.metrics.total_documents_peak:
             self.metrics.total_documents_peak = current_count
-
-        if metadata and metadata.get("source_file"):
-            if metadata.get("chunk_index") == 0:
-                self.metrics.files_uploaded += 1
-                self.metrics.last_file_uploaded_at = datetime.now(
-                    timezone.utc
-                ).isoformat()
-
-            self.metrics.chunks_created += 1
 
         self._metrics_store.save(
             self.collection.name,
@@ -469,43 +489,45 @@ class VectorEngine:
             },
         )
 
-        return doc_id
+        return doc_ids
 
-    def delete_doc(self, doc_id: str) -> bool:
-        """Remove a document from the vector index.
+    def delete_docs(self, ids: list[str]) -> list[str]:
+        """Remove one or more documents from the vector index in a single operation.
 
-        ChromaDB performs immediate deletion (not lazy). Updates deletion metrics.
+        Fetches all matching documents in one ChromaDB call, deletes them together,
+        then writes a single metrics update. ChromaDB performs immediate deletion.
 
         Args:
-            doc_id: Unique identifier of the document to remove.
+            ids: One or more document IDs to remove.
 
         Returns:
-            True if document was found and deleted, False if document ID doesn't exist.
+            List of IDs that were found and deleted. IDs not present in the
+            collection are silently omitted from the result.
         """
-        result = self.collection.get(ids=[doc_id], include=["documents"])
+        result = self.collection.get(ids=ids, include=["documents"])
 
-        ids = result.get("ids")
-        documents = result.get("documents")
-        success = False
+        found_ids: list[str] = result.get("ids") or []
+        documents: list[str] = result.get("documents") or []
 
-        if ids and documents and len(ids) > 0:
-            doc_content = documents[0]
-            size_to_subtract = len(doc_content)
-            self.metrics.total_doc_size_bytes = max(
-                0, self.metrics.total_doc_size_bytes - size_to_subtract
-            )
-            self.collection.delete(ids=[doc_id])
-            self.metrics.docs_deleted += 1
-            self._metrics_store.save(
-                self.collection.name,
-                {
-                    "docs_deleted": self.metrics.docs_deleted,
-                    "total_doc_size_bytes": self.metrics.total_doc_size_bytes,
-                },
-            )
-            success = True
+        if not found_ids:
+            return []
 
-        return success
+        self.collection.delete(ids=found_ids)
+
+        size_to_subtract = sum(len(doc) for doc in documents)
+        self.metrics.total_doc_size_bytes = max(
+            0, self.metrics.total_doc_size_bytes - size_to_subtract
+        )
+        self.metrics.docs_deleted += len(found_ids)
+        self._metrics_store.save(
+            self.collection.name,
+            {
+                "docs_deleted": self.metrics.docs_deleted,
+                "total_doc_size_bytes": self.metrics.total_doc_size_bytes,
+            },
+        )
+
+        return found_ids
 
     def delete_file(self, filename: str) -> dict[str, Any]:
         """Delete all document chunks associated with a specific source file.
@@ -527,7 +549,7 @@ class VectorEngine:
             where={"source_file": filename}, include=["documents"]
         )
 
-        doc_ids = results.get("ids")
+        doc_ids: list[str] = results.get("ids", [])
         if not doc_ids:
             return {
                 "status": "not_found",
@@ -536,10 +558,7 @@ class VectorEngine:
                 "doc_ids": [],
             }
 
-        deleted_ids = []
-        for doc_id in doc_ids:
-            if self.delete_doc(doc_id):
-                deleted_ids.append(doc_id)
+        deleted_ids = self.delete_docs(doc_ids)
 
         return {
             "status": "deleted",

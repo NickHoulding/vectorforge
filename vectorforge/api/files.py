@@ -36,9 +36,7 @@ def list_files(collection_name: str) -> FileListResponse:
         HTTPException: 500 if internal server error occurs
 
     Example:
-        ```
         GET /collections/customer_docs/files/list
-        ```
     """
     engine = manager.get_engine(collection_name)
     filenames: list[str] = engine.list_files()
@@ -83,13 +81,9 @@ async def upload_file(
         HTTPException: 500 if processing or indexing fails.
 
     Example:
-        ```
         POST /collections/customer_docs/files/upload
         Content-Type: multipart/form-data
-        file: document.pdf
-        chunk_size: 300
-        chunk_overlap: 30
-        ```
+        file: document.pdf, chunk_size: 300, chunk_overlap: 30
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
@@ -99,7 +93,6 @@ async def upload_file(
         )
 
     engine = manager.get_engine(collection_name)
-    doc_ids: list[str] = []
     text: str = await extract_file_content(file)
 
     if not text.strip():
@@ -111,11 +104,15 @@ async def upload_file(
         text=text, chunk_size=chunk_size, overlap=chunk_overlap
     )
 
-    for i, chunk in enumerate(chunks):
-        doc_id: str = engine.add_doc(
-            content=chunk, metadata={"source_file": file.filename, "chunk_index": i}
-        )
-        doc_ids.append(doc_id)
+    docs: list[dict[str, Any]] = [
+        {
+            "content": chunk,
+            "metadata": {"source_file": file.filename, "chunk_index": index},
+        }
+        for index, chunk in enumerate(chunks)
+    ]
+
+    doc_ids: list[str] = engine.add_docs(docs)
 
     return FileUploadResponse(
         filename=file.filename or "",
@@ -149,9 +146,7 @@ def delete_file(collection_name: str, filename: str) -> FileDeleteResponse:
         HTTPException: 500 if deletion fails
 
     Example:
-        ```
         DELETE /collections/customer_docs/files/document.pdf
-        ```
     """
     engine = manager.get_engine(collection_name)
     deletion_metrics: dict[str, Any] = engine.delete_file(filename=filename)

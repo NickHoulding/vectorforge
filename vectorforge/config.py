@@ -40,6 +40,9 @@ class VFGConfig:
     MAX_CONTENT_LENGTH: int = 10_000
     """Maximum character length for document content."""
 
+    MAX_BATCH_SIZE: int = 100
+    """Maximum number of documents per batch add or batch delete request."""
+
     MIN_QUERY_LENGTH: int = 1
     """Minimum character length for search queries."""
 
@@ -153,7 +156,11 @@ class VFGConfig:
 
     @classmethod
     def validate(cls) -> None:
-        """Validate configuration values."""
+        """Raise ValueError if any configuration value is invalid or inconsistent.
+
+        Raises:
+            ValueError: If any field has the wrong type or an out-of-range value.
+        """
         if not isinstance(cls.MODEL_NAME, str):
             raise ValueError("MODEL_NAME must be a string")
         if len(cls.MODEL_NAME) == 0:

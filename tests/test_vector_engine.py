@@ -50,13 +50,13 @@ def test_vector_engine_initializes_metrics(vector_engine):
 
 
 # =============================================================================
-# add_doc() Tests
+# add_docs() Tests
 # =============================================================================
 
 
 def test_add_doc_returns_uuid(vector_engine):
     """Test that add_doc returns a valid UUID string."""
-    doc_id = vector_engine.add_doc("Test content", {})
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
 
     assert isinstance(doc_id, str)
     uuid_obj = uuid.UUID(doc_id)
@@ -66,7 +66,7 @@ def test_add_doc_returns_uuid(vector_engine):
 def test_add_doc_stores_content(vector_engine):
     """Test that add_doc stores document content correctly."""
     content = "This is my test document"
-    doc_id = vector_engine.add_doc(content, {})
+    doc_id = vector_engine.add_docs([{"content": content, "metadata": {}}])[0]
     result = vector_engine.collection.get(ids=[doc_id], include=["documents"])
 
     assert len(result["ids"]) == 1
@@ -76,7 +76,9 @@ def test_add_doc_stores_content(vector_engine):
 def test_add_doc_stores_metadata(vector_engine):
     """Test that add_doc stores metadata correctly."""
     metadata = {"author": "John", "title": "Test Doc"}
-    doc_id = vector_engine.add_doc("Test content", metadata)
+    doc_id = vector_engine.add_docs(
+        [{"content": "Test content", "metadata": metadata}]
+    )[0]
     result = vector_engine.collection.get(ids=[doc_id], include=["metadatas"])
 
     assert len(result["ids"]) == 1
@@ -85,7 +87,7 @@ def test_add_doc_stores_metadata(vector_engine):
 
 def test_add_doc_creates_embedding(vector_engine):
     """Test that add_doc creates an embedding vector."""
-    doc_id = vector_engine.add_doc("Test content", {})
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
     result = vector_engine.collection.get(ids=[doc_id], include=["embeddings"])
     assert len(result["embeddings"]) == 1
 
@@ -96,7 +98,7 @@ def test_add_doc_creates_embedding(vector_engine):
 
 def test_add_doc_normalizes_embedding(vector_engine):
     """Test that embeddings are normalized."""
-    doc_id = vector_engine.add_doc("Test content", {})
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
     result = vector_engine.collection.get(ids=[doc_id], include=["embeddings"])
     embedding = np.array(result["embeddings"][0])
     norm = np.linalg.norm(embedding)
@@ -107,7 +109,7 @@ def test_add_doc_normalizes_embedding(vector_engine):
 def test_add_doc_updates_collection_count(vector_engine):
     """Test that add_doc increases the collection count."""
     initial_count = vector_engine.collection.count()
-    vector_engine.add_doc("Test content", {})
+    vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
 
     assert vector_engine.collection.count() == initial_count + 1
 
@@ -115,7 +117,7 @@ def test_add_doc_updates_collection_count(vector_engine):
 def test_add_doc_increments_metrics(vector_engine):
     """Test that add_doc increments docs_added metric."""
     initial_count = vector_engine.metrics.docs_added
-    vector_engine.add_doc("Test content", {})
+    vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
 
     assert vector_engine.metrics.docs_added == initial_count + 1
 
@@ -123,12 +125,12 @@ def test_add_doc_increments_metrics(vector_engine):
 def test_add_doc_with_empty_content_raises_error(vector_engine):
     """Test that adding document with empty content raises ValueError."""
     with pytest.raises(ValueError, match="content cannot be empty"):
-        vector_engine.add_doc("", {})
+        vector_engine.add_docs([{"content": "", "metadata": {}}])[0]
 
 
 def test_add_doc_with_null_metadata(vector_engine):
     """Test that add_doc handles None metadata correctly."""
-    doc_id = vector_engine.add_doc("Test content", None)
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": None}])[0]
     result = vector_engine.collection.get(ids=[doc_id], include=["metadatas"])
 
     assert len(result["ids"]) == 1
@@ -137,7 +139,7 @@ def test_add_doc_with_null_metadata(vector_engine):
 
 def test_add_doc_with_empty_metadata(vector_engine):
     """Test that add_doc handles empty dict metadata correctly."""
-    doc_id = vector_engine.add_doc("Test content", {})
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
     result = vector_engine.collection.get(ids=[doc_id], include=["metadatas"])
 
     assert len(result["ids"]) == 1
@@ -147,36 +149,52 @@ def test_add_doc_with_empty_metadata(vector_engine):
 def test_add_doc_with_only_source_file_raises_error(vector_engine):
     """Test that metadata with only source_file raises ValueError."""
     with pytest.raises(ValueError, match="both 'source_file' and 'chunk_index'"):
-        vector_engine.add_doc("Test content", {"source_file": "test.txt"})
+        vector_engine.add_docs(
+            [{"content": "Test content", "metadata": {"source_file": "test.txt"}}]
+        )[0]
 
 
 def test_add_doc_with_only_chunk_index_raises_error(vector_engine):
     """Test that metadata with only chunk_index raises ValueError."""
     with pytest.raises(ValueError, match="both 'source_file' and 'chunk_index'"):
-        vector_engine.add_doc("Test content", {"chunk_index": 0})
+        vector_engine.add_docs(
+            [{"content": "Test content", "metadata": {"chunk_index": 0}}]
+        )[0]
 
 
 def test_add_doc_with_invalid_source_file_type_raises_error(vector_engine):
     """Test that non-string source_file raises ValueError."""
-    doc_id = vector_engine.add_doc(
-        "Test content", {"source_file": 123, "chunk_index": 0}
-    )
+    doc_id = vector_engine.add_docs(
+        [
+            {
+                "content": "Test content",
+                "metadata": {"source_file": 123, "chunk_index": 0},
+            }
+        ]
+    )[0]
     assert doc_id is not None
 
 
 def test_add_doc_with_invalid_chunk_index_type_raises_error(vector_engine):
     """Test that non-integer chunk_index raises ValueError."""
 
-    doc_id = vector_engine.add_doc(
-        "Test content", {"source_file": "test.txt", "chunk_index": "0"}
-    )
+    doc_id = vector_engine.add_docs(
+        [
+            {
+                "content": "Test content",
+                "metadata": {"source_file": "test.txt", "chunk_index": "0"},
+            }
+        ]
+    )[0]
     assert doc_id is not None
 
 
 def test_add_doc_with_valid_chunk_metadata(vector_engine):
     """Test that add_doc accepts both source_file and chunk_index."""
     metadata = {"source_file": "test.txt", "chunk_index": 1}
-    doc_id = vector_engine.add_doc("Test content", metadata)
+    doc_id = vector_engine.add_docs(
+        [{"content": "Test content", "metadata": metadata}]
+    )[0]
     result = vector_engine.collection.get(ids=[doc_id], include=["metadatas"])
 
     assert len(result["ids"]) == 1
@@ -186,7 +204,14 @@ def test_add_doc_with_valid_chunk_metadata(vector_engine):
 def test_add_doc_updates_file_metrics(vector_engine):
     """Test that add_doc updates file upload metrics when chunk_index is 0."""
     initial_files = vector_engine.metrics.files_uploaded
-    vector_engine.add_doc("Test content", {"source_file": "test.txt", "chunk_index": 0})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Test content",
+                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     assert vector_engine.metrics.files_uploaded == initial_files + 1
     assert vector_engine.metrics.last_file_uploaded_at is not None
@@ -195,7 +220,14 @@ def test_add_doc_updates_file_metrics(vector_engine):
 def test_add_doc_updates_chunk_metrics(vector_engine):
     """Test that add_doc updates chunks_created metric."""
     initial_chunks = vector_engine.metrics.chunks_created
-    vector_engine.add_doc("Test content", {"source_file": "test.txt", "chunk_index": 0})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Test content",
+                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     assert vector_engine.metrics.chunks_created == initial_chunks + 1
 
@@ -204,7 +236,7 @@ def test_add_doc_updates_doc_size_metric(vector_engine):
     """Test that add_doc updates total_doc_size_bytes metric."""
     content = "Test content with specific length"
     initial_size = vector_engine.metrics.total_doc_size_bytes
-    vector_engine.add_doc(content, {})
+    vector_engine.add_docs([{"content": content, "metadata": {}}])[0]
 
     assert vector_engine.metrics.total_doc_size_bytes == initial_size + len(content)
 
@@ -213,7 +245,7 @@ def test_add_doc_updates_last_doc_added_timestamp(vector_engine):
     """Test that add_doc updates last_doc_added_at timestamp."""
     assert vector_engine.metrics.last_doc_added_at is None
 
-    vector_engine.add_doc("Test content", {})
+    vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
 
     assert vector_engine.metrics.last_doc_added_at is not None
 
@@ -221,68 +253,88 @@ def test_add_doc_updates_last_doc_added_timestamp(vector_engine):
 def test_add_doc_with_whitespace_only_content_raises_error(vector_engine):
     """Test that add_doc with whitespace-only content raises ValueError."""
     with pytest.raises(ValueError, match="content cannot be empty"):
-        vector_engine.add_doc("   ", {})
+        vector_engine.add_docs([{"content": "   ", "metadata": {}}])[0]
 
 
 def test_add_doc_metadata_none_value_raises_type_error(vector_engine):
     """Test that a None metadata value raises TypeError."""
     with pytest.raises(TypeError, match="is None"):
-        vector_engine.add_doc("Content", {"author": None})
+        vector_engine.add_docs([{"content": "Content", "metadata": {"author": None}}])[
+            0
+        ]
 
 
 def test_add_doc_metadata_list_value_raises_type_error(vector_engine):
     """Test that a list metadata value raises TypeError."""
     with pytest.raises(TypeError, match="Invalid metadata value"):
-        vector_engine.add_doc("Content", {"tags": ["python", "ml"]})
+        vector_engine.add_docs(
+            [{"content": "Content", "metadata": {"tags": ["python", "ml"]}}]
+        )[0]
 
 
 def test_add_doc_metadata_dict_value_raises_type_error(vector_engine):
     """Test that a nested dict metadata value raises TypeError."""
     with pytest.raises(TypeError, match="Invalid metadata value"):
-        vector_engine.add_doc("Content", {"nested": {"key": "value"}})
+        vector_engine.add_docs(
+            [{"content": "Content", "metadata": {"nested": {"key": "value"}}}]
+        )[0]
 
 
 def test_add_doc_metadata_str_value_accepted(vector_engine):
     """Test that a str metadata value is accepted."""
-    doc_id = vector_engine.add_doc("Content", {"author": "Alice"})
+    doc_id = vector_engine.add_docs(
+        [{"content": "Content", "metadata": {"author": "Alice"}}]
+    )[0]
     assert doc_id is not None
 
 
 def test_add_doc_metadata_int_value_accepted(vector_engine):
     """Test that an int metadata value is accepted."""
-    doc_id = vector_engine.add_doc("Content", {"year": 2024})
+    doc_id = vector_engine.add_docs(
+        [{"content": "Content", "metadata": {"year": 2024}}]
+    )[0]
     assert doc_id is not None
 
 
 def test_add_doc_metadata_float_value_accepted(vector_engine):
     """Test that a float metadata value is accepted."""
-    doc_id = vector_engine.add_doc("Content", {"score": 9.5})
+    doc_id = vector_engine.add_docs(
+        [{"content": "Content", "metadata": {"score": 9.5}}]
+    )[0]
     assert doc_id is not None
 
 
 def test_add_doc_metadata_bool_value_accepted(vector_engine):
     """Test that a bool metadata value is accepted."""
-    doc_id = vector_engine.add_doc("Content", {"active": True})
+    doc_id = vector_engine.add_docs(
+        [{"content": "Content", "metadata": {"active": True}}]
+    )[0]
     assert doc_id is not None
 
 
 def test_add_doc_metadata_none_value_error_includes_key_name(vector_engine):
     """Test that the TypeError for a None value includes the offending key."""
     with pytest.raises(TypeError, match="bad_key"):
-        vector_engine.add_doc("Content", {"bad_key": None})
+        vector_engine.add_docs([{"content": "Content", "metadata": {"bad_key": None}}])[
+            0
+        ]
 
 
 def test_add_doc_metadata_multiple_values_first_invalid_raises(vector_engine):
     """Test that the first invalid value in a multi-key dict raises TypeError."""
     with pytest.raises(TypeError):
-        vector_engine.add_doc("Content", {"ok": "valid", "bad": [1, 2, 3]})
+        vector_engine.add_docs(
+            [{"content": "Content", "metadata": {"ok": "valid", "bad": [1, 2, 3]}}]
+        )[0]
 
 
 def test_add_doc_multiple_sequential(vector_engine):
     """Test adding multiple documents sequentially updates indices correctly."""
     doc_ids = []
     for i in range(5):
-        doc_id = vector_engine.add_doc(f"Document {i}", {})
+        doc_id = vector_engine.add_docs([{"content": f"Document {i}", "metadata": {}}])[
+            0
+        ]
         doc_ids.append(doc_id)
 
     assert vector_engine.collection.count() == 5
@@ -301,7 +353,7 @@ def test_get_doc_returns_document(vector_engine):
     """Test that get_doc returns correct document by ID."""
     content = "Test document content"
     metadata = {"key": "value"}
-    doc_id = vector_engine.add_doc(content, metadata)
+    doc_id = vector_engine.add_docs([{"content": content, "metadata": metadata}])[0]
     doc = vector_engine.get_doc(doc_id)
 
     assert doc is not None
@@ -318,8 +370,8 @@ def test_get_doc_returns_none_for_nonexistent_id(vector_engine):
 
 def test_get_doc_returns_none_for_deleted_doc(vector_engine):
     """Test that get_doc returns None for deleted documents."""
-    doc_id = vector_engine.add_doc("Test content", {})
-    vector_engine.delete_doc(doc_id)
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
+    vector_engine.delete_docs([doc_id])
     doc = vector_engine.get_doc(doc_id)
 
     assert doc is None
@@ -328,7 +380,7 @@ def test_get_doc_returns_none_for_deleted_doc(vector_engine):
 def test_get_doc_includes_content(vector_engine):
     """Test that returned document includes content."""
     content = "Specific test content"
-    doc_id = vector_engine.add_doc(content, {})
+    doc_id = vector_engine.add_docs([{"content": content, "metadata": {}}])[0]
     doc = vector_engine.get_doc(doc_id)
 
     assert doc
@@ -339,7 +391,9 @@ def test_get_doc_includes_content(vector_engine):
 def test_get_doc_includes_metadata(vector_engine):
     """Test that returned document includes metadata."""
     metadata = {"author": "Alice", "topic": "Testing"}
-    doc_id = vector_engine.add_doc("Test content", metadata)
+    doc_id = vector_engine.add_docs(
+        [{"content": "Test content", "metadata": metadata}]
+    )[0]
     doc = vector_engine.get_doc(doc_id)
 
     assert doc
@@ -352,27 +406,27 @@ def test_get_doc_includes_metadata(vector_engine):
 # =============================================================================
 
 
-def test_delete_doc_returns_true_for_existing_doc(vector_engine):
-    """Test that delete_doc returns True when deleting existing document."""
-    doc_id = vector_engine.add_doc("Test content", {})
-    result = vector_engine.delete_doc(doc_id)
+def test_delete_doc_returns_non_empty_list_for_existing_doc(vector_engine):
+    """Test that delete_doc returns a non-empty list when deleting an existing document."""
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
+    result = vector_engine.delete_docs([doc_id])
 
-    assert result is True
+    assert result == [doc_id]
 
 
-def test_delete_doc_returns_false_for_nonexistent_doc(vector_engine):
-    """Test that delete_doc returns False for non-existent document."""
-    result = vector_engine.delete_doc("nonexistent-uuid")
+def test_delete_doc_returns_empty_list_for_nonexistent_doc(vector_engine):
+    """Test that delete_doc returns an empty list for a non-existent document."""
+    result = vector_engine.delete_docs(["nonexistent-uuid"])
 
-    assert result is False
+    assert result == []
 
 
 def test_delete_doc_removes_from_collection(vector_engine):
     """Test that delete_doc removes document from ChromaDB collection."""
-    doc_id = vector_engine.add_doc("Test content", {})
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
 
     initial_count = vector_engine.collection.count()
-    vector_engine.delete_doc(doc_id)
+    vector_engine.delete_docs([doc_id])
     assert vector_engine.collection.count() == initial_count - 1
 
     result = vector_engine.collection.get(ids=[doc_id])
@@ -381,21 +435,21 @@ def test_delete_doc_removes_from_collection(vector_engine):
 
 def test_delete_doc_increments_metrics(vector_engine):
     """Test that delete_doc increments docs_deleted metric."""
-    doc_id = vector_engine.add_doc("Test content", {})
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
     initial_deleted = vector_engine.metrics.docs_deleted
-    vector_engine.delete_doc(doc_id)
+    vector_engine.delete_docs([doc_id])
 
     assert vector_engine.metrics.docs_deleted == initial_deleted + 1
 
 
-def test_delete_same_doc_twice_returns_false(vector_engine):
-    """Test that deleting same document twice returns False on second attempt."""
-    doc_id = vector_engine.add_doc("Test content", {})
-    result1 = vector_engine.delete_doc(doc_id)
-    result2 = vector_engine.delete_doc(doc_id)
+def test_delete_same_doc_twice_returns_empty_on_second(vector_engine):
+    """Test that deleting the same document twice returns an empty list on the second attempt."""
+    doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
+    result1 = vector_engine.delete_docs([doc_id])
+    result2 = vector_engine.delete_docs([doc_id])
 
-    assert result1 is True
-    assert result2 is False
+    assert result1 == [doc_id]
+    assert result2 == []
 
 
 def test_multiple_deletes_decrease_size_metric(vector_engine):
@@ -403,12 +457,12 @@ def test_multiple_deletes_decrease_size_metric(vector_engine):
     content1 = "First document content"
     content2 = "Second document content"
 
-    doc_id1 = vector_engine.add_doc(content1, {})
-    doc_id2 = vector_engine.add_doc(content2, {})
+    doc_id1 = vector_engine.add_docs([{"content": content1, "metadata": {}}])[0]
+    vector_engine.add_docs([{"content": content2, "metadata": {}}])[0]
 
     initial_size = vector_engine.metrics.total_doc_size_bytes
 
-    vector_engine.delete_doc(doc_id1)
+    vector_engine.delete_docs([doc_id1])
 
     assert vector_engine.metrics.total_doc_size_bytes == initial_size - len(content1)
 
@@ -416,10 +470,10 @@ def test_multiple_deletes_decrease_size_metric(vector_engine):
 def test_delete_doc_updates_size_metric_correctly(vector_engine):
     """Test that delete_doc correctly decreases total_doc_size_bytes."""
     content = "This is a test document with specific length"
-    doc_id = vector_engine.add_doc(content, {})
+    doc_id = vector_engine.add_docs([{"content": content, "metadata": {}}])[0]
 
     size_before = vector_engine.metrics.total_doc_size_bytes
-    vector_engine.delete_doc(doc_id)
+    vector_engine.delete_docs([doc_id])
     size_after = vector_engine.metrics.total_doc_size_bytes
 
     assert size_after == size_before - len(content)
@@ -432,7 +486,7 @@ def test_delete_doc_updates_size_metric_correctly(vector_engine):
 
 def test_search_returns_list(vector_engine):
     """Test that search returns a list of results."""
-    vector_engine.add_doc("Test document", {})
+    vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
 
     results = vector_engine.search("test")
 
@@ -441,7 +495,9 @@ def test_search_returns_list(vector_engine):
 
 def test_search_returns_correct_structure(vector_engine):
     """Test that search results have correct structure (doc_id, content, score, metadata)."""
-    vector_engine.add_doc("Test document", {"key": "value"})
+    vector_engine.add_docs(
+        [{"content": "Test document", "metadata": {"key": "value"}}]
+    )[0]
 
     results = vector_engine.search("test")
 
@@ -456,7 +512,7 @@ def test_search_returns_correct_structure(vector_engine):
 def test_search_respects_top_k(vector_engine):
     """Test that search returns at most top_k results."""
     for i in range(20):
-        vector_engine.add_doc(f"Document number {i}", {})
+        vector_engine.add_docs([{"content": f"Document number {i}", "metadata": {}}])[0]
 
     results = vector_engine.search("document", top_k=5)
 
@@ -465,11 +521,13 @@ def test_search_respects_top_k(vector_engine):
 
 def test_search_excludes_deleted_documents(vector_engine):
     """Test that search results don't include deleted documents."""
-    doc_id = vector_engine.add_doc("Unique searchable content", {})
-    vector_engine.add_doc("Other content", {})
+    doc_id = vector_engine.add_docs(
+        [{"content": "Unique searchable content", "metadata": {}}]
+    )[0]
+    vector_engine.add_docs([{"content": "Other content", "metadata": {}}])[0]
 
     results_before = vector_engine.search("unique searchable")
-    vector_engine.delete_doc(doc_id)
+    vector_engine.delete_docs([doc_id])
     results_after = vector_engine.search("unique searchable")
 
     doc_ids_before = [r.id for r in results_before]
@@ -482,7 +540,9 @@ def test_search_excludes_deleted_documents(vector_engine):
 def test_search_results_sorted_by_score(vector_engine):
     """Test that search results are sorted by similarity score descending."""
     for i in range(10):
-        vector_engine.add_doc(f"Document with varying content topic {i}", {})
+        vector_engine.add_docs(
+            [{"content": f"Document with varying content topic {i}", "metadata": {}}]
+        )[0]
 
     results = vector_engine.search("document content")
 
@@ -500,7 +560,7 @@ def test_search_with_empty_index(vector_engine):
 
 def test_search_updates_metrics(vector_engine):
     """Test that search increments query count metrics."""
-    vector_engine.add_doc("Test document", {})
+    vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
     initial_queries = vector_engine.metrics.total_queries
 
     vector_engine.search("test")
@@ -510,7 +570,7 @@ def test_search_updates_metrics(vector_engine):
 
 def test_search_tracks_query_time(vector_engine):
     """Test that search tracks query execution time."""
-    vector_engine.add_doc("Test document", {})
+    vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
     initial_time = vector_engine.metrics.total_query_time_ms
 
     vector_engine.search("test")
@@ -522,7 +582,7 @@ def test_search_tracks_query_time(vector_engine):
 def test_search_with_default_top_k(vector_engine):
     """Test that search uses default top_k value."""
     for i in range(20):
-        vector_engine.add_doc(f"Document {i}", {})
+        vector_engine.add_docs([{"content": f"Document {i}", "metadata": {}}])[0]
 
     results = vector_engine.search("document")
 
@@ -532,7 +592,9 @@ def test_search_with_default_top_k(vector_engine):
 def test_search_similarity_scores_in_range(vector_engine):
     """Test that similarity scores are between 0 and 1."""
     for i in range(10):
-        vector_engine.add_doc(f"Document content {i}", {})
+        vector_engine.add_docs([{"content": f"Document content {i}", "metadata": {}}])[
+            0
+        ]
 
     results = vector_engine.search("document")
 
@@ -542,7 +604,7 @@ def test_search_similarity_scores_in_range(vector_engine):
 
 def test_search_with_whitespace_only_query_raises_error(vector_engine):
     """Test that search with whitespace-only query raises ValueError."""
-    vector_engine.add_doc("Test document", {})
+    vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
 
     with pytest.raises(ValueError, match="cannot be empty"):
         vector_engine.search("   ")
@@ -550,11 +612,11 @@ def test_search_with_whitespace_only_query_raises_error(vector_engine):
 
 def test_search_returns_empty_list_when_all_deleted(vector_engine):
     """Test that search returns empty list when all documents are deleted."""
-    doc_id1 = vector_engine.add_doc("Document 1", {})
-    doc_id2 = vector_engine.add_doc("Document 2", {})
+    doc_id1 = vector_engine.add_docs([{"content": "Document 1", "metadata": {}}])[0]
+    doc_id2 = vector_engine.add_docs([{"content": "Document 2", "metadata": {}}])[0]
 
-    vector_engine.delete_doc(doc_id1)
-    vector_engine.delete_doc(doc_id2)
+    vector_engine.delete_docs([doc_id1])
+    vector_engine.delete_docs([doc_id2])
 
     results = vector_engine.search("document")
 
@@ -563,8 +625,8 @@ def test_search_returns_empty_list_when_all_deleted(vector_engine):
 
 def test_search_top_k_larger_than_available(vector_engine):
     """Test search when top_k is larger than number of available documents."""
-    vector_engine.add_doc("Document 1", {})
-    vector_engine.add_doc("Document 2", {})
+    vector_engine.add_docs([{"content": "Document 1", "metadata": {}}])[0]
+    vector_engine.add_docs([{"content": "Document 2", "metadata": {}}])[0]
 
     results = vector_engine.search("document", top_k=100)
 
@@ -578,15 +640,30 @@ def test_search_top_k_larger_than_available(vector_engine):
 
 def test_search_filter_by_source_file(vector_engine):
     """Test that filtering by source_file returns only matching documents."""
-    vector_engine.add_doc(
-        "Python tutorial", {"source_file": "python.pdf", "chunk_index": 0}
-    )
-    vector_engine.add_doc(
-        "Java tutorial", {"source_file": "java.pdf", "chunk_index": 0}
-    )
-    vector_engine.add_doc(
-        "JavaScript tutorial", {"source_file": "js.pdf", "chunk_index": 0}
-    )
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Python tutorial",
+                "metadata": {"source_file": "python.pdf", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Java tutorial",
+                "metadata": {"source_file": "java.pdf", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "JavaScript tutorial",
+                "metadata": {"source_file": "js.pdf", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     results = vector_engine.search(
         "tutorial", top_k=10, filters={"source_file": "python.pdf"}
@@ -598,15 +675,30 @@ def test_search_filter_by_source_file(vector_engine):
 
 def test_search_filter_by_chunk_index(vector_engine):
     """Test that filtering by chunk_index returns only matching documents."""
-    vector_engine.add_doc(
-        "Chunk 0 content", {"source_file": "doc.pdf", "chunk_index": 0}
-    )
-    vector_engine.add_doc(
-        "Chunk 1 content", {"source_file": "doc.pdf", "chunk_index": 1}
-    )
-    vector_engine.add_doc(
-        "Chunk 2 content", {"source_file": "doc.pdf", "chunk_index": 2}
-    )
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 0 content",
+                "metadata": {"source_file": "doc.pdf", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 1 content",
+                "metadata": {"source_file": "doc.pdf", "chunk_index": 1},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 2 content",
+                "metadata": {"source_file": "doc.pdf", "chunk_index": 2},
+            }
+        ]
+    )[0]
 
     results = vector_engine.search("content", top_k=10, filters={"chunk_index": 1})
 
@@ -616,9 +708,30 @@ def test_search_filter_by_chunk_index(vector_engine):
 
 def test_search_filter_by_both_fields(vector_engine):
     """Test that filtering by both source_file and chunk_index uses AND logic."""
-    vector_engine.add_doc("Doc A Chunk 0", {"source_file": "a.pdf", "chunk_index": 0})
-    vector_engine.add_doc("Doc A Chunk 1", {"source_file": "a.pdf", "chunk_index": 1})
-    vector_engine.add_doc("Doc B Chunk 0", {"source_file": "b.pdf", "chunk_index": 0})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Doc A Chunk 0",
+                "metadata": {"source_file": "a.pdf", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Doc A Chunk 1",
+                "metadata": {"source_file": "a.pdf", "chunk_index": 1},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Doc B Chunk 0",
+                "metadata": {"source_file": "b.pdf", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     results = vector_engine.search(
         "doc chunk", top_k=10, filters={"source_file": "a.pdf", "chunk_index": 1}
@@ -631,18 +744,42 @@ def test_search_filter_by_both_fields(vector_engine):
 
 def test_search_filter_and_logic(vector_engine):
     """Test that multiple filters require all to match (AND logic)."""
-    vector_engine.add_doc(
-        "Python programming",
-        {"source_file": "python.pdf", "chunk_index": 0, "topic": "programming"},
-    )
-    vector_engine.add_doc(
-        "Python data science",
-        {"source_file": "python.pdf", "chunk_index": 1, "topic": "data"},
-    )
-    vector_engine.add_doc(
-        "Java programming",
-        {"source_file": "java.pdf", "chunk_index": 0, "topic": "programming"},
-    )
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Python programming",
+                "metadata": {
+                    "source_file": "python.pdf",
+                    "chunk_index": 0,
+                    "topic": "programming",
+                },
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Python data science",
+                "metadata": {
+                    "source_file": "python.pdf",
+                    "chunk_index": 1,
+                    "topic": "data",
+                },
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Java programming",
+                "metadata": {
+                    "source_file": "java.pdf",
+                    "chunk_index": 0,
+                    "topic": "programming",
+                },
+            }
+        ]
+    )[0]
 
     results = vector_engine.search(
         "programming",
@@ -657,9 +794,14 @@ def test_search_filter_and_logic(vector_engine):
 
 def test_search_filter_no_matches(vector_engine):
     """Test that filtering with no matches returns empty list."""
-    vector_engine.add_doc(
-        "Document content", {"source_file": "doc.pdf", "chunk_index": 0}
-    )
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Document content",
+                "metadata": {"source_file": "doc.pdf", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     results = vector_engine.search(
         "content", top_k=10, filters={"source_file": "missing.pdf"}
@@ -670,9 +812,15 @@ def test_search_filter_no_matches(vector_engine):
 
 def test_search_filter_custom_metadata(vector_engine):
     """Test that filtering works with custom metadata fields."""
-    vector_engine.add_doc("Article 1", {"author": "Alice", "year": 2020})
-    vector_engine.add_doc("Article 2", {"author": "Bob", "year": 2021})
-    vector_engine.add_doc("Article 3", {"author": "Alice", "year": 2021})
+    vector_engine.add_docs(
+        [{"content": "Article 1", "metadata": {"author": "Alice", "year": 2020}}]
+    )[0]
+    vector_engine.add_docs(
+        [{"content": "Article 2", "metadata": {"author": "Bob", "year": 2021}}]
+    )[0]
+    vector_engine.add_docs(
+        [{"content": "Article 3", "metadata": {"author": "Alice", "year": 2021}}]
+    )[0]
 
     results = vector_engine.search("article", top_k=10, filters={"author": "Alice"})
 
@@ -683,8 +831,12 @@ def test_search_filter_custom_metadata(vector_engine):
 
 def test_search_filter_none(vector_engine):
     """Test that filters=None returns all results."""
-    vector_engine.add_doc("Doc 1", {"source_file": "a.pdf", "chunk_index": 0})
-    vector_engine.add_doc("Doc 2", {"source_file": "b.pdf", "chunk_index": 0})
+    vector_engine.add_docs(
+        [{"content": "Doc 1", "metadata": {"source_file": "a.pdf", "chunk_index": 0}}]
+    )[0]
+    vector_engine.add_docs(
+        [{"content": "Doc 2", "metadata": {"source_file": "b.pdf", "chunk_index": 0}}]
+    )[0]
 
     results = vector_engine.search("doc", top_k=10, filters=None)
 
@@ -693,8 +845,12 @@ def test_search_filter_none(vector_engine):
 
 def test_search_filter_empty_dict(vector_engine):
     """Test that filters={} (empty dict) returns all results."""
-    vector_engine.add_doc("Doc 1", {"source_file": "a.pdf", "chunk_index": 0})
-    vector_engine.add_doc("Doc 2", {"source_file": "b.pdf", "chunk_index": 0})
+    vector_engine.add_docs(
+        [{"content": "Doc 1", "metadata": {"source_file": "a.pdf", "chunk_index": 0}}]
+    )[0]
+    vector_engine.add_docs(
+        [{"content": "Doc 2", "metadata": {"source_file": "b.pdf", "chunk_index": 0}}]
+    )[0]
 
     results = vector_engine.search("doc", top_k=10, filters={})
 
@@ -703,7 +859,14 @@ def test_search_filter_empty_dict(vector_engine):
 
 def test_search_filter_case_sensitive(vector_engine):
     """Test that filter matching is case-sensitive."""
-    vector_engine.add_doc("Document", {"source_file": "Doc.pdf", "chunk_index": 0})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Document",
+                "metadata": {"source_file": "Doc.pdf", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     results = vector_engine.search(
         "document", top_k=10, filters={"source_file": "doc.pdf"}
@@ -733,7 +896,9 @@ def test_list_files_returns_list(vector_engine):
 
 def test_list_files_empty_when_no_files(vector_engine):
     """Test that list_files returns empty list when no files uploaded."""
-    vector_engine.add_doc("Document without source_file", {})
+    vector_engine.add_docs(
+        [{"content": "Document without source_file", "metadata": {}}]
+    )[0]
 
     files = vector_engine.list_files()
 
@@ -742,8 +907,22 @@ def test_list_files_empty_when_no_files(vector_engine):
 
 def test_list_files_includes_uploaded_files(vector_engine):
     """Test that list_files includes filenames from uploaded documents."""
-    vector_engine.add_doc("Content 1", {"source_file": "file1.txt", "chunk_index": 0})
-    vector_engine.add_doc("Content 2", {"source_file": "file2.txt", "chunk_index": 0})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Content 1",
+                "metadata": {"source_file": "file1.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Content 2",
+                "metadata": {"source_file": "file2.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     files = vector_engine.list_files()
 
@@ -753,9 +932,30 @@ def test_list_files_includes_uploaded_files(vector_engine):
 
 def test_list_files_returns_unique_filenames(vector_engine):
     """Test that list_files returns unique filenames only."""
-    vector_engine.add_doc("Chunk 1", {"source_file": "file.txt", "chunk_index": 0})
-    vector_engine.add_doc("Chunk 2", {"source_file": "file.txt", "chunk_index": 1})
-    vector_engine.add_doc("Chunk 3", {"source_file": "file.txt", "chunk_index": 2})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 1",
+                "metadata": {"source_file": "file.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 2",
+                "metadata": {"source_file": "file.txt", "chunk_index": 1},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 3",
+                "metadata": {"source_file": "file.txt", "chunk_index": 2},
+            }
+        ]
+    )[0]
 
     files = vector_engine.list_files()
 
@@ -765,11 +965,18 @@ def test_list_files_returns_unique_filenames(vector_engine):
 
 def test_list_files_ignores_docs_without_source_file(vector_engine):
     """Test that list_files only includes docs with source_file metadata."""
-    vector_engine.add_doc(
-        "Doc with file", {"source_file": "test.txt", "chunk_index": 0}
-    )
-    vector_engine.add_doc("Doc without file", {"other": "metadata"})
-    vector_engine.add_doc("Another doc", {})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Doc with file",
+                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [{"content": "Doc without file", "metadata": {"other": "metadata"}}]
+    )[0]
+    vector_engine.add_docs([{"content": "Another doc", "metadata": {}}])[0]
 
     files = vector_engine.list_files()
 
@@ -778,9 +985,30 @@ def test_list_files_ignores_docs_without_source_file(vector_engine):
 
 def test_list_files_sorted_alphabetically(vector_engine):
     """Test that list_files returns filenames in sorted order."""
-    vector_engine.add_doc("Content", {"source_file": "zebra.txt", "chunk_index": 0})
-    vector_engine.add_doc("Content", {"source_file": "apple.txt", "chunk_index": 0})
-    vector_engine.add_doc("Content", {"source_file": "banana.txt", "chunk_index": 0})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Content",
+                "metadata": {"source_file": "zebra.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Content",
+                "metadata": {"source_file": "apple.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Content",
+                "metadata": {"source_file": "banana.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     files = vector_engine.list_files()
 
@@ -789,12 +1017,24 @@ def test_list_files_sorted_alphabetically(vector_engine):
 
 def test_list_files_excludes_deleted_docs(vector_engine):
     """Test that list_files doesn't include files from deleted documents."""
-    vector_engine.add_doc("Content 1", {"source_file": "keep.txt", "chunk_index": 0})
-    doc_id = vector_engine.add_doc(
-        "Content 2", {"source_file": "delete.txt", "chunk_index": 0}
-    )
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Content 1",
+                "metadata": {"source_file": "keep.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    doc_id = vector_engine.add_docs(
+        [
+            {
+                "content": "Content 2",
+                "metadata": {"source_file": "delete.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
-    vector_engine.delete_doc(doc_id)
+    vector_engine.delete_docs([doc_id])
 
     files = vector_engine.list_files()
 
@@ -809,7 +1049,14 @@ def test_list_files_excludes_deleted_docs(vector_engine):
 
 def test_delete_file_returns_dict(vector_engine):
     """Test that delete_file returns a dictionary with status."""
-    vector_engine.add_doc("Content", {"source_file": "test.txt", "chunk_index": 0})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Content",
+                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
 
     result = vector_engine.delete_file("test.txt")
 
@@ -822,9 +1069,30 @@ def test_delete_file_returns_dict(vector_engine):
 
 def test_delete_file_deletes_all_chunks(vector_engine):
     """Test that delete_file removes all chunks from a source file."""
-    vector_engine.add_doc("Chunk 1", {"source_file": "test.txt", "chunk_index": 0})
-    vector_engine.add_doc("Chunk 2", {"source_file": "test.txt", "chunk_index": 1})
-    vector_engine.add_doc("Chunk 3", {"source_file": "test.txt", "chunk_index": 2})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 1",
+                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 2",
+                "metadata": {"source_file": "test.txt", "chunk_index": 1},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 3",
+                "metadata": {"source_file": "test.txt", "chunk_index": 2},
+            }
+        ]
+    )[0]
 
     result = vector_engine.delete_file("test.txt")
 
@@ -834,8 +1102,22 @@ def test_delete_file_deletes_all_chunks(vector_engine):
 
 def test_delete_file_returns_deleted_count(vector_engine):
     """Test that delete_file returns count of deleted chunks."""
-    vector_engine.add_doc("Chunk 1", {"source_file": "file.txt", "chunk_index": 0})
-    vector_engine.add_doc("Chunk 2", {"source_file": "file.txt", "chunk_index": 1})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 1",
+                "metadata": {"source_file": "file.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 2",
+                "metadata": {"source_file": "file.txt", "chunk_index": 1},
+            }
+        ]
+    )[0]
 
     result = vector_engine.delete_file("file.txt")
 
@@ -844,12 +1126,22 @@ def test_delete_file_returns_deleted_count(vector_engine):
 
 def test_delete_file_returns_doc_ids(vector_engine):
     """Test that delete_file returns list of deleted document IDs."""
-    doc_id1 = vector_engine.add_doc(
-        "Chunk 1", {"source_file": "file.txt", "chunk_index": 0}
-    )
-    doc_id2 = vector_engine.add_doc(
-        "Chunk 2", {"source_file": "file.txt", "chunk_index": 1}
-    )
+    doc_id1 = vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 1",
+                "metadata": {"source_file": "file.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    doc_id2 = vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 2",
+                "metadata": {"source_file": "file.txt", "chunk_index": 1},
+            }
+        ]
+    )[0]
 
     result = vector_engine.delete_file("file.txt")
 
@@ -870,8 +1162,22 @@ def test_delete_file_returns_not_found_for_nonexistent(vector_engine):
 
 def test_delete_file_updates_metrics(vector_engine):
     """Test that delete_file updates deletion metrics."""
-    vector_engine.add_doc("Chunk 1", {"source_file": "file.txt", "chunk_index": 0})
-    vector_engine.add_doc("Chunk 2", {"source_file": "file.txt", "chunk_index": 1})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 1",
+                "metadata": {"source_file": "file.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 2",
+                "metadata": {"source_file": "file.txt", "chunk_index": 1},
+            }
+        ]
+    )[0]
     initial_deleted = vector_engine.metrics.docs_deleted
 
     vector_engine.delete_file("file.txt")
@@ -881,10 +1187,38 @@ def test_delete_file_updates_metrics(vector_engine):
 
 def test_delete_file_with_mixed_chunks(vector_engine):
     """Test delete_file when only some chunks belong to the file."""
-    vector_engine.add_doc("Chunk 1", {"source_file": "target.txt", "chunk_index": 0})
-    vector_engine.add_doc("Chunk 2", {"source_file": "target.txt", "chunk_index": 1})
-    vector_engine.add_doc("Other 1", {"source_file": "other.txt", "chunk_index": 0})
-    vector_engine.add_doc("Other 2", {"source_file": "other.txt", "chunk_index": 1})
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 1",
+                "metadata": {"source_file": "target.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Chunk 2",
+                "metadata": {"source_file": "target.txt", "chunk_index": 1},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Other 1",
+                "metadata": {"source_file": "other.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Other 2",
+                "metadata": {"source_file": "other.txt", "chunk_index": 1},
+            }
+        ]
+    )[0]
 
     result = vector_engine.delete_file("target.txt")
 
@@ -910,7 +1244,7 @@ def test_get_metrics_returns_dict(vector_engine):
 
 def test_get_metrics_includes_all_categories(vector_engine):
     """Test that get_metrics includes all metric categories."""
-    vector_engine.add_doc("Test", {})
+    vector_engine.add_docs([{"content": "Test", "metadata": {}}])[0]
     vector_engine.search("test")
 
     metrics = vector_engine.get_metrics()
@@ -924,7 +1258,7 @@ def test_get_metrics_includes_all_categories(vector_engine):
 
 def test_get_metrics_includes_query_stats(vector_engine):
     """Test that metrics include query statistics."""
-    vector_engine.add_doc("Test document", {})
+    vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
     vector_engine.search("test")
 
     metrics = vector_engine.get_metrics()
@@ -937,7 +1271,7 @@ def test_get_metrics_includes_query_stats(vector_engine):
 
 def test_get_metrics_includes_document_stats(vector_engine):
     """Test that metrics include document statistics."""
-    vector_engine.add_doc("Test document", {})
+    vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
 
     metrics = vector_engine.get_metrics()
 
@@ -950,7 +1284,7 @@ def test_get_metrics_includes_document_stats(vector_engine):
 
 def test_get_metrics_includes_memory_stats(vector_engine):
     """Test that metrics include memory statistics."""
-    vector_engine.add_doc("Test document", {})
+    vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
 
     metrics = vector_engine.get_metrics()
 
@@ -960,7 +1294,7 @@ def test_get_metrics_includes_memory_stats(vector_engine):
 
 def test_get_metrics_includes_timestamps(vector_engine):
     """Test that metrics include timestamp information."""
-    vector_engine.add_doc("Test document", {})
+    vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
     vector_engine.search("test")
 
     metrics = vector_engine.get_metrics()
@@ -983,7 +1317,7 @@ def test_get_metrics_calculates_uptime(vector_engine):
 
 def test_get_metrics_percentiles_with_few_queries(vector_engine):
     """Test that get_metrics handles percentile calculation with few data points."""
-    vector_engine.add_doc("Document", {})
+    vector_engine.add_docs([{"content": "Document", "metadata": {}}])[0]
 
     vector_engine.search("test")
 
@@ -1019,8 +1353,8 @@ def test_get_index_stats_returns_dict(vector_engine):
 
 def test_get_index_stats_includes_document_counts(vector_engine):
     """Test that index stats include document counts."""
-    vector_engine.add_doc("Document 1", {})
-    vector_engine.add_doc("Document 2", {})
+    vector_engine.add_docs([{"content": "Document 1", "metadata": {}}])[0]
+    vector_engine.add_docs([{"content": "Document 2", "metadata": {}}])[0]
 
     stats = vector_engine.get_index_stats()
 
@@ -1030,7 +1364,7 @@ def test_get_index_stats_includes_document_counts(vector_engine):
 
 def test_get_index_stats_includes_embedding_dimension(vector_engine):
     """Test that index stats include embedding dimension."""
-    vector_engine.add_doc("Document", {})
+    vector_engine.add_docs([{"content": "Document", "metadata": {}}])[0]
 
     stats = vector_engine.get_index_stats()
 
@@ -1102,14 +1436,20 @@ def test_engine_metrics_created_at_is_iso_format():
 
 def test_add_search_delete_workflow(vector_engine):
     """Test complete workflow: add documents, search, delete, verify."""
-    doc_id1 = vector_engine.add_doc("Python programming language", {"topic": "coding"})
-    doc_id2 = vector_engine.add_doc("Machine learning algorithms", {"topic": "AI"})
-    doc_id3 = vector_engine.add_doc("Python snake species", {"topic": "nature"})
+    doc_id1 = vector_engine.add_docs(
+        [{"content": "Python programming language", "metadata": {"topic": "coding"}}]
+    )[0]
+    doc_id2 = vector_engine.add_docs(
+        [{"content": "Machine learning algorithms", "metadata": {"topic": "AI"}}]
+    )[0]
+    doc_id3 = vector_engine.add_docs(
+        [{"content": "Python snake species", "metadata": {"topic": "nature"}}]
+    )[0]
 
     results = vector_engine.search("Python")
     assert len(results) == 3
 
-    assert vector_engine.delete_doc(doc_id2) is True
+    assert vector_engine.delete_docs([doc_id2]) == [doc_id2]
 
     results = vector_engine.search("Python")
     assert len(results) == 2
@@ -1123,7 +1463,7 @@ def test_add_search_delete_workflow(vector_engine):
 def test_multiple_operations_metrics_accuracy(vector_engine):
     """Test that metrics remain accurate after multiple operations."""
     for i in range(5):
-        vector_engine.add_doc(f"Document {i}", {})
+        vector_engine.add_docs([{"content": f"Document {i}", "metadata": {}}])[0]
 
     for i in range(3):
         vector_engine.search("document")
@@ -1132,7 +1472,7 @@ def test_multiple_operations_metrics_accuracy(vector_engine):
     doc_ids = all_docs["ids"][:2]
 
     for doc_id in doc_ids:
-        vector_engine.delete_doc(doc_id)
+        vector_engine.delete_docs([doc_id])
 
     metrics = vector_engine.get_metrics()
     assert metrics["docs_added"] == 5
@@ -1177,7 +1517,9 @@ def test_get_chromadb_disk_size_increases_with_data(vector_engine):
     initial_bytes, _ = vector_engine._get_chromadb_disk_size()
 
     for i in range(10):
-        vector_engine.add_doc(f"Test document {i} with content " * 50, {})
+        vector_engine.add_docs(
+            [{"content": f"Test document {i} with content " * 50, "metadata": {}}]
+        )[0]
 
     final_bytes, _ = vector_engine._get_chromadb_disk_size()
     assert final_bytes >= initial_bytes
@@ -1199,7 +1541,9 @@ def test_get_chromadb_disk_size_populates_cache_after_first_call(vector_engine):
 def test_get_chromadb_disk_size_returns_cached_result_within_ttl(vector_engine):
     """Test that a second call within the TTL returns the cached value without rescanning."""
     first_result = vector_engine._get_chromadb_disk_size()
-    vector_engine.add_doc("New content that would change disk size" * 100, {})
+    vector_engine.add_docs(
+        [{"content": "New content that would change disk size" * 100, "metadata": {}}]
+    )[0]
     second_result = vector_engine._get_chromadb_disk_size()
 
     assert first_result == second_result
@@ -1215,7 +1559,9 @@ def test_get_chromadb_disk_size_rescans_after_ttl_expires(vector_engine, monkeyp
     )
     vector_engine._cached_disk_size["timestamp"] = expired_ts
 
-    vector_engine.add_doc("Extra content to change disk size" * 100, {})
+    vector_engine.add_docs(
+        [{"content": "Extra content to change disk size" * 100, "metadata": {}}]
+    )[0]
     vector_engine._get_chromadb_disk_size()
 
     assert vector_engine._cached_disk_size["timestamp"] > expired_ts
@@ -1420,10 +1766,14 @@ def test_peak_document_count_updates_after_add_doc(vector_engine):
     """Test that peak increases after adding a document."""
     initial_peak = vector_engine.metrics.total_documents_peak
 
-    vector_engine.add_doc(
-        content="Test document for peak tracking",
-        metadata={"test": "peak_tracking"},
-    )
+    vector_engine.add_docs(
+        [
+            {
+                "content": "Test document for peak tracking",
+                "metadata": {"test": "peak_tracking"},
+            }
+        ]
+    )[0]
 
     assert vector_engine.metrics.total_documents_peak > initial_peak
     assert vector_engine.metrics.total_documents_peak == 1
@@ -1432,10 +1782,14 @@ def test_peak_document_count_updates_after_add_doc(vector_engine):
 def test_peak_document_count_increases_with_multiple_adds(vector_engine):
     """Test that peak increases correctly with multiple document additions."""
     for i in range(5):
-        vector_engine.add_doc(
-            content=f"Test document {i} for peak tracking",
-            metadata={"test_id": i},
-        )
+        vector_engine.add_docs(
+            [
+                {
+                    "content": f"Test document {i} for peak tracking",
+                    "metadata": {"test_id": i},
+                }
+            ]
+        )[0]
 
     assert vector_engine.metrics.total_documents_peak == 5
 
@@ -1444,17 +1798,21 @@ def test_peak_document_count_does_not_decrease_on_delete(vector_engine):
     """Test that peak does NOT decrease when documents are deleted."""
     doc_ids = []
     for i in range(5):
-        doc_id = vector_engine.add_doc(
-            content=f"Test document {i} for peak tracking",
-            metadata={"test_id": i},
-        )
+        doc_id = vector_engine.add_docs(
+            [
+                {
+                    "content": f"Test document {i} for peak tracking",
+                    "metadata": {"test_id": i},
+                }
+            ]
+        )[0]
         doc_ids.append(doc_id)
 
     peak_after_add = vector_engine.metrics.total_documents_peak
     assert peak_after_add == 5
 
     for i in range(3):
-        vector_engine.delete_doc(doc_ids[i])
+        vector_engine.delete_docs([doc_ids[i]])
 
     peak_after_delete = vector_engine.metrics.total_documents_peak
 
@@ -1468,10 +1826,14 @@ def test_peak_document_count_does_not_decrease_on_delete(vector_engine):
 def test_peak_document_count_in_get_metrics(vector_engine):
     """Test that get_metrics() includes peak document count."""
     for i in range(3):
-        vector_engine.add_doc(
-            content=f"Test document {i}",
-            metadata={"test_id": i},
-        )
+        vector_engine.add_docs(
+            [
+                {
+                    "content": f"Test document {i}",
+                    "metadata": {"test_id": i},
+                }
+            ]
+        )[0]
 
     metrics = vector_engine.get_metrics()
 
@@ -1485,32 +1847,36 @@ def test_peak_document_count_after_add_delete_cycles(vector_engine):
     # Add 5 documents
     doc_ids = []
     for i in range(5):
-        doc_id = vector_engine.add_doc(
-            content=f"Test document {i}",
-            metadata={"test_id": i},
-        )
+        doc_id = vector_engine.add_docs(
+            [
+                {
+                    "content": f"Test document {i}",
+                    "metadata": {"test_id": i},
+                }
+            ]
+        )[0]
         doc_ids.append(doc_id)
 
     assert vector_engine.metrics.total_documents_peak == 5
 
     # Delete 3 documents (down to 2)
     for i in range(3):
-        vector_engine.delete_doc(doc_ids[i])
+        vector_engine.delete_docs([doc_ids[i]])
 
     assert vector_engine.metrics.total_documents_peak == 5
     assert vector_engine.collection.count() == 2
 
     # Add 2 more documents (up to 4, but peak should stay at 5)
-    vector_engine.add_doc(content="New doc 1", metadata={"new": 1})
+    vector_engine.add_docs([{"content": "New doc 1", "metadata": {"new": 1}}])[0]
     assert vector_engine.metrics.total_documents_peak == 5
 
-    vector_engine.add_doc(content="New doc 2", metadata={"new": 2})
+    vector_engine.add_docs([{"content": "New doc 2", "metadata": {"new": 2}}])[0]
     assert vector_engine.metrics.total_documents_peak == 5
     assert vector_engine.collection.count() == 4
 
     # Add 2 more to exceed previous peak (up to 6)
-    vector_engine.add_doc(content="New doc 3", metadata={"new": 3})
-    vector_engine.add_doc(content="New doc 4", metadata={"new": 4})
+    vector_engine.add_docs([{"content": "New doc 3", "metadata": {"new": 3}}])[0]
+    vector_engine.add_docs([{"content": "New doc 4", "metadata": {"new": 4}}])[0]
 
     assert vector_engine.metrics.total_documents_peak == 6
     assert vector_engine.collection.count() == 6
@@ -1533,9 +1899,15 @@ def test_update_hnsw_config_empty_collection(vector_engine):
 
 def test_update_hnsw_config_preserves_documents(vector_engine):
     """Test that documents are preserved after HNSW config update."""
-    doc1_id = vector_engine.add_doc("Test content 1", {"key": "value1"})
-    doc2_id = vector_engine.add_doc("Test content 2", {"key": "value2"})
-    doc3_id = vector_engine.add_doc("Test content 3", {"key": "value3"})
+    doc1_id = vector_engine.add_docs(
+        [{"content": "Test content 1", "metadata": {"key": "value1"}}]
+    )[0]
+    doc2_id = vector_engine.add_docs(
+        [{"content": "Test content 2", "metadata": {"key": "value2"}}]
+    )[0]
+    doc3_id = vector_engine.add_docs(
+        [{"content": "Test content 3", "metadata": {"key": "value3"}}]
+    )[0]
 
     result = vector_engine.update_hnsw_config({"ef_search": 175})
 
@@ -1563,7 +1935,9 @@ def test_update_hnsw_config_preserves_metadata(vector_engine):
         "page": 42,
         "author": "Test Author",
     }
-    doc_id = vector_engine.add_doc("Content with metadata", metadata)
+    doc_id = vector_engine.add_docs(
+        [{"content": "Content with metadata", "metadata": metadata}]
+    )[0]
 
     vector_engine.update_hnsw_config({"max_neighbors": 32})
     doc = vector_engine.get_doc(doc_id)
@@ -1577,9 +1951,9 @@ def test_update_hnsw_config_preserves_metadata(vector_engine):
 
 def test_update_hnsw_config_preserves_search_functionality(vector_engine):
     """Test that search results are identical after config update."""
-    vector_engine.add_doc("Python programming language")
-    vector_engine.add_doc("Machine learning algorithms")
-    vector_engine.add_doc("Data science and analytics")
+    vector_engine.add_docs([{"content": "Python programming language"}])[0]
+    vector_engine.add_docs([{"content": "Machine learning algorithms"}])[0]
+    vector_engine.add_docs([{"content": "Data science and analytics"}])[0]
 
     results_before = vector_engine.search("Python programming", top_k=3)
 
@@ -1609,7 +1983,7 @@ def test_update_hnsw_config_deletes_old_collection(vector_engine):
 def test_update_hnsw_config_returns_correct_stats(vector_engine):
     """Test that migration stats are accurate."""
     for i in range(7):
-        vector_engine.add_doc(f"Test document {i}")
+        vector_engine.add_docs([{"content": f"Test document {i}"}])[0]
 
     start = time.perf_counter()
     result = vector_engine.update_hnsw_config({"resize_factor": 1.5})
@@ -1626,7 +2000,7 @@ def test_update_hnsw_config_sets_migration_flag(vector_engine):
     assert vector_engine.migration_in_progress is False
 
     for i in range(5):
-        vector_engine.add_doc(f"Document {i}")
+        vector_engine.add_docs([{"content": f"Document {i}"}])[0]
 
     vector_engine.update_hnsw_config({"ef_search": 125})
 
@@ -1659,8 +2033,22 @@ def test_metrics_persist_after_engine_restart(shared_model, use_temp_chroma_dir)
         collection=collection1, model=shared_model, chroma_client=client1
     )
 
-    engine1.add_doc("First document", {"source_file": "a.txt", "chunk_index": 0})
-    engine1.add_doc("Second document", {"source_file": "a.txt", "chunk_index": 1})
+    engine1.add_docs(
+        [
+            {
+                "content": "First document",
+                "metadata": {"source_file": "a.txt", "chunk_index": 0},
+            }
+        ]
+    )[0]
+    engine1.add_docs(
+        [
+            {
+                "content": "Second document",
+                "metadata": {"source_file": "a.txt", "chunk_index": 1},
+            }
+        ]
+    )[0]
     engine1.search("document")
     engine1.search("first")
 
@@ -1722,7 +2110,7 @@ def test_query_times_deque_is_session_scoped(shared_model, use_temp_chroma_dir):
     engine1 = VectorEngine(
         collection=collection1, model=shared_model, chroma_client=client1
     )
-    engine1.add_doc("Some content", {})
+    engine1.add_docs([{"content": "Some content", "metadata": {}}])[0]
     engine1.search("content")
     engine1.search("content")
 
@@ -1761,8 +2149,8 @@ def test_delete_metrics_persist_after_restart(shared_model, use_temp_chroma_dir)
     engine1 = VectorEngine(
         collection=collection1, model=shared_model, chroma_client=client1
     )
-    doc_id = engine1.add_doc("Content to delete", {})
-    engine1.delete_doc(doc_id)
+    doc_id = engine1.add_docs([{"content": "Content to delete", "metadata": {}}])[0]
+    engine1.delete_docs([doc_id])
 
     assert engine1.metrics.docs_added == 1
     assert engine1.metrics.docs_deleted == 1
@@ -1799,7 +2187,7 @@ def test_cumulative_metrics_accumulate_across_multiple_restarts(
         engine = VectorEngine(
             collection=collection, model=shared_model, chroma_client=client
         )
-        engine.add_doc(f"Session {session} document", {})
+        engine.add_docs([{"content": f"Session {session} document", "metadata": {}}])[0]
         engine.search("document")
 
     SharedSystemClient.clear_system_cache()

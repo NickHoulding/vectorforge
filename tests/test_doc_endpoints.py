@@ -2,8 +2,10 @@
 
 Covers:
     POST   /collections/{collection_name}/documents
+    POST   /collections/{collection_name}/documents/batch
     GET    /collections/{collection_name}/documents/{doc_id}
     DELETE /collections/{collection_name}/documents/{doc_id}
+    DELETE /collections/{collection_name}/documents
 """
 
 from vectorforge.config import VFGConfig
@@ -273,9 +275,9 @@ def test_doc_get_with_empty_string_id(client):
 
 
 def test_doc_delete_with_empty_string_id(client):
-    """Test that DELETE /collections/vectorforge/documents/ with empty string returns 404 or 405."""
+    """Test that DELETE /collections/vectorforge/documents/ with empty string returns 404, 405, or 422."""
     response = client.delete("/collections/vectorforge/documents/")
-    assert response.status_code in (404, 405)
+    assert response.status_code in (404, 405, 422)
 
 
 def test_doc_add_preserves_metadata_fields(client, sample_doc):
@@ -646,3 +648,253 @@ def test_doc_get_with_numeric_id(client):
     """Test GET with pure numeric ID."""
     response = client.get("/collections/vectorforge/documents/12345")
     assert response.status_code == 404
+
+
+# =============================================================================
+# Batch Add Endpoint Tests (POST /documents/batch)
+# =============================================================================
+
+
+def test_batch_add_returns_201(client, sample_doc):
+    """Test that POST /documents/batch returns 201 status."""
+    payload = {"documents": [sample_doc, {**sample_doc, "content": "Second doc"}]}
+    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    assert response.status_code == 201
+
+
+def test_batch_add_returns_ids_list(client, sample_doc):
+    """Test that batch add response contains a list of IDs."""
+    payload = {"documents": [sample_doc, {**sample_doc, "content": "Second doc"}]}
+    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    data = response.json()
+    assert "ids" in data
+    assert isinstance(data["ids"], list)
+    assert len(data["ids"]) == 2
+
+
+def test_batch_add_returns_indexed_status(client, sample_doc):
+    """Test that batch add response contains 'indexed' status."""
+    payload = {"documents": [sample_doc]}
+    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    assert response.json()["status"] == "indexed"
+
+
+def test_batch_add_ids_are_unique(client, sample_doc):
+    """Test that batch add assigns unique IDs to each document."""
+    payload = {"documents": [sample_doc, {**sample_doc, "content": "Second doc"}]}
+    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    ids = response.json()["ids"]
+    assert len(ids) == len(set(ids))
+
+
+def test_batch_add_documents_are_retrievable(client, sample_doc):
+    """Test that all documents added via batch are individually retrievable."""
+    payload = {
+        "documents": [
+            {**sample_doc, "content": "Batch doc A"},
+            {**sample_doc, "content": "Batch doc B"},
+        ]
+    }
+    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    ids = response.json()["ids"]
+
+    for doc_id in ids:
+        get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
+        assert get_response.status_code == 200
+
+
+def test_batch_add_single_document_returns_one_id(client, sample_doc):
+    """Test that batch add with one document returns a single-element list."""
+    payload = {"documents": [sample_doc]}
+    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    assert len(response.json()["ids"]) == 1
+
+
+def test_batch_add_empty_list_returns_422(client):
+    """Test that batch add with an empty documents list returns 422."""
+    response = client.post(
+        "/collections/vectorforge/documents/batch", json={"documents": []}
+    )
+    assert response.status_code == 422
+
+
+def test_batch_add_exceeds_max_batch_size_returns_422(client, sample_doc):
+    """Test that batch add exceeding MAX_BATCH_SIZE returns 422."""
+    from vectorforge.config import VFGConfig
+
+    payload = {"documents": [sample_doc] * (VFGConfig.MAX_BATCH_SIZE + 1)}
+    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    assert response.status_code == 422
+
+
+def test_batch_add_invalid_document_returns_422(client, sample_doc):
+    """Test that batch add with an invalid document (missing content) returns 422."""
+    payload = {
+        "documents": [
+            sample_doc,
+            {"metadata": {"source_file": "x.txt", "chunk_index": 0}},
+        ]
+    }
+    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    assert response.status_code == 422
+
+
+def test_batch_add_missing_documents_field_returns_422(client):
+    """Test that batch add request without 'documents' field returns 422."""
+    response = client.post("/collections/vectorforge/documents/batch", json={})
+    assert response.status_code == 422
+
+
+# =============================================================================
+# Batch Delete Endpoint Tests (DELETE /documents)
+# =============================================================================
+
+
+def test_batch_delete_returns_200(client, sample_doc):
+    """Test that DELETE /documents returns 200 status."""
+    add_resp = client.post("/collections/vectorforge/documents", json=sample_doc)
+    doc_id = add_resp.json()["id"]
+
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [doc_id]},
+    )
+    assert response.status_code == 200
+
+
+def test_batch_delete_returns_deleted_ids(client, sample_doc):
+    """Test that batch delete response contains the deleted IDs."""
+    ids = [
+        client.post(
+            "/collections/vectorforge/documents",
+            json={**sample_doc, "content": f"Doc {i}"},
+        ).json()["id"]
+        for i in range(3)
+    ]
+
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": ids},
+    )
+    data = response.json()
+    assert set(data["ids"]) == set(ids)
+
+
+def test_batch_delete_returns_deleted_status(client, sample_doc):
+    """Test that batch delete response contains 'deleted' status."""
+    doc_id = client.post("/collections/vectorforge/documents", json=sample_doc).json()[
+        "id"
+    ]
+
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [doc_id]},
+    )
+    assert response.json()["status"] == "deleted"
+
+
+def test_batch_delete_removes_documents_from_index(client, sample_doc):
+    """Test that batch-deleted documents are no longer retrievable."""
+    ids = [
+        client.post(
+            "/collections/vectorforge/documents",
+            json={**sample_doc, "content": f"Doc {i}"},
+        ).json()["id"]
+        for i in range(2)
+    ]
+
+    client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": ids},
+    )
+
+    for doc_id in ids:
+        assert (
+            client.get(f"/collections/vectorforge/documents/{doc_id}").status_code
+            == 404
+        )
+
+
+def test_batch_delete_all_nonexistent_returns_404(client):
+    """Test that batch delete with only nonexistent IDs returns 404."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": ["nonexistent-1", "nonexistent-2"]},
+    )
+    assert response.status_code == 404
+
+
+def test_batch_delete_partial_match_returns_only_deleted_ids(client, sample_doc):
+    """Test that batch delete with a mix of valid and invalid IDs returns only deleted ones."""
+    doc_id = client.post("/collections/vectorforge/documents", json=sample_doc).json()[
+        "id"
+    ]
+
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [doc_id, "nonexistent-id"]},
+    )
+    data = response.json()
+    assert data["status"] == "deleted"
+    assert data["ids"] == [doc_id]
+
+
+def test_batch_delete_empty_ids_returns_422(client):
+    """Test that batch delete with an empty ID list returns 422."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": []},
+    )
+    assert response.status_code == 422
+
+
+def test_batch_delete_exceeds_max_batch_size_returns_422(client):
+    """Test that batch delete exceeding MAX_BATCH_SIZE returns 422."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": ["id"] * (VFGConfig.MAX_BATCH_SIZE + 1)},
+    )
+    assert response.status_code == 422
+
+
+def test_batch_delete_missing_ids_field_returns_422(client):
+    """Test that batch delete request without 'ids' field returns 422."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={},
+    )
+    assert response.status_code == 422
+
+
+def test_batch_delete_updates_docs_deleted_metric(client, sample_doc):
+    """Test that batch delete increments the docs_deleted metric."""
+    ids = [
+        client.post(
+            "/collections/vectorforge/documents",
+            json={**sample_doc, "content": f"Doc {i}"},
+        ).json()["id"]
+        for i in range(3)
+    ]
+
+    initial = client.get("/collections/vectorforge/metrics").json()["usage"][
+        "documents_deleted"
+    ]
+    client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": ids},
+    )
+    updated = client.get("/collections/vectorforge/metrics").json()["usage"][
+        "documents_deleted"
+    ]
+
+    assert updated == initial + 3
