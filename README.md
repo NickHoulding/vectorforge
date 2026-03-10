@@ -13,11 +13,10 @@
 
 - [Problem Statement](#problem-statement)
 - [What is VectorForge?](#what-is-vectorforge)
-- [Demo](#demo)
+- [Interactive Demo](#interactive-demo)
 - [Tech Stack](#tech-stack)
 - [Key Features](#key-features)
 - [Architecture](#architecture)
-- [Screenshots](#screenshots)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
 - [Development Process](#development-process)
@@ -325,6 +324,61 @@ if has_source != has_chunk_index:
 ```
 
 **Rationale**: Maintains data integrity for file reconstruction.
+
+---
+
+## Interactive Demo
+
+The `demo/` directory contains an interactive REPL that lets you exercise every API endpoint against a live VectorForge instance directly from the terminal — no curl commands or external tooling required.
+
+### **How it works**
+
+1. On startup the demo checks whether the `vectorforge` Docker container is already running. If it isn't, it runs `docker compose up -d` automatically and waits for the API to become live before proceeding.
+2. A menu of 19 feature keys is displayed. Type any key to invoke that endpoint — the demo will prompt you for the required parameters, fire the request, and pretty-print the JSON response.
+3. On exit you are asked what to do with the container: leave it running, stop it, remove it, or remove it along with all volume data.
+
+### **Prerequisites**
+
+- Docker (with the Compose plugin)
+- Python 3.11+ with `uv` and dependencies installed (see [Getting Started](#getting-started))
+
+### **Running the demo**
+
+```bash
+# From the project root:
+uv run demo
+```
+
+### **Feature menu**
+
+```
+collections:create          Create a new collection
+collections:list            List all collections
+collections:get             Get details for one collection
+collections:delete          Delete a collection
+
+documents:add               Add a single document
+documents:get               Fetch a document by ID
+documents:batch_add         Add multiple documents
+documents:delete            Delete a document by ID
+documents:batch_delete      Batch-delete documents by ID list
+
+files:upload                Upload and index a .pdf or .txt file
+files:list                  List indexed files in a collection
+files:delete                Delete all chunks for a file
+
+search                      Semantic similarity search
+
+index:stats                 Get index statistics and HNSW config
+index:update_hnsw           Migrate HNSW index configuration
+
+system:health               Basic health check
+system:health_ready         Readiness probe
+system:health_live          Liveness probe
+system:metrics              Comprehensive collection metrics
+```
+
+Type `help` at any time to reprint the menu, and `quit` to exit.
 
 ---
 
