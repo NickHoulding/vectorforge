@@ -18,7 +18,7 @@ def update_hnsw() -> None:
     print("\n-- Update HNSW Config --")
     print("  WARNING: This triggers a full blue-green collection migration")
     print("           and may temporarily require up to 3x disk space.\n")
-    
+
     collection_name = client.prompt_collection()
     ef_search = client.prompt_int("ef_search")
     max_neighbors = client.prompt_int("max_neighbors")

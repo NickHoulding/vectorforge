@@ -30,7 +30,9 @@ def upload() -> None:
     with open(path, "rb") as fh:
         file_field = (filename, fh, _mime_type(filename))
         resp = client.post_file(
-            f"/collections/{collection_name}/files/upload", file_field=file_field, data=data
+            f"/collections/{collection_name}/files/upload",
+            file_field=file_field,
+            data=data,
         )
 
     client.print_response(resp)
