@@ -123,6 +123,74 @@ def _print_help() -> None:
     print()
 
 
+def _prompt_shutdown() -> None:
+    """Ask the user what to do with the running Docker container on exit.
+
+    Presents four options — keep it running, stop it, remove the container,
+    or remove the container and all volume data. Options 3 and 4 require an
+    explicit confirmation before proceeding.
+    """
+    print("\nWhat should happen to the Docker container?")
+    print("  [1] Keep it running  (default)")
+    print("  [2] Stop it          (docker compose stop)")
+    print("  [3] Remove it        (docker compose down)")
+    print("  [4] Remove it + data (docker compose down --volumes)")
+
+    try:
+        choice = input("  Choice [1]: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        choice = ""
+
+    if not choice or choice == "1":
+        print(f"  Container '{CONTAINER_NAME}' left running.")
+        return
+
+    if choice == "2":
+        print(f"  Stopping '{CONTAINER_NAME}'...")
+        subprocess.run(["docker", "compose", "stop"], capture_output=False)
+        return
+
+    if choice == "3":
+        try:
+            confirm = (
+                input("  Remove container? Data volume will be preserved. [y/N]: ")
+                .strip()
+                .lower()
+            )
+        except (EOFError, KeyboardInterrupt):
+            confirm = ""
+
+        if confirm not in ("y", "yes"):
+            print("  Cancelled — container left running.")
+            return
+
+        print(f"  Removing '{CONTAINER_NAME}'...")
+        subprocess.run(["docker", "compose", "down"], capture_output=False)
+        return
+
+    if choice == "4":
+        try:
+            confirm = (
+                input(
+                    "  Remove container and all volume data? This cannot be undone. [y/N]: "
+                )
+                .strip()
+                .lower()
+            )
+        except (EOFError, KeyboardInterrupt):
+            confirm = ""
+
+        if confirm not in ("y", "yes"):
+            print("  Cancelled — container left running.")
+            return
+
+        print(f"  Removing '{CONTAINER_NAME}' and volume data...")
+        subprocess.run(["docker", "compose", "down", "--volumes"], capture_output=False)
+        return
+
+    print(f"  Unrecognised choice '{choice}' - container left running.")
+
+
 def run_repl() -> None:
     """Display the feature menu and loop until the user quits."""
     print("=" * 60)
@@ -134,14 +202,15 @@ def run_repl() -> None:
         try:
             raw = input("feature> ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\nBye.")
+            print()
+            _prompt_shutdown()
             break
 
         if not raw:
             continue
 
         if raw in ("quit", "exit", "q"):
-            print("Quitting demo...")
+            _prompt_shutdown()
             break
 
         if raw in ("help", "h", "?"):
