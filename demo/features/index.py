@@ -8,8 +8,8 @@ from demo import client
 def stats() -> None:
     """Fetch and display index statistics and HNSW configuration for a collection."""
     print("\n-- Index Stats --")
-    collection = client.prompt_collection()
-    resp = client.get(f"/collections/{collection}/stats")
+    collection_name = client.prompt_collection()
+    resp = client.get(f"/collections/{collection_name}/stats")
     client.print_response(resp)
 
 
@@ -18,8 +18,8 @@ def update_hnsw() -> None:
     print("\n-- Update HNSW Config --")
     print("  WARNING: This triggers a full blue-green collection migration")
     print("           and may temporarily require up to 3x disk space.\n")
-    collection = client.prompt_collection()
-
+    
+    collection_name = client.prompt_collection()
     ef_search = client.prompt_int("ef_search")
     max_neighbors = client.prompt_int("max_neighbors")
 
@@ -37,6 +37,6 @@ def update_hnsw() -> None:
     params = {"confirm": str(confirm).lower()}
 
     resp = client.put(
-        f"/collections/{collection}/config/hnsw", body=config, params=params
+        f"/collections/{collection_name}/config/hnsw", body=config, params=params
     )
     client.print_response(resp)

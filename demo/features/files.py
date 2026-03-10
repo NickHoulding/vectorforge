@@ -9,7 +9,7 @@ from demo import client
 def upload() -> None:
     """Prompt for a local file path and optional chunking settings, then upload and index the file."""
     print("\n-- Upload File --")
-    collection = client.prompt_collection()
+    collection_name = client.prompt_collection()
     path = client.prompt("Local file path (.pdf or .txt)")
     path = os.path.expanduser(path)
 
@@ -30,7 +30,7 @@ def upload() -> None:
     with open(path, "rb") as fh:
         file_field = (filename, fh, _mime_type(filename))
         resp = client.post_file(
-            f"/collections/{collection}/files/upload", file_field=file_field, data=data
+            f"/collections/{collection_name}/files/upload", file_field=file_field, data=data
         )
 
     client.print_response(resp)
@@ -39,17 +39,17 @@ def upload() -> None:
 def list_all() -> None:
     """Fetch and display the names of all indexed files in a collection."""
     print("\n-- List Files --")
-    collection = client.prompt_collection()
-    resp = client.get(f"/collections/{collection}/files/list")
+    collection_name = client.prompt_collection()
+    resp = client.get(f"/collections/{collection_name}/files/list")
     client.print_response(resp)
 
 
 def delete() -> None:
     """Prompt for a filename and delete all of its indexed chunks from a collection."""
     print("\n-- Delete File --")
-    collection = client.prompt_collection()
+    collection_name = client.prompt_collection()
     filename = client.prompt("Filename (as stored in the collection)")
-    resp = client.delete(f"/collections/{collection}/files/{filename}")
+    resp = client.delete(f"/collections/{collection_name}/files/{filename}")
     client.print_response(resp)
 
 

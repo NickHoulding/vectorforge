@@ -35,16 +35,16 @@ def list_all() -> None:
 def get() -> None:
     """Prompt for a collection name and display its details."""
     print("\n-- Get Collection --")
-    name = client.prompt("Collection name")
-    resp = client.get(f"/collections/{name}")
+    collection_name = client.prompt("Collection name")
+    resp = client.get(f"/collections/{collection_name}")
     client.print_response(resp)
 
 
 def delete() -> None:
     """Prompt for a collection name and delete it after confirmation."""
     print("\n-- Delete Collection --")
-    name = client.prompt("Collection name")
+    collection_name = client.prompt("Collection name")
     confirm = client.prompt_bool("Confirm deletion?", default=False)
     params = {"confirm": str(confirm).lower()}
-    resp = client.delete(f"/collections/{name}", params=params)
+    resp = client.delete(f"/collections/{collection_name}", params=params)
     client.print_response(resp)

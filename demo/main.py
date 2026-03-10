@@ -200,7 +200,7 @@ def run_repl() -> None:
 
     while True:
         try:
-            raw = input("feature> ").strip()
+            raw = input(">>> ").strip()
         except (EOFError, KeyboardInterrupt):
             print()
             _prompt_shutdown()
