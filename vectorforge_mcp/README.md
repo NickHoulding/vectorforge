@@ -2,7 +2,7 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![FastMCP](https://img.shields.io/badge/FastMCP-2.14+-green.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)
+![Version](https://img.shields.io/badge/version-1.0.3-orange.svg)
 
 > Model Context Protocol server for VectorForge - Enable semantic search capabilities in AI assistants like Claude Desktop.
 
@@ -28,9 +28,9 @@
 
 The VectorForge MCP Server is a **Model Context Protocol (MCP) adapter** that exposes VectorForge's semantic search capabilities to AI assistants and other MCP-compatible clients. It acts as a bridge between the VectorForge REST API and MCP clients, enabling AI assistants to:
 
+- Create and manage collections for multi-tenancy or domain separation
 - Index and search documents semantically
 - Upload and process files (PDF, TXT)
-- Manage vector embeddings
 - Retrieve comprehensive system metrics
 
 **Key Components:**
@@ -66,21 +66,25 @@ The Model Context Protocol (MCP) is an open standard that enables AI assistants 
 ## Tech Stack
 
 ### **Core Technologies**
-- **Python 3.11+** - Modern Python with async support
+- **Python 3.11+** - Modern Python with type hints throughout
 - **FastMCP 2.14+** - Fast, modern MCP server framework
-- **VectorForge API** - Core vector database (required)
+- **VectorForge API** - Core vector database REST API (required, runs separately)
 
 ### **Dependencies**
-- **httpx** - Async HTTP client for API communication
-- **FastAPI** - Used by VectorForge API (indirect)
-- **Pydantic** - Data validation for VectorForge models
+- **requests** - HTTP client for VectorForge API communication
 
 ---
 
 ## Key Features
 
-### **13 MCP Tools**
-Organized into 5 categories:
+### **14 MCP Tools**
+Organized into 6 categories:
+
+**Collections** (4 tools)
+- List all collections
+- Get collection details
+- Create a collection with optional HNSW configuration
+- Delete a collection
 
 **Documents** (3 tools)
 - Get document by ID
@@ -92,11 +96,8 @@ Organized into 5 categories:
 - Upload and process files
 - Delete all chunks from a file
 
-**Index** (4 tools)
-- Get index statistics
-- Build/rebuild index
-- Save index to disk
-- Load index from disk
+**Index** (1 tool)
+- Get index statistics and HNSW configuration
 
 **Search** (1 tool)
 - Semantic search with top-k results and metadata filtering
@@ -105,9 +106,10 @@ Organized into 5 categories:
 - Get comprehensive metrics
 - Health check
 
+All tools (except `check_health`) accept a `collection_name` parameter, defaulting to `"vectorforge"`.
+
 ### **Production-Ready Features**
-- **Comprehensive Error Handling** - Catches network errors, timeouts, API version mismatches
-- **Async Support** - Upload operations run asynchronously
+- **Comprehensive Error Handling** - Catches network errors, timeouts, and HTTP error responses
 - **Logging** - Configurable logging with timestamps and levels
 - **Configuration** - Centralized config with validation
 - **Type Safety** - Full type hints throughout codebase
@@ -129,17 +131,17 @@ Organized into 5 categories:
 │  VectorForge    │
 │  MCP Server     │ ← You are here
 ├─────────────────┤
-│ • 13 MCP Tools  │
+│ • 14 MCP Tools  │
 │ • Error Handler │
 │ • Logging       │
 └────────┬────────┘
-         │ HTTP/REST
+         │ HTTP REST
          │
 ┌────────▼────────┐
 │  VectorForge    │
-│  REST API       │ (Required - must be running)
+│  API            │ (Docker container, port 3001)
 ├─────────────────┤
-│ • Vector Engine │
+│ • ChromaDB      │
 │ • Embeddings    │
 │ • Storage       │
 └─────────────────┘
@@ -150,25 +152,27 @@ Organized into 5 categories:
 ```
 vectorforge_mcp/
 ├── __init__.py
+├── __main__.py        # Entry point and main()
+├── client.py          # HTTP client helpers (get, post, put, delete)
 ├── config.py          # Configuration settings
 ├── decorators.py      # Error handling decorator
 ├── instance.py        # FastMCP server instance
-├── server.py          # Entry point and main()
 ├── utils.py           # Response builders
 └── tools/             # MCP tool implementations
+    ├── collections.py # Collection management tools
     ├── documents.py   # Document management tools
     ├── files.py       # File upload/management tools
-    ├── index.py       # Index management tools
+    ├── index.py       # Index statistics tool
     ├── search.py      # Semantic search tool
     └── system.py      # System info tools
 ```
 
 ### **Error Handling Strategy**
 
-All tools are wrapped with `@handle_api_errors` decorator that catches:
+All tools are wrapped with `@handle_tool_errors` decorator that catches:
 - **Connection Errors** - API not running, network issues
 - **Timeouts** - Request timeouts with helpful messages
-- **Version Mismatches** - HTTP 422 detected and reported
+- **HTTP Errors** - Non-2xx responses surfaced with status code and body
 - **Generic Exceptions** - Fallback error handling
 
 This provides consistent error responses across all tools without duplicate code.
@@ -181,9 +185,8 @@ This provides consistent error responses across all tools without duplicate code
 
 1. **VectorForge API must be running**
    ```bash
-   # In one terminal, start VectorForge API
-   cd vectorforge/python
-   uv run vectorforge-api
+   # From the project root, start the VectorForge API
+   docker compose up -d
    ```
 
 2. **Python 3.11+** installed
@@ -193,13 +196,10 @@ This provides consistent error responses across all tools without duplicate code
 
 ```bash
 # Navigate to project root
-cd vectorforge/python
+cd vectorforge
 
 # Install with MCP dependencies
 uv sync --group mcp
-
-# Or using pip
-pip install -e ".[mcp]"
 ```
 
 ### **Verify Installation**
@@ -209,25 +209,14 @@ pip install -e ".[mcp]"
 which vectorforge-mcp
 
 # Test configuration validation
-python -c "from vectorforge_mcp.config import MCPConfig; MCPConfig.validate(); print('✓ Config valid')"
+python -c "from vectorforge_mcp.config import MCPConfig; MCPConfig.validate(); print('Config valid')"
 ```
 
 ### **Running the Server**
 
 #### **Option 1: Using Console Script (Recommended)**
 ```bash
-vectorforge-mcp
-```
-
-#### **Option 2: Using Python Module**
-```bash
-python -m vectorforge_mcp.server
-```
-
-#### **Option 3: Direct Execution**
-```bash
-cd python/vectorforge_mcp
-python server.py
+uv run vectorforge-mcp
 ```
 
 The server will:
@@ -249,10 +238,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "vectorforge": {
-      "command": "vectorforge-mcp",
-      "env": {
-        "PYTHONPATH": "/path/to/vectorforge/python"
-      }
+      "command": "vectorforge-mcp"
     }
   }
 }
@@ -264,7 +250,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 
 In Claude, ask: "What VectorForge tools are available?"
 
-Claude should list all 13 MCP tools.
+Claude should list all 14 MCP tools.
 
 ### **Connecting from Other MCP Clients**
 
@@ -274,6 +260,60 @@ The server uses stdio transport and can connect to any MCP-compatible client. Re
 
 ## Available Tools
 
+### **Collections**
+
+#### `list_collections`
+Get all collections with their names, IDs, document counts, and metadata.
+
+**Example:**
+```
+"List all VectorForge collections"
+```
+
+#### `get_collection`
+Get detailed information about a specific collection including document count and HNSW config.
+
+**Parameters:**
+- `collection_name` (str) - Name of the collection
+
+**Example:**
+```
+"Get details for the 'vectorforge' collection"
+```
+
+#### `create_collection`
+Create a new collection for multi-tenancy or domain separation. Optionally configure HNSW parameters.
+
+**Parameters:**
+- `collection_name` (str) - Collection name (alphanumeric, underscores, hyphens)
+- `description` (str, optional) - Collection description
+- `hnsw_space` (str, optional) - Distance metric: `"cosine"`, `"l2"`, or `"ip"` (default: `"cosine"`)
+- `hnsw_ef_construction` (int, optional) - Build-time search depth (default: 100)
+- `hnsw_ef_search` (int, optional) - Query-time search depth (default: 100)
+- `hnsw_max_neighbors` (int, optional) - Connections per node (default: 16)
+- `hnsw_resize_factor` (float, optional) - Index growth multiplier (default: 1.2)
+- `hnsw_sync_threshold` (int, optional) - Batch size for persistence (default: 1000)
+- `metadata` (dict, optional) - Custom metadata (max 20 key-value pairs)
+
+**Example:**
+```
+"Create a collection named 'research' with description 'Research papers'"
+```
+
+#### `delete_collection`
+Permanently delete a collection and all its documents. Cannot delete the default `vectorforge` collection.
+
+**Parameters:**
+- `collection_name` (str) - Name of the collection to delete
+- `confirm` (bool) - Must be `true` to confirm deletion
+
+**Example:**
+```
+"Delete the 'research' collection"
+```
+
+---
+
 ### **Documents**
 
 #### `get_document`
@@ -281,6 +321,7 @@ Fetch document content and metadata by ID.
 
 **Parameters:**
 - `doc_id` (str) - Unique document identifier (UUID)
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Example:**
 ```
@@ -293,6 +334,7 @@ Index text content for semantic search. Generates embeddings automatically.
 **Parameters:**
 - `content` (str) - Document text content (required, non-empty)
 - `metadata` (dict, optional) - Custom metadata
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Example:**
 ```
@@ -304,6 +346,7 @@ Permanently remove a document and its embeddings.
 
 **Parameters:**
 - `doc_id` (str) - Document ID to delete
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Example:**
 ```
@@ -317,6 +360,9 @@ Permanently remove a document and its embeddings.
 #### `list_files`
 Get all filenames that have been uploaded and chunked.
 
+**Parameters:**
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
+
 **Example:**
 ```
 "List all indexed files"
@@ -327,6 +373,9 @@ Upload and index a file (PDF, TXT). Extracts text, chunks it, generates embeddin
 
 **Parameters:**
 - `file_path` (str) - Absolute path to file
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
+- `chunk_size` (int, optional) - Maximum characters per chunk (default: 500)
+- `chunk_overlap` (int, optional) - Overlapping characters between chunks (default: 50)
 
 **Example:**
 ```
@@ -338,6 +387,7 @@ Delete all document chunks from a specific uploaded file.
 
 **Parameters:**
 - `filename` (str) - Name of the source file
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Example:**
 ```
@@ -349,41 +399,14 @@ Delete all document chunks from a specific uploaded file.
 ### **Index**
 
 #### `get_index_stats`
-Get lightweight index health check: document counts, embedding dimension, deletion ratio, compaction status.
+Get index health check: document count, embedding dimension, and HNSW configuration.
+
+**Parameters:**
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Example:**
 ```
 "Get index statistics"
-```
-
-#### `build_index`
-Rebuild entire vector index from scratch. Regenerates all embeddings.
-
-**Example:**
-```
-"Rebuild the index"
-```
-
-#### `save_index`
-Persist index to disk (embeddings + metadata). Enables fast recovery.
-
-**Parameters:**
-- `directory` (str, optional) - Directory path (default: './data')
-
-**Example:**
-```
-"Save the index to disk"
-```
-
-#### `load_index`
-Restore index from disk. Loads previously saved embeddings and metadata.
-
-**Parameters:**
-- `directory` (str, optional) - Directory path (default: './data')
-
-**Example:**
-```
-"Load the index from disk"
 ```
 
 ---
@@ -396,8 +419,9 @@ Semantic search across indexed documents using embeddings. Returns top-k most si
 **Parameters:**
 - `query` (str) - Search query (natural language)
 - `top_k` (int, optional) - Number of results (default: 10, max: 100)
-- `source_file` (str, optional) - Filter by source filename
+- `source_file` (str, optional) - Filter by source filename (exact match, case-sensitive)
 - `chunk_index` (int, optional) - Filter by chunk index
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Examples:**
 ```
@@ -420,6 +444,9 @@ Semantic search across indexed documents using embeddings. Returns top-k most si
 
 #### `get_metrics`
 Get comprehensive metrics: performance stats (query times, percentiles), memory usage, operation counts, uptime, and system info.
+
+**Parameters:**
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Example:**
 ```
@@ -444,9 +471,11 @@ Located in [`config.py`](config.py):
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `SERVER_NAME` | `"VectorForge MCP Server"` | Name shown to MCP clients |
-| `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | Server description |
-| `VECTORFORGE_API_BASE_URL` | `"http://localhost:3001"` | VectorForge API URL |
+| `SERVER_NAME` | `"VectorForge MCP Server"` | Display name reported to MCP clients |
+| `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | Server description reported to MCP clients |
+| `VECTORFORGE_API_BASE_URL` | `"http://localhost:3001"` | Base URL of the VectorForge REST API |
+| `DEFAULT_COLLECTION_NAME` | `"vectorforge"` | Collection used when none is specified |
+| `DEFAULT_TOP_K` | `10` | Default number of results for `search_documents` |
 | `LOG_LEVEL` | `logging.INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
 | `LOG_FORMAT` | `"%(asctime)s - %(name)s..."` | Log message format |
 
@@ -456,9 +485,9 @@ Edit [`config.py`](config.py) and modify class variables:
 
 ```python
 class MCPConfig:
-    SERVER_NAME: str = "My Custom VectorForge Server"
+    VECTORFORGE_API_BASE_URL: str = "http://my-server:3001"
+    DEFAULT_COLLECTION_NAME: str = "my-default"
     LOG_LEVEL: int = logging.DEBUG  # Enable debug logging
-    VECTORFORGE_API_BASE_URL: str = "http://custom-host:8080"
 ```
 
 Configuration is validated on server startup via `MCPConfig.validate()`.
@@ -476,7 +505,7 @@ You: Index this document: "VectorForge is a high-performance vector database"
 
 Claude: I'll add that document to the index.
 [Calls add_document tool]
-✓ Document indexed with ID: abc-123
+Document indexed with ID: abc-123
 
 You: Search for "vector database"
 
@@ -494,7 +523,7 @@ You: Upload the file /Users/nick/papers/ai_research.pdf
 
 Claude: I'll upload and index that PDF file.
 [Calls upload_file tool]
-✓ Uploaded ai_research.pdf
+Uploaded ai_research.pdf
 - Created 24 chunks
 - Generated 24 document IDs
 
@@ -526,14 +555,35 @@ Found 2 results:
 - manual.pdf, chunk 0 (Score: 0.82)
 ```
 
-### **Example 4: Monitoring and Maintenance**
+### **Example 4: Multi-Collection Setup**
+
+```
+You: Create a collection called "research" for academic papers
+
+Claude: I'll create that collection.
+[Calls create_collection with collection_name="research"]
+Created collection 'research'
+
+You: Upload /path/to/paper.pdf to the research collection
+
+Claude: I'll upload that to the research collection.
+[Calls upload_file with file_path="/path/to/paper.pdf", collection_name="research"]
+Uploaded paper.pdf to 'research' - 18 chunks created
+
+You: Search for "neural networks" in research papers only
+
+Claude: [Calls search_documents with query="neural networks", collection_name="research"]
+Found relevant sections from your research collection...
+```
+
+### **Example 5: Monitoring and Maintenance**
 
 ```
 You: Check the health of VectorForge
 
 Claude: [Calls check_health tool]
-✓ VectorForge API is healthy
-- Version: 1.0.0
+VectorForge API is healthy
+- Version: 1.0.3
 - Status: healthy
 
 You: Get the current metrics
@@ -571,8 +621,8 @@ uv sync --group mcp
 
 **Solution:**
 ```bash
-# Start VectorForge API in another terminal
-vectorforge-api
+# Start VectorForge API via Docker
+docker compose up -d
 ```
 
 ---
@@ -615,31 +665,25 @@ Edit [`config.py`](config.py):
 LOG_LEVEL: int = logging.DEBUG
 ```
 
-Or set environment variable:
-```bash
-export LOG_LEVEL=DEBUG
-vectorforge-mcp
-```
-
 ---
 
 ## Architecture Details
 
 ### **Error Handler Decorator**
 
-All tools use `@handle_api_errors` from [`decorators.py`](decorators.py):
+All tools use `@handle_tool_errors` from [`decorators.py`](decorators.py):
 
 ```python
-@handle_api_errors
+@handle_tool_errors
 def my_tool(param: str) -> dict:
-    response = api.some_operation(param)
-    return build_success_response(response)
+    data = get("/some/endpoint")
+    return build_success_response(data)
 ```
 
 This automatically catches and formats:
-- `ConnectionRefusedError` → "API not available"
-- `TimeoutError` → "Request timeout"
-- `HTTPException(422)` → "API version mismatch"
+- `requests.ConnectionError` → "API not available"
+- `requests.Timeout` → "Request timeout"
+- `requests.HTTPError` → HTTP status code and response body
 - Generic exceptions → "Operation failed"
 
 ### **Response Format**
@@ -667,7 +711,7 @@ All tools return standardized responses:
 
 ## Related Projects
 
-- **VectorForge Core** - Main vector database ([README](../../README.md))
+- **VectorForge Core** - Main vector database ([README](../README.md))
 - **FastMCP** - MCP server framework ([GitHub](https://github.com/jlowin/fastmcp))
 - **Model Context Protocol** - Protocol specification ([Anthropic](https://modelcontextprotocol.io/))
 

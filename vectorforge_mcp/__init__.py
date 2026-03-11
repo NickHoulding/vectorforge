@@ -1,1 +1,1 @@
-"""VectorForge Model Context Protocol (MCP) server"""
+"""VectorForge Model Context Protocol (MCP) server."""

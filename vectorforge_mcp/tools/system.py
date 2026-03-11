@@ -2,10 +2,8 @@
 
 from typing import Any
 
-from vectorforge.api import system
-from vectorforge.config import VFGConfig
-from vectorforge.models.metrics import MetricsResponse
-
+from ..client import get
+from ..config import MCPConfig
 from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
@@ -16,20 +14,18 @@ from ..utils import build_success_response
 )
 @handle_tool_errors
 def get_metrics(
-    collection_name: str = VFGConfig.DEFAULT_COLLECTION_NAME,
+    collection_name: str = MCPConfig.DEFAULT_COLLECTION_NAME,
 ) -> dict[str, Any]:
     """Get comprehensive system metrics.
 
     Args:
-        collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
-        Dictionary with detailed performance, usage, memory, timestamp, and system metrics.
+      Dictionary with detailed performance, usage, memory, timestamp, and system metrics.
     """
-    response: MetricsResponse = system.get_collection_metrics(
-        collection_name=collection_name
-    )
-    return build_success_response(response)
+    data = get(f"/collections/{collection_name}/metrics")
+    return build_success_response(data)
 
 
 @mcp.tool(
@@ -40,7 +36,7 @@ def check_health() -> dict[str, Any]:
     """Check VectorForge API health and connectivity.
 
     Returns:
-        Dictionary with health status and version information.
+      Dictionary with health status and version information.
     """
-    response: dict[str, Any] = system.check_health()
-    return {"success": True, "data": response}
+    data = get("/health")
+    return build_success_response(data)

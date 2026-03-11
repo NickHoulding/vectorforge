@@ -123,7 +123,7 @@ class VFGConfig:
     """Maximum number of collections allowed per instance."""
 
     DEFAULT_COLLECTION_NAME: str = "vectorforge"
-    """Default collection when none specified (backward compatibility)."""
+    """Default collection when none specified."""
 
     COLLECTION_CACHE_SIZE: int = int(os.getenv("COLLECTION_CACHE_SIZE", "50"))
     """FIFO cache size for collection engines."""

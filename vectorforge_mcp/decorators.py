@@ -1,29 +1,27 @@
-"""Decorators for VectorForge MCP tools."""
+"""Error-handling decorator for VectorForge MCP tool functions."""
 
 import functools
 import inspect
 from typing import Any, Callable, cast
 
-import httpx
-from fastapi import HTTPException
+import requests
 
 from .utils import build_error_response
 
 
 def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator to handle common VectorForge API errors consistently.
+    """Wrap a tool function with standardised error handling.
 
-    Catches and formats errors for:
-    - Connection issues (refused, network errors)
-    - Timeouts
-    - API version mismatches (422 status)
-    - Generic exceptions
+    Catches HTTP, connection, timeout, and generic errors and converts
+    them into a consistent ``{"success": False, ...}`` response dict so
+    MCP clients always receive a structured response. Supports both sync
+    and async tool functions.
 
     Args:
-        func: The tool function to wrap with error handling.
+      func: The MCP tool function to wrap.
 
     Returns:
-        Wrapped function with comprehensive error handling.
+      Wrapped function that returns a success or error response dict.
     """
 
     @functools.wraps(func)
@@ -31,28 +29,25 @@ def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
         try:
             return cast(dict[str, Any], func(*args, **kwargs))
 
-        except ConnectionRefusedError:
+        except requests.ConnectionError:
             return build_error_response(
                 Exception("VectorForge API is not available"),
                 details="Connection refused - check if API is running",
             )
-        except (ConnectionError, httpx.ConnectError):
-            return build_error_response(
-                Exception("Network error"),
-                details="Unable to connect to VectorForge API",
-            )
-        except (TimeoutError, httpx.TimeoutException):
+        except requests.Timeout:
             return build_error_response(
                 Exception("Request timeout"),
                 details="VectorForge API request timed out",
             )
-        except HTTPException as e:
-            if e.status_code == 422:
-                return build_error_response(
-                    Exception("API version mismatch"),
-                    details="Request format incompatible with API version",
-                )
-            return build_error_response(e, details=str(e.status_code))
+        except requests.HTTPError as e:
+            status_code = e.response.status_code if e.response is not None else None
+
+            try:
+                detail = e.response.json().get("detail", str(e))
+            except Exception:
+                detail = str(e)
+
+            return build_error_response(Exception(detail), details=status_code)
         except Exception as e:
             return build_error_response(Exception("Operation failed"), details=str(e))
 
@@ -61,28 +56,25 @@ def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
         try:
             return cast(dict[str, Any], await func(*args, **kwargs))
 
-        except ConnectionRefusedError:
+        except requests.ConnectionError:
             return build_error_response(
                 Exception("VectorForge API is not available"),
                 details="Connection refused - check if API is running",
             )
-        except (ConnectionError, httpx.ConnectError):
-            return build_error_response(
-                Exception("Network error"),
-                details="Unable to connect to VectorForge API",
-            )
-        except (TimeoutError, httpx.TimeoutException):
+        except requests.Timeout:
             return build_error_response(
                 Exception("Request timeout"),
                 details="VectorForge API request timed out",
             )
-        except HTTPException as e:
-            if e.status_code == 422:
-                return build_error_response(
-                    Exception("API version mismatch"),
-                    details="Request format incompatible with API version",
-                )
-            return build_error_response(e, details=str(e.status_code))
+        except requests.HTTPError as e:
+            status_code = e.response.status_code if e.response is not None else None
+
+            try:
+                detail = e.response.json().get("detail", str(e))
+            except Exception:
+                detail = str(e)
+
+            return build_error_response(Exception(detail), details=status_code)
         except Exception as e:
             return build_error_response(Exception("Operation failed"), details=str(e))
 

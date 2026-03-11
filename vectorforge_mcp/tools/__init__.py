@@ -1,4 +1,7 @@
-"""VectorForge MCP tools for vector engine management."""
+"""MCP tool modules for the VectorForge server.
+
+Covers collections, documents, files, index, search, and system tools.
+"""
 
 from . import collections, documents, files, index, search, system
 
