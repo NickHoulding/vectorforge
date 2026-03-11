@@ -185,12 +185,7 @@ This provides consistent error responses across all tools without duplicate code
 
 ### **Prerequisites**
 
-1. **VectorForge API must be running**
-   ```bash
-   # From the project root, start the VectorForge API
-   docker compose up -d
-   ```
-
+1. **Docker** installed and running
 2. **Python 3.11+** installed
 3. **uv** package manager
 
@@ -207,8 +202,9 @@ uv sync --group mcp
 ### **Verify Installation**
 
 ```bash
-# Check if command is available
+# Check if commands are available
 which vectorforge-mcp
+which vectorforge-mcp-start
 
 # Test configuration validation
 python -c "from vectorforge_mcp.config import MCPConfig; MCPConfig.validate(); print('Config valid')"
@@ -216,15 +212,17 @@ python -c "from vectorforge_mcp.config import MCPConfig; MCPConfig.validate(); p
 
 ### **Running the Server**
 
-#### **Option 1: Using Console Script (Recommended)**
+#### **Option 1: With automatic Docker management (Recommended)**
+```bash
+uv run vectorforge-mcp-start
+```
+
+This will check whether the VectorForge Docker container is running, start it if not, wait for the API to become healthy, then launch the MCP server.
+
+#### **Option 2: Direct (API must already be running)**
 ```bash
 uv run vectorforge-mcp
 ```
-
-The server will:
-1. Validate configuration
-2. Configure logging (INFO level by default)
-3. Start listening for MCP client connections
 
 ---
 
@@ -241,11 +239,15 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
   "mcpServers": {
     "vectorforge": {
       "command": "uv",
-      "args": ["run", "--project", "/path/to/vectorforge/repository", "vectorforge-mcp"]
+      "args": ["run", "--project", "/path/to/vectorforge", "vectorforge-mcp-start"]
     }
   }
 }
 ```
+
+Replace `/path/to/vectorforge` with the absolute path to your local clone of the repository. Using `uv run --project` ensures the correct virtual environment is used regardless of where Claude Desktop executes the command from.
+
+This uses the launcher script, which automatically ensures the VectorForge Docker container is running before the MCP server starts. If you want to manage Docker yourself, use `vectorforge-mcp` instead of `vectorforge-mcp-start` in the args.
 
 2. **Restart Claude Desktop**
 
@@ -646,9 +648,8 @@ uv sync --group mcp
 
 **Cause:** VectorForge API is not running.
 
-**Solution:**
+**Solution:** Use `vectorforge-mcp-start` instead of `vectorforge-mcp` — it automatically starts the Docker container if it isn't running. Or start it manually:
 ```bash
-# Start VectorForge API via Docker
 docker compose up -d
 ```
 
