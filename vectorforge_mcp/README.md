@@ -238,7 +238,8 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "vectorforge": {
-      "command": "vectorforge-mcp"
+      "command": "uv",
+      "args": ["run", "--project", "/path/to/vectorforge/repository", "vectorforge-mcp"]
     }
   }
 }
