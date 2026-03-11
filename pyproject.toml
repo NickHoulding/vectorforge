@@ -24,7 +24,7 @@ package = true
 
 [project.scripts]
 vectorforge-api = "vectorforge.__main__:main"
-vectorforge-mcp = "vectorforge_mcp.server:main"
+vectorforge-mcp = "vectorforge_mcp.__main__:main"
 
 [dependency-groups]
 dev = [

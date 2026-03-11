@@ -1,4 +1,4 @@
-"""MCP server entry point — registers all tool modules and runs the server."""
+"""MCP server entry point - registers all tool modules and runs the server."""
 
 import logging
 

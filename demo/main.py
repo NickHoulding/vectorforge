@@ -1,6 +1,6 @@
 """Demo entry point: verifies the Docker container is healthy, then starts the REPL.
 
-Run with 'uv run demo' from the project root.
+Run with: 'uv run demo' from the project root.
 """
 
 import subprocess
@@ -228,13 +228,3 @@ def run_repl() -> None:
             print("\n  (cancelled)")
         except Exception as e:
             print(f"\n  ERROR: {e}\n")
-
-
-def main() -> None:
-    """Ensure the container is ready, then start the interactive demo."""
-    ensure_container_ready()
-    run_repl()
-
-
-if __name__ == "__main__":
-    main()
