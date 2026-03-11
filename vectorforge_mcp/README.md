@@ -77,7 +77,7 @@ The Model Context Protocol (MCP) is an open standard that enables AI assistants 
 
 ## Key Features
 
-### **14 MCP Tools**
+### **16 MCP Tools**
 Organized into 6 categories:
 
 **Collections** (4 tools)
@@ -86,10 +86,12 @@ Organized into 6 categories:
 - Create a collection with optional HNSW configuration
 - Delete a collection
 
-**Documents** (3 tools)
+**Documents** (5 tools)
 - Get document by ID
 - Add document with metadata
+- Batch add documents
 - Delete document
+- Batch delete documents
 
 **Files** (3 tools)
 - List indexed files
@@ -131,7 +133,7 @@ All tools (except `check_health`) accept a `collection_name` parameter, defaulti
 │  VectorForge    │
 │  MCP Server     │ ← You are here
 ├─────────────────┤
-│ • 14 MCP Tools  │
+│ • 16 MCP Tools  │
 │ • Error Handler │
 │ • Logging       │
 └────────┬────────┘
@@ -251,7 +253,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 
 In Claude, ask: "What VectorForge tools are available?"
 
-Claude should list all 14 MCP tools.
+Claude should list all 16 MCP tools.
 
 ### **Connecting from Other MCP Clients**
 
@@ -352,6 +354,30 @@ Permanently remove a document and its embeddings.
 **Example:**
 ```
 "Delete document 550e8400-e29b-41d4-a716-446655440000"
+```
+
+#### `batch_add_documents`
+Index multiple documents in a single request. More efficient than adding one at a time — all documents are embedded and persisted atomically.
+
+**Parameters:**
+- `documents` (list) - List of document objects, each with a `content` key (str) and optional `metadata` key (dict)
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
+
+**Example:**
+```
+"Add these three documents to the index: ..."
+```
+
+#### `batch_delete_documents`
+Permanently remove multiple documents and their embeddings in a single request. IDs that do not exist are silently ignored.
+
+**Parameters:**
+- `doc_ids` (list) - List of document UUIDs to delete
+- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
+
+**Example:**
+```
+"Delete documents abc-123, def-456, and ghi-789"
 ```
 
 ---
