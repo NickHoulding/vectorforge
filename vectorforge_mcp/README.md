@@ -217,6 +217,15 @@ python -c "from vectorforge_mcp.config import MCPConfig; MCPConfig.validate(); p
 ### **Running the Server**
 
 ```bash
+# Start both the API and MCP server together
+docker compose up -d
+```
+
+The MCP SSE endpoint will be available at `http://localhost:3002/sse`.
+
+For local development without Docker:
+
+```bash
 uv run vectorforge-mcp
 ```
 
@@ -234,14 +243,13 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "vectorforge": {
-      "command": "uv",
-      "args": ["run", "--project", "/path/to/vectorforge", "vectorforge-mcp"]
+      "url": "http://localhost:3002/sse"
     }
   }
 }
 ```
 
-Replace `/path/to/vectorforge` with the absolute path to your local clone of the repository. Using `uv run --project` ensures the correct virtual environment is used regardless of where Claude Desktop executes the command from.
+With `docker compose up -d` running, Claude Desktop connects to the MCP container over SSE — no local Python or `uv` installation required.
 
 2. **Restart Claude Desktop**
 
@@ -253,7 +261,7 @@ Claude should list all 16 MCP tools.
 
 ### **Connecting from Other MCP Clients**
 
-The server uses stdio transport and can connect to any MCP-compatible client. Refer to your client's documentation for connection setup.
+The server uses SSE transport. Point your MCP client at `http://localhost:3002/sse`. Refer to your client's documentation for connection setup.
 
 ---
 
@@ -492,23 +500,33 @@ Verify VectorForge API connectivity and status. Returns version and health statu
 
 Located in [`config.py`](config.py):
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `SERVER_NAME` | `"VectorForge MCP Server"` | Display name reported to MCP clients |
-| `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | Server description reported to MCP clients |
-| `VECTORFORGE_API_BASE_URL` | `"http://localhost:3001"` | Base URL of the VectorForge REST API |
-| `DEFAULT_COLLECTION_NAME` | `"vectorforge"` | Collection used when none is specified |
-| `DEFAULT_TOP_K` | `10` | Default number of results for `search_documents` |
-| `LOG_LEVEL` | `logging.INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
-| `LOG_FORMAT` | `"%(asctime)s - %(name)s..."` | Log message format |
+| Setting | Default | Env Var | Description |
+|---------|---------|---------|-------------|
+| `SERVER_NAME` | `"VectorForge MCP Server"` | — | Display name reported to MCP clients |
+| `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | — | Server description reported to MCP clients |
+| `VECTORFORGE_API_BASE_URL` | `"http://localhost:3001"` | `VECTORFORGE_API_BASE_URL` | Base URL of the VectorForge REST API |
+| `MCP_HOST` | `"0.0.0.0"` | `MCP_HOST` | Network interface the SSE server binds to |
+| `MCP_PORT` | `3002` | `MCP_PORT` | TCP port the SSE server listens on |
+| `DEFAULT_COLLECTION_NAME` | `"vectorforge"` | — | Collection used when none is specified |
+| `DEFAULT_TOP_K` | `10` | — | Default number of results for `search_documents` |
+| `LOG_LEVEL` | `logging.INFO` | — | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `LOG_FORMAT` | `"%(asctime)s - %(name)s..."` | — | Log message format |
 
 ### **Customizing Configuration**
 
-Edit [`config.py`](config.py) and modify class variables:
+Set environment variables before starting the container, or add them to `docker-compose.yml`:
+
+```yaml
+environment:
+  - VECTORFORGE_API_BASE_URL=http://vectorforge:3001
+  - MCP_PORT=3002
+  - MCP_HOST=0.0.0.0
+```
+
+For local dev, edit [`config.py`](config.py) class variables directly:
 
 ```python
 class MCPConfig:
-    VECTORFORGE_API_BASE_URL: str = "http://my-server:3001"
     DEFAULT_COLLECTION_NAME: str = "my-default"
     LOG_LEVEL: int = logging.DEBUG  # Enable debug logging
 ```
