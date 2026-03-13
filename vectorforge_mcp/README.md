@@ -243,13 +243,14 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "vectorforge": {
-      "url": "http://localhost:3002/sse"
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:3002/sse"]
     }
   }
 }
 ```
 
-With `docker compose up -d` running, Claude Desktop connects to the MCP container over SSE — no local Python or `uv` installation required.
+With `docker compose up -d` running, `mcp-remote` bridges Claude Desktop (which requires a `command`-based stdio entry) to the containerized SSE server — no local Python or `uv` installation required. Node.js must be installed on the host for `npx` to work.
 
 2. **Restart Claude Desktop**
 
@@ -667,19 +668,13 @@ docker compose up -d
 
 ---
 
-### **Command Not Found**
+### **mcp-remote Not Found / npx Fails**
 
-**Error:** `vectorforge-mcp: command not found`
+**Error:** `npx: command not found` or `mcp-remote` fails to launch
 
-**Cause:** Package not installed with entry points enabled.
+**Cause:** Node.js is not installed on the host machine.
 
-**Solution:**
-```bash
-# Ensure package is installed
-uv sync
-# Or reinstall
-pip install -e .
-```
+**Solution:** Install Node.js from [nodejs.org](https://nodejs.org/) (LTS version recommended), then restart Claude Desktop.
 
 ---
 
