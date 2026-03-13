@@ -185,14 +185,8 @@ This provides consistent error responses across all tools without duplicate code
 
 ### **Prerequisites**
 
-1. **VectorForge API must be running**
-   ```bash
-   # From the project root:
-   docker compose up -d
-   ```
-
-2. **Python 3.11+** installed
-3. **uv** package manager
+1. **Docker** installed and running
+2. **Node.js** installed on the host (required for `npx mcp-remote`)
 
 ### **Installation**
 
@@ -250,7 +244,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 }
 ```
 
-With `docker compose up -d` running, `mcp-remote` bridges Claude Desktop (which requires a `command`-based stdio entry) to the containerized SSE server — no local Python or `uv` installation required. Node.js must be installed on the host for `npx` to work.
+With `docker compose up -d` running, `mcp-remote` bridges Claude Desktop to the containerized SSE server — no local Python or `uv` installation required.
 
 2. **Restart Claude Desktop**
 
