@@ -11,7 +11,7 @@ Contains <primary classes / functions / groups> for <purpose>.
 """
 ```
 
-The second line is optional — omit it if the single-sentence description is sufficient.
+The second line is optional. Omit it if the single-sentence description is sufficient.
 
 ## Examples
 

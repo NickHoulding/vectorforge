@@ -10,7 +10,7 @@ metadata:
 ## Name & Trigger
 
 **Skill:** `python-docs`
-Triggered when a user asks to audit, write, fix, or enforce Python documentation — including module docstrings, function/class docstrings, or inline comments.
+Triggered when a user asks to audit, write, fix, or enforce Python documentation, including module docstrings, function/class docstrings, or inline comments.
 
 ## The Goal
 
@@ -32,7 +32,7 @@ Ensure every Python file in the repository has consistent, high-quality document
 - Every function and method must have a Google-style docstring.
 - Every class must have a docstring describing its purpose and key attributes/behaviour.
 - Docstrings always use triple double quotes (`"""`).
-- Google-style sections (`Args:`, `Returns:`, `Raises:`, `Example:`) are included only when relevant — never left empty.
+- Google-style sections (`Args:`, `Returns:`, `Raises:`, `Example:`) are included only when relevant, never left empty.
 - Inline comments are only acceptable for genuinely complex or esoteric logic that cannot be made clear by renaming or refactoring.
 - Do not add comments that restate what the code already makes obvious.
 
