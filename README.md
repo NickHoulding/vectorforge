@@ -19,8 +19,9 @@
 - [Architecture](#architecture)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
+- [HNSW Configuration](#hnsw-configuration)
 - [Development Process](#development-process)
-- [Known Limitations](#known-limitations--future-improvements)
+- [Known Limitations](#known-limitations)
 - [License](#license)
 
 ---
@@ -39,7 +40,7 @@ VectorForge solves this by:
 
 ## What is VectorForge?
 
-VectorForge is a **production-ready vector database** designed for semantic search applications. It combines the simplicity of a REST API with the power of transformer-based embeddings and ChromaDB's persistent storage to enable intelligent document retrieval.
+VectorForge is a vector database designed for semantic search applications. It combines the simplicity of a REST API with the power of transformer-based embeddings and ChromaDB's persistent storage to enable intelligent document retrieval.
 
 Unlike traditional databases, VectorForge:
 - **Understands meaning** - Uses sentence transformers to encode semantic content
@@ -133,112 +134,6 @@ Perfect for building:
 
 ---
 
-## Performance
-
-**Baseline:** Python implementation v1.0.0 (tag: `v1.0.0-python-baseline`)
-
-VectorForge delivers sub-20ms search latency for 10K documents using pure Python and NumPy. Performance scales linearly with index size for the current brute-force cosine similarity implementation.
-
-### **Search Latency (Linear Scan)**
-
-Search performance across different index sizes (top_k=10, single query):
-
-| Index Size | Mean Latency | Median Latency | Operations/sec |
-|------------|--------------|----------------|----------------|
-| 10 docs    | 5.3 ms       | 5.2 ms         | 188 ops/sec    |
-| 100 docs   | 5.5 ms       | 5.4 ms         | 183 ops/sec    |
-| 1,000 docs | 6.8 ms       | 6.8 ms         | 147 ops/sec    |
-| 10,000 docs| 18.9 ms      | 18.8 ms        | 53 ops/sec     |
-
-**Note:** The similarity increases from 10 to 100 docs primarily due to embedding generation overhead (fixed cost). The vector similarity calculation itself scales linearly.
-
-### **Indexing Throughput**
-
-Document addition performance:
-
-| Operation | Mean Latency | Throughput |
-|-----------|--------------|------------|
-| Single document (empty index) | 5.6 ms | ~179 docs/sec |
-| Batch of 1,000 documents | 2.2 sec total | ~450 docs/sec |
-
-**Note:** Most indexing time (~85-90%) is spent in transformer model inference for embedding generation, not in vector storage operations.
-
-### **Memory Footprint**
-
-Per-document memory consumption (384-dimensional embeddings):
-
-- **Embedding vector:** ~1.5 KB (384 floats × 4 bytes)
-- **Document storage:** ~0.5-2 KB (content + metadata, varies)
-- **Index overhead:** ~0.1 KB (mappings, tracking)
-- **Total per document:** ~2-4 KB
-
-Example: 10,000 documents ≈ 20-40 MB RAM
-
-### **Profiling Insights: Optimization Hotspots**
-
-CPU profiling (10,000 documents, 100 search queries) reveals:
-
-**Hotspot #1: Embedding Generation (85% of total time)**
-- `model.encode()`: Transformer inference for query/document embedding
-- **C++ opportunity:** Limited (requires ONNX or custom GPU kernels)
-- **Status:** Not targeted for initial C++ optimization
-
-**Hotspot #2: Cosine Similarity Calculation (1.2s for 1M calls)**
-- `vector_engine.py:740` - `np.dot()` for normalized vectors
-- **C++ opportunity:** High (vectorized SIMD operations, batch processing)
-- **Expected speedup:** 5-10x with C++/Eigen or similar
-- **Status:** **Primary target for C++/pybind11 optimization**
-
-**Hotspot #3: Result Sorting (0.08s for 1M calls)**
-- `vector_engine.py:390` - Python list sort with lambda
-- **C++ opportunity:** Medium (native sorting algorithms)
-- **Expected speedup:** 2-3x
-- **Status:** Secondary optimization target
-
-### **Performance Characteristics**
-
-**Current Algorithm:** Brute-force linear scan (O(n) per query)
-- **Best for:** <10K documents, exact k-NN results required
-- **Limitations:** Scales linearly, slow for >100K documents
-
-**Planned Optimization (C++ + HNSW):**
-- **Target:** >100x speedup for 100K+ documents
-- **Method:** Hierarchical Navigable Small World graph index
-- **Trade-off:** ~1-5% recall loss for massive speed gains
-- **Expected:** <5ms search on 1M documents
-
-### **Benchmark Reproducibility**
-
-All benchmarks were run on:
-- **Platform:** Linux x86_64
-- **Python:** 3.11.14
-- **NumPy:** 2.4.1
-- **Model:** sentence-transformers/all-MiniLM-L6-v2
-- **Hardware:** (varies by machine)
-
-To reproduce benchmarks on your system:
-
-```bash
-cd python
-
-# Run search latency benchmarks
-uv run pytest benchmarks/test_search_benchmarks.py::test_search_latency_tiny \
-    benchmarks/test_search_benchmarks.py::test_search_latency_small \
-    benchmarks/test_search_benchmarks.py::test_search_latency_medium \
-    benchmarks/test_search_benchmarks.py::test_search_latency_large \
-    --benchmark-only --benchmark-columns=mean,median,ops
-
-# Run all benchmarks and save baseline
-uv run pytest benchmarks/ --benchmark-only --benchmark-save=my_baseline
-
-# Compare against saved baseline
-uv run pytest benchmarks/ --benchmark-only --benchmark-compare=my_baseline
-```
-
-Full baseline data: `python/benchmarks/results/0001_baseline.json` (113 benchmarks)
-
----
-
 ## Architecture
 
 ### **Design Patterns & Technical Decisions**
@@ -264,7 +159,7 @@ collection.delete(ids=[doc_id])  # Immediate removal
 - ChromaDB handles internal cleanup and optimization
 
 #### **3. Normalized Embeddings**
-All embeddings are L2-normalized during creation:
+All embeddings are L2-normalized using numpy during creation:
 ```python
 embedding = embedding / np.linalg.norm(embedding)
 ```
@@ -329,12 +224,12 @@ if has_source != has_chunk_index:
 
 ## Interactive Demo
 
-The `demo/` directory contains an interactive REPL that lets you exercise every API endpoint against a live VectorForge instance directly from the terminal — no curl commands or external tooling required.
+The `demo/` directory contains an interactive REPL that lets you exercise every API endpoint against a live VectorForge instance directly from the terminal. No curl commands or external tooling required.
 
 ### **How it works**
 
 1. On startup the demo checks whether the `vectorforge` Docker container is already running. If it isn't, it runs `docker compose up -d` automatically and waits for the API to become live before proceeding.
-2. A menu of 19 feature keys is displayed. Type any key to invoke that endpoint — the demo will prompt you for the required parameters, fire the request, and pretty-print the JSON response.
+2. A menu of 19 feature keys is displayed. Type any key to invoke that endpoint. The demo will prompt you for the required parameters, fire the request, and pretty-print the JSON response.
 3. On exit you are asked what to do with the container: leave it running, stop it, remove it, or remove it along with all volume data.
 
 ### **Prerequisites**
@@ -412,8 +307,8 @@ uv sync
 
 3. **Verify installation**
 ```bash
+# Should print current version of vectorforge:
 python -c "import vectorforge; print(vectorforge.__version__)"
-# Should output: 1.0.3
 ```
 
 ### **How to Run**
@@ -431,34 +326,36 @@ The API will be available at:
 #### **Run Tests**
 ```bash
 # Run all tests
-pytest
+uv run pytest tests/
 
 # Run with coverage
-pytest --cov=vectorforge --cov-report=html
+uv run pytest tests/ --cov=vectorforge --cov-report=html
 
 # Run specific test file
-pytest tests/test_doc_endpoints.py -v
+uv run pytest tests/test_doc_endpoints.py -v
 
 # Run tests matching pattern
-pytest -k "search" -v
+uv run pytest tests/ -k "search" -v
 ```
 
 #### **View Coverage Report**
 ```bash
-pytest --cov=vectorforge --cov-report=html
+uv run pytest tests/ --cov=vectorforge --cov-report=html
 xdg-open htmlcov/index.html  # Linux
 open htmlcov/index.html      # macOS
 ```
 
 ### **Environment Variables**
 
-VectorForge currently uses hardcoded defaults, but you can customize:
-
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `API_PORT` | `3001` | Port for FastAPI server |
-| `DEFAULT_DATA_DIR` | `./data` | Directory for index persistence |
-| `MODEL_NAME` | `all-MiniLM-L6-v2` | Sentence transformer model |
+| `API_HOST` | `0.0.0.0` | Network interface the API binds to |
+| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
+| `CHROMA_DATA_DIR` | `./data/chroma` | Directory for ChromaDB persistent storage |
+| `HF_HOME` | `~/.cache/huggingface` | HuggingFace model cache directory |
+| `MAX_COLLECTIONS` | `100` | Maximum number of collections allowed |
+| `COLLECTION_CACHE_SIZE` | `50` | Number of collection engines held in the FIFO cache |
 
 ---
 
@@ -466,17 +363,21 @@ VectorForge currently uses hardcoded defaults, but you can customize:
 
 ### **1. Add a Document**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/documents \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "Machine learning is a subset of artificial intelligence",
-    "metadata": {
-      "source_file": "ml_intro.txt",
-      "chunk_index": 0,
-      "author": "John Doe"
-    }
-  }'
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/documents",
+    json={
+        "content": "Machine learning is a subset of artificial intelligence",
+        "metadata": {
+            "source_file": "ml_intro.txt",
+            "chunk_index": 0,
+            "author": "John Doe",
+        },
+    },
+)
+doc_id = response.json()["id"]
 ```
 
 **Response:**
@@ -489,13 +390,12 @@ curl -X POST http://localhost:3001/collections/vectorforge/documents \
 
 ### **2. Search Documents**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What is AI?",
-    "top_k": 5
-  }'
+```python
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/search",
+    json={"query": "What is AI?", "top_k": 5},
+)
+results = response.json()["results"]
 ```
 
 **Response:**
@@ -536,85 +436,79 @@ filtering. All `filters` conditions use AND logic (all must match).
 
 **1. Filter by source file (all chunks from a specific file):**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "machine learning concepts",
-    "top_k": 10,
-    "filters": {
-      "source_file": "textbook.pdf"
-    }
-  }'
+```python
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/search",
+    json={
+        "query": "machine learning concepts",
+        "top_k": 10,
+        "filters": {"source_file": "textbook.pdf"},
+    },
+)
 ```
 
 Returns all matching chunks from `textbook.pdf`, regardless of chunk index.
 
 **2. Filter by chunk index (first chunks from all files):**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "introduction",
-    "top_k": 10,
-    "filters": {
-      "chunk_index": 0
-    }
-  }'
+```python
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/search",
+    json={
+        "query": "introduction",
+        "top_k": 10,
+        "filters": {"chunk_index": 0},
+    },
+)
 ```
 
 Returns all matching first chunks (index 0) from any file. Useful for finding document introductions.
 
 **3. Filter by both (specific chunk from specific file):**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "overview",
-    "top_k": 10,
-    "filters": {
-      "source_file": "guide.pdf",
-      "chunk_index": 0
-    }
-  }'
+```python
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/search",
+    json={
+        "query": "overview",
+        "top_k": 10,
+        "filters": {"source_file": "guide.pdf", "chunk_index": 0},
+    },
+)
 ```
 
 Returns only the first chunk from `guide.pdf` (if it matches the query).
 
 **4. Filter by custom metadata:**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "recent research",
-    "top_k": 10,
-    "filters": {
-      "author": "Alice",
-      "year": 2024,
-      "category": "AI"
-    }
-  }'
+```python
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/search",
+    json={
+        "query": "recent research",
+        "top_k": 10,
+        "filters": {"author": "Alice", "year": 2024, "category": "AI"},
+    },
+)
 ```
 
 All filters must match (AND logic): author is "Alice" AND year is 2024 AND category is "AI".
 
 **5. Range and set operators in `filters`:**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "deep learning",
-    "top_k": 10,
-    "filters": {
-      "year": {"$gte": 2022},
-      "category": {"$in": ["AI", "ML"]},
-      "status": {"$ne": "draft"}
-    }
-  }'
+```python
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/search",
+    json={
+        "query": "deep learning",
+        "top_k": 10,
+        "filters": {
+            "year": {"$gte": 2022},
+            "category": {"$in": ["AI", "ML"]},
+            "status": {"$ne": "draft"},
+        },
+    },
+)
 ```
 
 Supported metadata operators: `$gte`, `$lte`, `$ne`, `$in`. The `$in` value must be a list of
@@ -622,14 +516,15 @@ Supported metadata operators: `$gte`, `$lte`, `$ne`, `$in`. The `$in` value must
 
 **6. Document-text filtering with `document_filter`:**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "neural networks",
-    "top_k": 10,
-    "document_filter": {"$contains": "Python"}
-  }'
+```python
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/search",
+    json={
+        "query": "neural networks",
+        "top_k": 10,
+        "document_filter": {"$contains": "Python"},
+    },
+)
 ```
 
 `document_filter` filters on the document text content (not metadata). Supported operators:
@@ -656,13 +551,17 @@ curl -X POST http://localhost:3001/collections/vectorforge/search \
 }
 ```
 
-**Note:** When creating documents with `source_file` and `chunk_index`, both must be provided together. However, when filtering, you can use either one independently or both together.
+**Note:** When creating documents with `source_file` and `chunk_index`, both must be provided together. However, when filtering, they can be used either independently or together.
 
 ### **4. Upload a File**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/files/upload \
-  -F "file=@document.pdf"
+```python
+with open("document.pdf", "rb") as f:
+    response = requests.post(
+        "http://localhost:3001/collections/vectorforge/files/upload",
+        files={"file": f},
+    )
+result = response.json()
 ```
 
 **Response:**
@@ -677,33 +576,42 @@ curl -X POST http://localhost:3001/collections/vectorforge/files/upload \
 
 ### **5. Get Document by ID**
 
-```bash
-curl http://localhost:3001/collections/vectorforge/documents/550e8400-e29b-41d4-a716-446655440000
+```python
+doc_id = "550e8400-e29b-41d4-a716-446655440000"
+response = requests.get(
+    f"http://localhost:3001/collections/vectorforge/documents/{doc_id}"
+)
+document = response.json()
 ```
 
 ### **6. Delete Document**
 
-```bash
-curl -X DELETE http://localhost:3001/collections/vectorforge/documents/550e8400-e29b-41d4-a716-446655440000
+```python
+doc_id = "550e8400-e29b-41d4-a716-446655440000"
+response = requests.delete(
+    f"http://localhost:3001/collections/vectorforge/documents/{doc_id}"
+)
 ```
 
 ### **6a. Batch Add Documents**
 
-```bash
-curl -X POST http://localhost:3001/collections/vectorforge/documents/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "documents": [
-      {
-        "content": "Machine learning is a subset of artificial intelligence",
-        "metadata": {"source_file": "ml_intro.txt", "chunk_index": 0}
-      },
-      {
-        "content": "Deep learning uses multi-layered neural networks",
-        "metadata": {"source_file": "ml_intro.txt", "chunk_index": 1}
-      }
-    ]
-  }'
+```python
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/documents/batch",
+    json={
+        "documents": [
+            {
+                "content": "Machine learning is a subset of artificial intelligence",
+                "metadata": {"source_file": "ml_intro.txt", "chunk_index": 0},
+            },
+            {
+                "content": "Deep learning uses multi-layered neural networks",
+                "metadata": {"source_file": "ml_intro.txt", "chunk_index": 1},
+            },
+        ]
+    },
+)
+doc_ids = response.json()["ids"]
 ```
 
 **Response:**
@@ -721,15 +629,17 @@ Batches are capped at `MAX_BATCH_SIZE` (default 100). Requests exceeding this li
 
 ### **6b. Batch Delete Documents**
 
-```bash
-curl -X DELETE http://localhost:3001/collections/vectorforge/documents \
-  -H "Content-Type: application/json" \
-  -d '{
-    "ids": [
-      "550e8400-e29b-41d4-a716-446655440000",
-      "661f9511-f30c-52e5-b827-557766551111"
-    ]
-  }'
+```python
+response = requests.delete(
+    "http://localhost:3001/collections/vectorforge/documents",
+    json={
+        "ids": [
+            "550e8400-e29b-41d4-a716-446655440000",
+            "661f9511-f30c-52e5-b827-557766551111",
+        ]
+    },
+)
+deleted_ids = response.json()["ids"]
 ```
 
 **Response:**
@@ -747,8 +657,9 @@ Only IDs that actually existed are returned. If none of the requested IDs exist,
 
 ### **7. Get Metrics**
 
-```bash
-curl http://localhost:3001/collections/vectorforge/metrics
+```python
+response = requests.get("http://localhost:3001/collections/vectorforge/metrics")
+metrics = response.json()
 ```
 
 **Response includes:**
@@ -760,8 +671,9 @@ curl http://localhost:3001/collections/vectorforge/metrics
 
 ### **8. Health Check**
 
-```bash
-curl http://localhost:3001/health
+```python
+response = requests.get("http://localhost:3001/health")
+print(response.json())
 ```
 
 **Response:**
@@ -774,32 +686,6 @@ curl http://localhost:3001/health
 }
 ```
 
-### **Python Client Example**
-
-```python
-import httpx
-
-BASE_URL = "http://localhost:3001"
-COLLECTION = "vectorforge"
-
-# Add document
-response = httpx.post(f"{BASE_URL}/collections/{COLLECTION}/documents", json={
-    "content": "Python is a high-level programming language",
-    "metadata": {"topic": "programming"}
-})
-doc_id = response.json()["id"]
-
-# Search
-response = httpx.post(f"{BASE_URL}/collections/{COLLECTION}/search", json={
-    "query": "programming languages",
-    "top_k": 3
-})
-results = response.json()["results"]
-
-for result in results:
-    print(f"Score: {result['score']:.3f} - {result['content'][:50]}...")
-```
-
 ---
 
 ## HNSW Configuration
@@ -808,8 +694,9 @@ VectorForge uses ChromaDB's **Hierarchical Navigable Small World (HNSW)** algori
 
 ### **Getting Current Configuration**
 
-```bash
-curl http://localhost:3001/collections/vectorforge/stats
+```python
+response = requests.get("http://localhost:3001/collections/vectorforge/stats")
+stats = response.json()
 ```
 
 **Response includes:**
@@ -833,13 +720,13 @@ curl http://localhost:3001/collections/vectorforge/stats
 
 Update HNSW parameters via zero-downtime collection migration:
 
-```bash
-curl -X PUT "http://localhost:3001/collections/vectorforge/config/hnsw?confirm=true" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "ef_search": 150,
-    "max_neighbors": 32
-  }'
+```python
+response = requests.put(
+    "http://localhost:3001/collections/vectorforge/config/hnsw",
+    params={"confirm": "true"},
+    json={"ef_search": 150, "max_neighbors": 32},
+)
+result = response.json()
 ```
 
 **Response:**
@@ -870,7 +757,7 @@ The migration performs a **non-destructive collection-level blue-green style mig
 
 1. Creates a temporary collection with the updated HNSW settings
 2. Migrates all documents + embeddings from the original to the temp collection in batches (1000 docs/batch)
-3. Verifies the temp collection document count matches the original — **the original is preserved until this check passes**
+3. Verifies the temp collection document count matches the original. **The original is preserved until this check passes.**
 4. Deletes the original collection (safe: temp is verified)
 5. Creates the final collection under the original name
 6. Migrates documents from temp to final, then verifies the final count
@@ -924,10 +811,9 @@ The project originally explored a C++ implementation with Python bindings via py
 - Python bindings for seamless integration
 
 ### **Pivot to ChromaDB**
-After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vector database engine. This decision was driven by:
+After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vector database engine. This decision was driven by the follwing benefits:
 
-**Benefits of ChromaDB:**
-- **Production-ready** - Battle-tested persistence and ACID guarantees
+- **Production-readiness** - Battle-tested persistence and ACID guarantees
 - **Built-in optimizations** - HNSW indexing, efficient similarity search
 - **Maintained by experts** - Active development by vector DB specialists
 - **Less complexity** - No C++ compilation, easier deployment
@@ -944,7 +830,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 1. **FastAPI over Flask** - Async support for high concurrency
 2. **ChromaDB for persistence** - Eliminates custom storage implementation
 3. **Sentence Transformers** - Industry-standard embeddings
-4. **Comprehensive testing** - 422 tests covering all functionality
+4. **Comprehensive testing** - 500+ test pytest suite covering all functionality
 5. **Docker-first deployment** - Built for containerized environments
 
 ### **Development Insights**
@@ -955,7 +841,7 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 ---
 
-## Known Limitations & Future Improvements
+## Known Limitations
 
 ### Current Limitations
 
@@ -992,12 +878,11 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   but does not validate that individual chunks stay within `MAX_CONTENT_LENGTH`.
 
 #### Performance
-- **Synchronous SQLite write on every operation.** Every `add_doc`, `delete_doc`, and `search`
+- **Synchronous SQLite write on every operation.** Every `add_docs`, `delete_docs`, and `search`
   call triggers a blocking SQLite round-trip (open connection → WAL pragma → UPDATE → commit →
-  close). At high indexing throughput this is the primary bottleneck — a 100-chunk file upload
-  triggers 100 separate SQLite connections. Batch add (`POST /documents/batch`) still issues one
-  SQLite write per document; only batch delete (`DELETE /documents`) consolidates to a single write.
-  There is no async write path.
+  close). All write paths: batch add, batch delete, file upload, and file delete consolidate to
+  a single `save()` call per request regardless of how many documents are involved. There is no
+  async write path.
 - **`GET /metrics` scans the full data directory across all collections.** `_get_chromadb_disk_size()` calls
   `os.walk()` across the entire ChromaDB data directory. In a multi-collection deployment this
   scans data for all collections, not just the requested one. Results are cached for
@@ -1035,28 +920,10 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 ---
 
-### Future Improvements
-
-- [x] **Metadata validation** — reject `None` values and unsupported types before they reach
-  ChromaDB, with descriptive 422 errors instead of silent HTTP 500s
-- [x] **Disk size metric caching** — cache `_get_chromadb_disk_size()` with a short TTL rather
-  than scanning the full data directory on every metrics request
-- [x] **Configurable chunking** — expose `chunk_size` and `chunk_overlap` as file upload
-  parameters, completing the intent signaled by `DEFAULT_CHUNK_SIZE` and `DEFAULT_CHUNK_OVERLAP`
-- [x] **Advanced filter operators** — expose ChromaDB's `$gte`, `$lte`, `$in`, and `$ne`
-  operators through the `filters` field; add a separate `document_filter` field (`$contains`,
-  `$not_contains`) for document-text filtering (note: `$contains` is not a metadata operator)
-- [x] **Batch document API** — single endpoint to add/delete multiple documents atomically,
-  rounding out the existing document management surface
-- [x] **Non-destructive migration fallback** — keep the original collection until the new
-  collection is fully verified before swapping, eliminating the data-loss risk on partial failure
-
----
-
 ### Code Style Guidelines
 - Follow PEP 8 conventions
 - Use type hints for all function signatures
-- Write docstrings for all public APIs (Google style)
+- Write docstrings for all public APIs (Google style. Even better, make use of the `python-docs` skill included in the `.claude/skills/` directory.)
 - Maintain test coverage above 90%
 - One logical concept per test case
 
@@ -1068,21 +935,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
-## Acknowledgments
-
-- **sentence-transformers** team for the excellent embedding models
-- **FastAPI** community for the modern web framework
-- **PyMuPDF** developers for robust PDF processing
-- All contributors to the open-source libraries used in this project
-
----
-
-## Contact
-
-**Project Repository**: [https://github.com/NickHoulding/vectorforge](https://github.com/NickHoulding/vectorforge)
-
----
-
 <div align="center">
-  <strong>VectorForge - Built using Python and FastAPI</strong>
+  <strong>VectorForge</strong>
 </div>
