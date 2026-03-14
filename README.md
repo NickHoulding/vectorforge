@@ -71,6 +71,7 @@ Perfect for building:
 
 ### **Document Processing**
 - **PyMuPDF (fitz) 1.26+** - Fast PDF text extraction
+- **langchain-text-splitters** - `RecursiveCharacterTextSplitter` for document chunking
 - **python-multipart** - File upload handling
 
 ### **Data Validation & Serialization**
