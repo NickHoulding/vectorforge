@@ -228,9 +228,9 @@ def test_search_finds_semantically_similar_content(client, multiple_added_docs):
     expected_content = (
         "Python is a high-level programming language used for web development"
     )
-    assert expected_content in result_contents, (
-        f"Expected content not found in top 5 results: {result_contents}"
-    )
+    assert (
+        expected_content in result_contents
+    ), f"Expected content not found in top 5 results: {result_contents}"
 
 
 def test_search_returns_results_regardless_of_relevance(client):
