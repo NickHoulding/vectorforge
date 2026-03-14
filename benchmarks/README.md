@@ -2,13 +2,32 @@
 
 Performance benchmarks for VectorForge covering the three most important dimensions: search latency, indexing throughput, and file processing. This suite is designed to be minimal, yet cover the most important benchmarking metrics to reveal how the main features of the system performs.
 
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Data Scales](#data-scales)
+- [What Each Suite Benchmarks](#what-each-suite-benchmarks)
+- [Running Benchmarks](#running-benchmarks)
+- [Markers](#markers)
+- [Interpreting Results](#interpreting-results)
+- [Tips](#tips)
+- [Structure](#structure)
+- [Resources](#resources)
+
+---
+
 ## Overview
 
 | File | Tests | What it measures |
 |------|-------|-----------------|
 | `test_search_benchmarks.py` | 3 | Query latency at small (100), medium (1,000), and large (10,000) index sizes |
-| `test_indexing_benchmarks.py` | 2 | Single-doc insertion cost; 100-doc batch throughput |
+| `test_indexing_benchmarks.py` | 2 | Single-doc insertion cost; 100-doc sequential insertion throughput |
 | `test_file_processing_benchmarks.py` | 2 | Text chunking throughput; PDF extraction speed |
+
+---
 
 ## Architecture
 
@@ -21,11 +40,11 @@ setup fast and results free of disk-I/O noise.
 ### Fast Fixture Population: `_bulk_populate`
 
 The helper `_bulk_populate(engine, docs, batch_size=500)` is used in all pre-populated fixtures
-instead of calling `engine.add_doc()` in a loop. It batch-encodes all documents in a single
+instead of calling `engine.add_docs()` in a loop. It batch-encodes all documents in a single
 `model.encode()` call, normalizes vectors manually, then calls `engine.collection.add()` in
 batches of 500.
 
-**Rationale:** `add_doc` costs ~46ms/call (embedding + ChromaDB insert). At 1,000 docs that is
+**Rationale:** `add_docs` costs ~46ms/call (embedding + ChromaDB insert). At 1,000 docs that is
 46 seconds of setup time. `_bulk_populate` reduces this to ~0.7 seconds (67× faster).
 
 ### Shared Model
@@ -36,8 +55,10 @@ benchmark measurements.
 
 ### Avoiding Accumulation Bugs
 
-Every test that measures insertion cost uses `make_ephemeral_engine()` — a function-scoped factory
-called inside the timed function — so each benchmark round starts from a clean, empty engine.
+Every test that measures insertion cost uses `make_ephemeral_engine()`, a function-scoped factory
+called inside the timed function, so each benchmark round starts from a clean, empty engine.
+
+---
 
 ## Data Scales
 
@@ -52,31 +73,35 @@ SCALES = {
 The `large` fixture is only used by `@pytest.mark.slow` tests. The default run
 (`-m "not slow"`) never touches it.
 
+---
+
 ## What Each Suite Benchmarks
 
 ### Search (`test_search_benchmarks.py`)
 
 Query latency at three index sizes using `top_k=10` and a fixed query string:
 
-- `test_search_latency_small` — 100 docs
-- `test_search_latency_medium` — 1,000 docs
-- `test_search_latency_large` — 10,000 docs (`@pytest.mark.slow`)
+- `test_search_latency_small`: 100 docs
+- `test_search_latency_medium`: 1,000 docs
+- `test_search_latency_large`: 10,000 docs (`@pytest.mark.slow`)
 
 ### Indexing (`test_indexing_benchmarks.py`)
 
-- `test_add_single_doc` — cost of embedding + inserting one document into an empty index
+- `test_add_single_doc`: cost of embedding + inserting one document into an empty index
   (5 rounds, fresh engine per round via `make_ephemeral_engine`)
-- `test_batch_insert_100_docs` — total time to insert 100 documents into a fresh engine
-  (3 rounds)
+- `test_batch_insert_100_docs`: total time to insert 100 documents sequentially into a fresh engine
+  (3 rounds; uses `add_docs` in a loop, measuring the full per-call cost at scale)
 
 ### File Processing (`test_file_processing_benchmarks.py`)
 
 Pure-function tests (no VectorEngine dependency):
 
-- `test_chunk_medium_text` — `chunk_text` throughput on ~1,000-word text at default settings
+- `test_chunk_medium_text`: `chunk_text` throughput on ~1,000-word text at default settings
   (chunk_size=500, overlap=50)
-- `test_extract_pdf_synthetic_medium` — `extract_pdf` speed on a 5-page synthetic PDF generated
+- `test_extract_pdf_synthetic_medium`: `extract_pdf` speed on a 5-page synthetic PDF generated
   in-memory with PyMuPDF (`fitz`)
+
+---
 
 ## Running Benchmarks
 
@@ -86,48 +111,52 @@ Pure-function tests (no VectorEngine dependency):
 uv sync --group dev
 ```
 
-### Smoke Test (no timing — just verify nothing is broken)
+### Smoke Test (no timing; just verify nothing is broken)
 
 ```bash
-pytest benchmarks/ -m "not slow" --benchmark-disable -q
+uv run pytest benchmarks/ -m "not slow" --benchmark-disable -q
 ```
 
 ### Standard Benchmark Run
 
 ```bash
 # All non-slow benchmarks with timing
-pytest benchmarks/ -m "not slow" --benchmark-only
+uv run pytest benchmarks/ -m "not slow" --benchmark-only
 
 # Single suite
-pytest benchmarks/test_search_benchmarks.py --benchmark-only
+uv run pytest benchmarks/test_search_benchmarks.py --benchmark-only
 ```
 
 ### Slow Tests (large-scale)
 
 ```bash
-pytest benchmarks/ --benchmark-only
+uv run pytest benchmarks/ --benchmark-only
 ```
 
 ### Saving and Comparing Results
 
 ```bash
 # Save a baseline
-pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-save=baseline
+uv run pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-save=baseline
 
 # Compare after changes
-pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-compare=baseline
+uv run pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-compare=baseline
 
 # Fail CI if mean regresses more than 20%
-pytest benchmarks/ -m "not slow" --benchmark-only \
+uv run pytest benchmarks/ -m "not slow" --benchmark-only \
   --benchmark-compare=baseline \
   --benchmark-compare-fail=mean:20%
 ```
+
+---
 
 ## Markers
 
 | Marker | Meaning |
 |--------|---------|
 | `@pytest.mark.slow` | Skipped by `-m "not slow"`; large-scale tests only |
+
+---
 
 ## Interpreting Results
 
@@ -136,11 +165,13 @@ Name (time in ms)              Min      Max     Mean  StdDev  Median     IQR  Ou
 test_search_latency_small    10.23   15.67    11.45    1.23   11.34    0.89      5;2   87.3
 ```
 
-- **Min/Max** — fastest and slowest rounds
-- **Mean/Median** — focus on median for skewed distributions
-- **StdDev/IQR** — consistency; lower is better
-- **OPS** — operations per second (inverse of mean)
-- **Outliers** — rounds outside 1.5×IQR; high counts suggest system noise
+- **Min/Max**: fastest and slowest rounds
+- **Mean/Median**: focus on median for skewed distributions
+- **StdDev/IQR**: consistency; lower is better
+- **OPS**: operations per second (inverse of mean)
+- **Outliers**: rounds outside 1.5×IQR; high counts suggest system noise
+
+---
 
 ## Tips
 
@@ -151,6 +182,8 @@ test_search_latency_small    10.23   15.67    11.45    1.23   11.34    0.89     
 4. **Insertion benchmarks never reuse engines across rounds.** `make_ephemeral_engine()` is called
    inside the timed function to get a fresh index each round.
 
+---
+
 ## Structure
 
 ```
@@ -158,15 +191,20 @@ benchmarks/
 ├── __init__.py
 ├── conftest.py                          # Fixtures, _bulk_populate, SCALES constant
 ├── test_search_benchmarks.py            # 3 tests: latency at small/medium/large
-├── test_indexing_benchmarks.py          # 2 tests: single-doc and 100-doc batch
+├── test_indexing_benchmarks.py          # 2 tests: single-doc and 100-doc sequential
 ├── test_file_processing_benchmarks.py   # 2 tests: chunking and PDF extraction
-├── results/                             # Benchmark results (gitignored)
 ├── QUICKSTART.md
 └── README.md
 ```
 
+---
+
 ## Resources
 
-- [pytest-benchmark docs](https://pytest-benchmark.readthedocs.io/)
-- [ChromaDB docs](https://docs.trychroma.com/)
 - [VectorForge main docs](../README.md)
+
+---
+
+<div align="center">
+  <strong>VectorForge Benchmarking Suite</strong>
+</div>

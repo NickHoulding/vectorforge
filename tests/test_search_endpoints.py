@@ -228,9 +228,9 @@ def test_search_finds_semantically_similar_content(client, multiple_added_docs):
     expected_content = (
         "Python is a high-level programming language used for web development"
     )
-    assert (
-        expected_content in result_contents
-    ), f"Expected content not found in top 5 results: {result_contents}"
+    assert expected_content in result_contents, (
+        f"Expected content not found in top 5 results: {result_contents}"
+    )
 
 
 def test_search_returns_results_regardless_of_relevance(client):
@@ -596,7 +596,7 @@ def test_search_filters_validation(client):
 
 
 # =============================================================================
-# Advanced Filter Operator Tests — Happy Path
+# Advanced Filter Operator Tests: Happy Path
 # =============================================================================
 
 
@@ -809,7 +809,7 @@ def test_search_filter_in_with_no_match_returns_empty(client):
 
 
 # =============================================================================
-# Advanced Filter Operator Tests — Validation (422)
+# Advanced Filter Operator Tests: Validation (422)
 # =============================================================================
 
 

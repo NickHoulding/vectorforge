@@ -35,7 +35,7 @@ def col_b(client: TestClient) -> str:
 
 
 # =============================================================================
-# GET /collections — list collections
+# GET /collections: list collections
 # =============================================================================
 
 
@@ -85,7 +85,7 @@ def test_list_collections_response_shape(client: TestClient) -> None:
 
 
 # =============================================================================
-# POST /collections — create collection
+# POST /collections: create collection
 # =============================================================================
 
 
@@ -165,7 +165,7 @@ def test_create_collection_name_too_long_returns_422(client: TestClient) -> None
 
 
 # =============================================================================
-# GET /collections/{name} — get single collection
+# GET /collections/{name}: get single collection
 # =============================================================================
 
 
@@ -210,7 +210,7 @@ def test_get_nonexistent_collection_returns_404(client: TestClient) -> None:
 
 
 # =============================================================================
-# DELETE /collections/{name} — delete collection
+# DELETE /collections/{name}: delete collection
 # =============================================================================
 
 
@@ -266,7 +266,7 @@ def test_delete_default_collection_returns_409(client: TestClient) -> None:
 
 
 # =============================================================================
-# GET /collections — extended list behaviour
+# GET /collections: extended list behaviour
 # =============================================================================
 
 
@@ -331,7 +331,7 @@ def test_list_collections_optional_fields_present_when_empty(
 
 
 # =============================================================================
-# POST /collections — extended create behaviour
+# POST /collections: extended create behaviour
 # =============================================================================
 
 
@@ -465,7 +465,7 @@ def test_create_collection_message_format(client: TestClient) -> None:
 
 
 # =============================================================================
-# GET /collections/{name} — extended single-collection behaviour
+# GET /collections/{name}: extended single-collection behaviour
 # =============================================================================
 
 
@@ -562,7 +562,7 @@ def test_get_collection_id_is_non_empty_string(client: TestClient) -> None:
 
 
 # =============================================================================
-# DELETE /collections/{name} — extended delete behaviour
+# DELETE /collections/{name}: extended delete behaviour
 # =============================================================================
 
 
@@ -809,7 +809,7 @@ def test_create_collection_metadata_key_with_vf_prefix_survives(
 
     Internally, all user keys are namespaced under 'vf:meta:', so a user key
     'vf:description' is stored as 'vf:meta:vf:description' and returned as
-    'vf:description' — it does NOT overwrite the internal vf:description field.
+    'vf:description'; it does NOT overwrite the internal vf:description field.
     """
     payload = {
         "name": "prefix_col",

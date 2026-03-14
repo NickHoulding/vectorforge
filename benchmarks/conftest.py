@@ -11,7 +11,7 @@ Provides:
 Design notes:
 - All scale fixtures use EphemeralClient (no disk I/O) to keep setup time low.
 - ``_bulk_populate`` batch-encodes all documents in a single ``model.encode``
-  call then inserts them via ``collection.add`` — ~67x faster than ``add_doc``
+  call then inserts them via ``collection.add``: ~67x faster than ``add_doc``
   loops, making medium (1k docs) and large (10k docs) fixtures feasible.
 - ``engine_large`` is only used by ``@pytest.mark.slow`` tests.
 """
@@ -116,7 +116,7 @@ def _bulk_populate(
     Bypasses ``engine.add_doc`` (which triggers a SQLite write per document)
     by encoding all documents in one batched ``model.encode`` call and
     inserting them directly via ``collection.add``.  Use this for fixture
-    setup only — not for benchmarking the insertion path itself.
+    setup only, not for benchmarking the insertion path itself.
 
     Args:
         engine: VectorEngine instance to populate.
@@ -145,7 +145,7 @@ def _bulk_populate(
 
 
 # ============================================================================
-# Shared Model (session-scoped — loaded once for the entire benchmark run)
+# Shared Model (session-scoped; loaded once for the entire benchmark run)
 # ============================================================================
 
 
@@ -170,7 +170,7 @@ def make_ephemeral_engine(
 ) -> Callable[[], VectorEngine]:
     """Provide a factory that creates fresh in-memory VectorEngine instances.
 
-    Uses ChromaDB's EphemeralClient — no disk I/O involved.
+    Uses ChromaDB's EphemeralClient (no disk I/O involved).
 
     Args:
         shared_model: Session-scoped SentenceTransformer model.

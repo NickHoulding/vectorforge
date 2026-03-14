@@ -126,7 +126,7 @@ def _print_help() -> None:
 def _prompt_shutdown() -> None:
     """Ask the user what to do with the running Docker container on exit.
 
-    Presents four options — keep it running, stop it, remove the container,
+    Presents four options: keep it running, stop it, remove the container,
     or remove the container and all volume data. Options 3 and 4 require an
     explicit confirmation before proceeding.
     """
@@ -161,7 +161,7 @@ def _prompt_shutdown() -> None:
             confirm = ""
 
         if confirm not in ("y", "yes"):
-            print("  Cancelled — container left running.")
+            print("  Cancelled; container left running.")
             return
 
         print(f"  Removing '{CONTAINER_NAME}'...")
@@ -181,7 +181,7 @@ def _prompt_shutdown() -> None:
             confirm = ""
 
         if confirm not in ("y", "yes"):
-            print("  Cancelled — container left running.")
+            print("  Cancelled; container left running.")
             return
 
         print(f"  Removing '{CONTAINER_NAME}' and volume data...")

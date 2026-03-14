@@ -6,7 +6,7 @@ from demo import client
 
 
 def search() -> None:
-    """POST /collections/{name}/search — semantic similarity search."""
+    """POST /collections/{name}/search: semantic similarity search."""
     print("\n-- Search --")
     collection_name = client.prompt("Collection name", default="vectorforge")
     query = client.prompt("Query text")

@@ -22,6 +22,7 @@
 - [HNSW Configuration](#hnsw-configuration)
 - [Development Process](#development-process)
 - [Known Limitations](#known-limitations)
+- [Related Projects](#related-projects)
 - [License](#license)
 
 ---
@@ -914,6 +915,12 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   `/health/live`, which returns `{"status": "alive"}` unconditionally without verifying that
   ChromaDB is accessible or the model is loaded. Use `/health/ready` for a meaningful readiness
   check.
+
+---
+
+## Related Projects
+
+- **VectorForge MCP Server** - MCP adapter for AI assistant integration ([README](vectorforge_mcp/README.md))
 
 ---
 

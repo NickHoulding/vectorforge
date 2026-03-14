@@ -203,7 +203,7 @@ All tools return standardized responses:
 
 ### **Prerequisites**
 
-The MCP server can be run in two ways — choose the one that fits your setup:
+The MCP server can be run in two ways; choose the one that fits your setup:
 
 | | **Docker (recommended)** | **Host machine** |
 |---|---|---|
@@ -388,7 +388,7 @@ Permanently remove a document and its embeddings.
 ```
 
 #### `batch_add_documents`
-Index multiple documents in a single request. More efficient than adding one at a time — all documents are embedded and persisted atomically.
+Index multiple documents in a single request. More efficient than adding one at a time; all documents are embedded and persisted atomically.
 
 **Parameters:**
 - `documents` (list) - List of document objects, each with a `content` key (str) and optional `metadata` key (dict)
@@ -529,15 +529,15 @@ Located in [`config.py`](config.py):
 
 | Setting | Default | Env Var | Description |
 |---------|---------|---------|-------------|
-| `SERVER_NAME` | `"VectorForge MCP Server"` | — | Display name reported to MCP clients |
-| `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | — | Server description reported to MCP clients |
+| `SERVER_NAME` | `"VectorForge MCP Server"` | (none) | Display name reported to MCP clients |
+| `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | (none) | Server description reported to MCP clients |
 | `VECTORFORGE_API_BASE_URL` | `"http://localhost:3001"` | `VECTORFORGE_API_BASE_URL` | Base URL of the VectorForge REST API |
 | `MCP_HOST` | `"0.0.0.0"` | `MCP_HOST` | Network interface the SSE server binds to |
 | `MCP_PORT` | `3002` | `MCP_PORT` | TCP port the SSE server listens on |
-| `DEFAULT_COLLECTION_NAME` | `"vectorforge"` | — | Collection used when none is specified |
-| `DEFAULT_TOP_K` | `10` | — | Default number of results for `search_documents` |
-| `LOG_LEVEL` | `logging.INFO` | — | Logging level (DEBUG, INFO, WARNING, ERROR) |
-| `LOG_FORMAT` | `"%(asctime)s - %(name)s..."` | — | Log message format |
+| `DEFAULT_COLLECTION_NAME` | `"vectorforge"` | (none) | Collection used when none is specified |
+| `DEFAULT_TOP_K` | `10` | (none) | Default number of results for `search_documents` |
+| `LOG_LEVEL` | `logging.INFO` | (none) | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `LOG_FORMAT` | `"%(asctime)s - %(name)s..."` | (none) | Log message format |
 
 ### **Customizing Configuration**
 

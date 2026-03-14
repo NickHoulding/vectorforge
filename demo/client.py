@@ -246,5 +246,5 @@ def prompt_json(label: str) -> dict[str, Any] | None:
 
         return parsed
     except json.JSONDecodeError as exc:
-        print(f"  (invalid JSON — {exc}, ignoring)")
+        print(f"  (invalid JSON: {exc}, ignoring)")
         return None

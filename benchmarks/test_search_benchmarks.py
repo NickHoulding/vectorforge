@@ -3,7 +3,7 @@
 Three tests covering how query latency scales with index size:
 - Small  (100 docs)
 - Medium (1,000 docs)
-- Large  (10,000 docs) — @pytest.mark.slow
+- Large  (10,000 docs) - @pytest.mark.slow
 """
 
 import pytest

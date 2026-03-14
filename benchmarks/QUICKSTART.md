@@ -11,7 +11,7 @@ uv sync --group dev
 Run all 7 non-slow tests without benchmark timing (just verify nothing is broken):
 
 ```bash
-pytest benchmarks/ -m "not slow" --benchmark-disable -q
+uv run pytest benchmarks/ -m "not slow" --benchmark-disable -q
 # ~30 seconds, 7 passed
 ```
 
@@ -19,52 +19,52 @@ pytest benchmarks/ -m "not slow" --benchmark-disable -q
 
 ```bash
 # All non-slow benchmarks with timing output
-pytest benchmarks/ -m "not slow" --benchmark-only
+uv run pytest benchmarks/ -m "not slow" --benchmark-only
 
 # Single suite
-pytest benchmarks/test_search_benchmarks.py --benchmark-only
+uv run pytest benchmarks/test_search_benchmarks.py --benchmark-only
 
 # With verbose test names
-pytest benchmarks/ -m "not slow" --benchmark-only -v
+uv run pytest benchmarks/ -m "not slow" --benchmark-only -v
 ```
 
 ## Run Specific Suites
 
 ```bash
 # Search latency (small / medium / large index)
-pytest benchmarks/test_search_benchmarks.py --benchmark-only
+uv run pytest benchmarks/test_search_benchmarks.py --benchmark-only
 
-# Indexing throughput (single doc, 100-doc batch)
-pytest benchmarks/test_indexing_benchmarks.py --benchmark-only
+# Indexing throughput (single doc, 100-doc sequential)
+uv run pytest benchmarks/test_indexing_benchmarks.py --benchmark-only
 
 # File chunking and PDF extraction
-pytest benchmarks/test_file_processing_benchmarks.py --benchmark-only
+uv run pytest benchmarks/test_file_processing_benchmarks.py --benchmark-only
 ```
 
 ## Filter Tests
 
 ```bash
 # By expression
-pytest benchmarks/ -m "not slow" --benchmark-only -k "latency"
-pytest benchmarks/ -m "not slow" --benchmark-only -k "small or medium"
+uv run pytest benchmarks/ -m "not slow" --benchmark-only -k "latency"
+uv run pytest benchmarks/ -m "not slow" --benchmark-only -k "small or medium"
 
 # One specific test
-pytest benchmarks/test_search_benchmarks.py::test_search_latency_small --benchmark-only
+uv run pytest benchmarks/test_search_benchmarks.py::test_search_latency_small --benchmark-only
 ```
 
 ## Baseline and Regression Workflow
 
 ```bash
 # 1. Save a baseline before your changes
-pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-save=before_my_change
+uv run pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-save=before_my_change
 
 # 2. Make your changes...
 
 # 3. Compare
-pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-compare=before_my_change
+uv run pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-compare=before_my_change
 
 # 4. Enforce a regression gate (CI)
-pytest benchmarks/ -m "not slow" --benchmark-only \
+uv run pytest benchmarks/ -m "not slow" --benchmark-only \
   --benchmark-compare=before_my_change \
   --benchmark-compare-fail=mean:20%
 ```
@@ -78,29 +78,29 @@ test_search_latency_small    10.23   15.67   11.45    1.23   11.34    0.89      
 
 | Column | Meaning |
 |--------|---------|
-| **Mean** | Average time — use this for comparisons |
-| **Median** | 50th percentile — more robust to outliers |
-| **StdDev/IQR** | Consistency — lower is better |
+| **Mean** | Average time; use this for comparisons |
+| **Median** | 50th percentile; more robust to outliers |
+| **StdDev/IQR** | Consistency; lower is better |
 | **OPS** | Operations per second (1 / mean) |
 | **Outliers** | Rounds outside 1.5×IQR; high counts mean system noise |
 
 ## Key Facts About This Suite
 
 - **Model load is not timed.** `SentenceTransformer` loads once at session start (~5s).
-- **`_bulk_populate` is used for all fixture setup** — not `add_doc`. Batch-encodes everything
-  in one pass. 67× faster than `add_doc` loops.
+- **`_bulk_populate` is used for all fixture setup** (not `add_docs`). Batch-encodes everything
+  in one pass. 67× faster than `add_docs` loops.
 - **The large (10k-doc) test is `@pytest.mark.slow`** and never runs by default.
-- **Insertion benchmarks always use a fresh engine per round** via `make_ephemeral_engine()` —
+- **Insertion benchmarks always use a fresh engine per round** via `make_ephemeral_engine()`;
   index state does not accumulate across rounds.
 
 ## Slow Tests (Large Scale)
 
 ```bash
 # Only slow tests
-pytest benchmarks/ -m "slow" --benchmark-only
+uv run pytest benchmarks/ -m "slow" --benchmark-only
 
 # Everything
-pytest benchmarks/ --benchmark-only
+uv run pytest benchmarks/ --benchmark-only
 ```
 
 The slow test is `test_search_latency_large` (10,000-doc index). It takes ~10 seconds to
@@ -115,16 +115,16 @@ uv sync --group dev
 
 **Inconsistent results**
 ```bash
-pytest benchmarks/ --benchmark-only --benchmark-min-rounds=10
+uv run pytest benchmarks/ --benchmark-only --benchmark-min-rounds=10
 # Also: close background applications
 ```
 
 **Want timing data as JSON**
 ```bash
-pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-json=results/run.json
+uv run pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-json=results/run.json
 ```
 
 ---
 
-See `benchmarks/README.md` for full documentation including architecture decisions and
+See [benchmarks/README](./README.md) for full documentation including architecture decisions and
 per-suite descriptions.
