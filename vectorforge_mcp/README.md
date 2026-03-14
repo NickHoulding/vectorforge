@@ -10,7 +10,7 @@
 
 ## Table of Contents
 
-- [What is VectorForge MCP Server?](#what-is-vectorforge-mcp-server)
+- [What is VectorForge MCP?](#what-is-vectorforge-mcp-server)
 - [Why MCP?](#why-mcp)
 - [Tech Stack](#tech-stack)
 - [Key Features](#key-features)
@@ -30,14 +30,8 @@ The VectorForge MCP Server is a **Model Context Protocol (MCP) adapter** that ex
 
 - Create and manage collections for multi-tenancy or domain separation
 - Index and search documents semantically
-- Upload and process files (PDF, TXT)
+- Upload and process files
 - Retrieve comprehensive system metrics
-
-**Key Components:**
-- **MCP Server** - Implements the Model Context Protocol specification
-- **Tool Adapters** - Wraps VectorForge API endpoints as MCP tools
-- **Error Handling** - Provides consistent error responses with detailed diagnostics
-- **Logging** - Configurable logging for monitoring and debugging
 
 ---
 
@@ -127,21 +121,23 @@ All tools (except `check_health`) accept a `collection_name` parameter, defaulti
 │  MCP Client     │ (Claude Desktop, IDE, etc.)
 │  (AI Assistant) │
 └────────┬────────┘
+         │
          │ MCP Protocol
          │
 ┌────────▼────────┐
-│  VectorForge    │
-│  MCP Server     │ ← You are here
+│  VectorForge    │ ← You are here
+│  MCP Server     │
 ├─────────────────┤
 │ • 16 MCP Tools  │
 │ • Error Handler │
 │ • Logging       │
 └────────┬────────┘
+         │
          │ HTTP REST
          │
 ┌────────▼────────┐
-│  VectorForge    │
-│  API            │ (Docker container, port 3001)
+│  VectorForge    │ (port 3001)
+│  API            │
 ├─────────────────┤
 │ • ChromaDB      │
 │ • Embeddings    │
@@ -161,6 +157,7 @@ vectorforge_mcp/
 ├── instance.py        # FastMCP server instance
 ├── utils.py           # Response builders
 └── tools/             # MCP tool implementations
+    ├── __init__.py
     ├── collections.py # Collection management tools
     ├── documents.py   # Document management tools
     ├── files.py       # File upload/management tools
@@ -171,13 +168,34 @@ vectorforge_mcp/
 
 ### **Error Handling Strategy**
 
-All tools are wrapped with `@handle_tool_errors` decorator that catches:
-- **Connection Errors** - API not running, network issues
-- **Timeouts** - Request timeouts with helpful messages
-- **HTTP Errors** - Non-2xx responses surfaced with status code and body
-- **Generic Exceptions** - Fallback error handling
+All tools are wrapped with `@handle_tool_errors` from [`decorators.py`](decorators.py). It automatically catches and formats:
+- `requests.ConnectionError` → "API not available"
+- `requests.Timeout` → "Request timeout"
+- `requests.HTTPError` → HTTP status code and response body
+- Generic exceptions → "Operation failed"
 
 This provides consistent error responses across all tools without duplicate code.
+
+### **Response Format**
+
+All tools return standardized responses:
+
+**Success:**
+```json
+{
+  "success": true,
+  "data": { /* API response data */ }
+}
+```
+
+**Error:**
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "details": "Additional context"
+}
+```
 
 ---
 
@@ -185,13 +203,19 @@ This provides consistent error responses across all tools without duplicate code
 
 ### **Prerequisites**
 
-1. **Docker** installed and running
-2. **Node.js** installed on the host (required for `npx mcp-remote`)
+The MCP server can be run in two ways — choose the one that fits your setup:
+
+| | **Docker (recommended)** | **Host machine** |
+|---|---|---|
+| Docker | Required | Not required |
+| Python / uv | Not required on host | Required |
+| Node.js | Required (for `npx mcp-remote`) | Required (for `npx mcp-remote`) |
 
 ### **Installation**
 
 ```bash
-# Navigate to project root
+# Clone the repository (if you haven't already)
+git clone https://github.com/NickHoulding/vectorforge.git
 cd vectorforge
 
 # Install with MCP dependencies
@@ -205,23 +229,30 @@ uv sync --group mcp
 which vectorforge-mcp
 
 # Test configuration validation
-python -c "from vectorforge_mcp.config import MCPConfig; MCPConfig.validate(); print('Config valid')"
+uv run python -c "from vectorforge_mcp.config import MCPConfig; MCPConfig.validate(); print('Config valid')"
 ```
 
 ### **Running the Server**
 
+#### **Option A: Docker (recommended)**
+
+Runs both the VectorForge API and the MCP server as Docker containers. No local Python installation required to serve the SSE endpoint.
+
 ```bash
-# Start both the API and MCP server together
 docker compose up -d
 ```
 
 The MCP SSE endpoint will be available at `http://localhost:3002/sse`.
 
-For local development without Docker:
+#### **Option B: Host machine**
+
+Run the MCP server directly on the host without Docker. The VectorForge API must already be running (either locally via `uv run vectorforge-api` or in Docker).
 
 ```bash
 uv run vectorforge-mcp
 ```
+
+The MCP SSE endpoint will be available at `http://localhost:3002/sse`.
 
 ---
 
@@ -231,7 +262,7 @@ uv run vectorforge-mcp
 
 1. **Configure Claude Desktop**
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or equivalent:
+Edit MCP config file: `claude_desktop_config.json` or equivalent:
 
 ```json
 {
@@ -244,7 +275,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 }
 ```
 
-With `docker compose up -d` running, `mcp-remote` bridges Claude Desktop to the containerized SSE server — no local Python or `uv` installation required.
+`mcp-remote` bridges Claude Desktop to the SSE server regardless of whether it is running in Docker or on the host.
 
 2. **Restart Claude Desktop**
 
@@ -252,15 +283,16 @@ With `docker compose up -d` running, `mcp-remote` bridges Claude Desktop to the 
 
 In Claude, ask: "What VectorForge tools are available?"
 
-Claude should list all 16 MCP tools.
+Claude should list all 16 MCP tools. `vectorforge` should appear as listed and enabled under `+ -> Add Connectors`.
 
 ### **Connecting from Other MCP Clients**
 
-The server uses SSE transport. Point your MCP client at `http://localhost:3002/sse`. Refer to your client's documentation for connection setup.
+This MCP server uses SSE transport. Point your MCP client at `http://localhost:3002/sse`. Refer to your client's documentation for connection setup.
 
 ---
 
 ## Available Tools
+These MCP tools wrap the API endpoints of VectorForge. To inspect the exact JSON structure of the responses, refer to the Usage examples in the main [README: Usage](../README.md#usage).
 
 ### **Collections**
 
@@ -523,7 +555,7 @@ For local dev, edit [`config.py`](config.py) class variables directly:
 ```python
 class MCPConfig:
     DEFAULT_COLLECTION_NAME: str = "my-default"
-    LOG_LEVEL: int = logging.DEBUG  # Enable debug logging
+    LOG_LEVEL: int = logging.DEBUG
 ```
 
 Configuration is validated on server startup via `MCPConfig.validate()`.
@@ -657,7 +689,11 @@ uv sync --group mcp
 
 **Solution:**
 ```bash
+# Docker
 docker compose up -d
+
+# Host machine
+uv run vectorforge-api
 ```
 
 ---
@@ -668,14 +704,14 @@ docker compose up -d
 
 **Cause:** Node.js is not installed on the host machine.
 
-**Solution:** Install Node.js from [nodejs.org](https://nodejs.org/) (LTS version recommended), then restart Claude Desktop.
+**Solution:** Install Node.js (LTS version recommended), then restart Claude Desktop.
 
 ---
 
 ### **Tools Not Appearing in Claude**
 
 **Check:**
-1. Server is running (`vectorforge-mcp` command executed)
+1. Server is running (`vectorforge-mcp` command executed or `docker compose up -d`)
 2. `claude_desktop_config.json` is correctly configured
 3. Claude Desktop has been restarted after config changes
 4. Check Claude Desktop logs for connection errors
@@ -696,48 +732,6 @@ LOG_LEVEL: int = logging.DEBUG
 
 ---
 
-## Architecture Details
-
-### **Error Handler Decorator**
-
-All tools use `@handle_tool_errors` from [`decorators.py`](decorators.py):
-
-```python
-@handle_tool_errors
-def my_tool(param: str) -> dict:
-    data = get("/some/endpoint")
-    return build_success_response(data)
-```
-
-This automatically catches and formats:
-- `requests.ConnectionError` → "API not available"
-- `requests.Timeout` → "Request timeout"
-- `requests.HTTPError` → HTTP status code and response body
-- Generic exceptions → "Operation failed"
-
-### **Response Format**
-
-All tools return standardized responses:
-
-**Success:**
-```json
-{
-  "success": true,
-  "data": { /* API response */ }
-}
-```
-
-**Error:**
-```json
-{
-  "success": false,
-  "error": "Error message",
-  "details": "Additional context"
-}
-```
-
----
-
 ## Related Projects
 
 - **VectorForge Core** - Main vector database ([README](../README.md))
@@ -747,5 +741,5 @@ All tools return standardized responses:
 ---
 
 <div align="center">
-  <strong>VectorForge MCP Server - Semantic Search for AI Assistants</strong>
+  <strong>VectorForge MCP Server</strong>
 </div>
