@@ -44,7 +44,6 @@ VectorForge is a vector database designed for semantic search applications. It c
 
 Unlike traditional databases, VectorForge:
 - **Understands meaning** - Uses sentence transformers to encode semantic content
-- **Persistent by default** - ChromaDB automatically persists all data to disk
 - **Provides observability** - Comprehensive metrics tracking for performance monitoring
 - **Handles documents smartly** - Automatic chunking, metadata preservation, and file processing
 
@@ -85,7 +84,6 @@ Perfect for building:
 
 ### **Deployment**
 - **Docker** (optional) - Containerization support
-- **uvicorn** - Production ASGI server
 
 ---
 
@@ -308,7 +306,7 @@ uv sync
 3. **Verify installation**
 ```bash
 # Should print current version of vectorforge:
-python -c "import vectorforge; print(vectorforge.__version__)"
+uv run python -c "import vectorforge; print(vectorforge.__version__)"
 ```
 
 ### **How to Run**
@@ -843,8 +841,6 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 
 ## Known Limitations
 
-### Current Limitations
-
 #### Metadata
 - **No `None` values in metadata.** ChromaDB rejects `None` as a metadata value. VectorForge
   validates metadata before insertion and returns HTTP 422 with a descriptive error when `None`
@@ -917,15 +913,6 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   `/health/live`, which returns `{"status": "alive"}` unconditionally without verifying that
   ChromaDB is accessible or the model is loaded. Use `/health/ready` for a meaningful readiness
   check.
-
----
-
-### Code Style Guidelines
-- Follow PEP 8 conventions
-- Use type hints for all function signatures
-- Write docstrings for all public APIs (Google style. Even better, make use of the `python-docs` skill included in the `.claude/skills/` directory.)
-- Maintain test coverage above 90%
-- One logical concept per test case
 
 ---
 
