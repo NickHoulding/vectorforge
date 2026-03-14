@@ -4,6 +4,7 @@ from typing import cast
 
 import fitz
 from fastapi import UploadFile
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from vectorforge.config import VFGConfig
 
@@ -106,16 +107,7 @@ def chunk_text(
     if overlap >= chunk_size:
         raise ValueError("overlap must be less than chunk_size")
 
-    chunks: list[str] = []
-    start: int = 0
-
-    while start < len(text):
-        end: int = min(start + chunk_size, len(text))
-        chunk: str = text[start:end].strip()
-
-        if chunk:
-            chunks.append(chunk)
-
-        start = end - overlap if end < len(text) else len(text)
-
-    return chunks
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=overlap
+    )
+    return splitter.split_text(text=text)
