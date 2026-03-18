@@ -42,6 +42,27 @@ mcp = [
     "fastmcp>=2.14.1",
 ]
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:importlib._bootstrap",
+    "ignore:builtin type.*has no __module__ attribute:DeprecationWarning",
+]
+
+# Benchmark configuration
+addopts = [
+    "--benchmark-warmup=on",
+    "--benchmark-min-rounds=5",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "scale: marks tests with a specific scale level",
+]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["vectorforge"]
+
 [tool.black]
 line-length = 88
 target-version = ['py311']
@@ -56,3 +77,13 @@ exclude = '''
   | data
 )/
 '''
+
+[tool.mypy]
+python_version = "3.11"
+exclude = "tests/|benchmarks/"
+strict = true
+disable_error_code = [
+    "import-untyped", 
+    "import-not-found", 
+    "untyped-decorator"
+]
