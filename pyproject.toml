@@ -83,7 +83,7 @@ python_version = "3.11"
 exclude = "tests/|benchmarks/"
 strict = true
 disable_error_code = [
-    "import-untyped", 
-    "import-not-found", 
+    "import-untyped",
+    "import-not-found",
     "untyped-decorator"
 ]
