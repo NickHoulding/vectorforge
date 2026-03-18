@@ -1,7 +1,6 @@
 # VectorForge MCP Server
 
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
-![FastMCP](https://img.shields.io/badge/FastMCP-2.14+-green.svg)
 ![Version](https://img.shields.io/badge/version-1.0.3-orange.svg)
 
 > Model Context Protocol server for VectorForge - Enable semantic search capabilities in AI assistants like Claude Desktop.

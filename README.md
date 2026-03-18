@@ -1,7 +1,6 @@
 # VectorForge
 
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.121.2+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Version](https://img.shields.io/badge/version-1.0.3-orange.svg)
 
