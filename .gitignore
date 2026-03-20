@@ -7,7 +7,6 @@ data/
 tests/data/
 .venv/
 .ruff_cache/
-docs/personal/
 
 # ChromaDB
 chroma_data/
@@ -21,3 +20,6 @@ htmlcov/
 benchmarks/results/*
 !benchmarks/results/0001_baseline.json
 .benchmarks/
+
+# Personal
+docs/personal/
