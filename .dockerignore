@@ -21,9 +21,10 @@ env/
 htmlcov/
 .mypy_cache/
 
-# Data directories (we'll use volumes for these)
+# Directories
 chroma_data/
 data/
+vectorforge_mcp/
 *.db
 *.sqlite
 

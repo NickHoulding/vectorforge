@@ -11,7 +11,7 @@ def main() -> None:
     """Entry point for the VectorForge MCP server console script."""
     MCPConfig.validate()
     logging.basicConfig(level=MCPConfig.LOG_LEVEL, format=MCPConfig.LOG_FORMAT)
-    mcp.run(transport="sse", host=MCPConfig.MCP_HOST, port=MCPConfig.MCP_PORT)
+    mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

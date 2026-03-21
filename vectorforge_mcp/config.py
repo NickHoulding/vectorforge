@@ -33,16 +33,6 @@ class MCPConfig:
     """Base URL of the VectorForge REST API. Override via VECTORFORGE_API_BASE_URL env var."""
 
     # =============================================================================
-    # MCP Server Binding
-    # =============================================================================
-
-    MCP_HOST: str = os.environ.get("MCP_HOST", "0.0.0.0")
-    """Network interface the MCP SSE server binds to. Override via MCP_HOST env var."""
-
-    MCP_PORT: int = int(os.environ.get("MCP_PORT", "3002"))
-    """TCP port the MCP SSE server listens on. Override via MCP_PORT env var."""
-
-    # =============================================================================
     # Collection Defaults
     # =============================================================================
 
@@ -115,13 +105,3 @@ class MCPConfig:
             raise ValueError("LOG_FORMAT must be a string")
         if len(cls.LOG_FORMAT) == 0:
             raise ValueError("LOG_FORMAT cannot be empty")
-
-        if not isinstance(cls.MCP_HOST, str):
-            raise ValueError("MCP_HOST must be a string")
-        if len(cls.MCP_HOST) == 0:
-            raise ValueError("MCP_HOST cannot be empty")
-
-        if not isinstance(cls.MCP_PORT, int):
-            raise ValueError("MCP_PORT must be an int")
-        if not (1 <= cls.MCP_PORT <= 65535):
-            raise ValueError("MCP_PORT must be between 1 and 65535")

@@ -42,29 +42,6 @@ services:
     #       cpus: '1'
     #       memory: 1G
 
-  vectorforge-mcp:
-    build:
-      context: .
-      dockerfile: Dockerfile.mcp
-
-    image: vectorforge-mcp:latest
-
-    container_name: vectorforge-mcp
-
-    ports:
-      - "3002:3002"
-
-    environment:
-      - VECTORFORGE_API_BASE_URL=http://vectorforge:3001
-      - MCP_PORT=3002
-      - MCP_HOST=0.0.0.0
-
-    depends_on:
-      vectorforge:
-        condition: service_healthy
-
-    restart: unless-stopped
-
 volumes:
   vectorforge-data:
     driver: local
