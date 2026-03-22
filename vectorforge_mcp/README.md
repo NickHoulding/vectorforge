@@ -121,7 +121,7 @@ All tools (except `check_health`) accept a `collection_name` parameter, defaulti
 │  (AI Assistant) │
 └────────┬────────┘
          │
-         │ MCP Protocol
+         │ stdio (standard input/output)
          │
 ┌────────▼────────┐
 │  VectorForge    │ ← You are here
@@ -202,13 +202,9 @@ All tools return standardized responses:
 
 ### **Prerequisites**
 
-The MCP server can be run in two ways; choose the one that fits your setup:
-
-| | **Docker (recommended)** | **Host machine** |
-|---|---|---|
-| Docker | Required | Not required |
-| Python / uv | Not required on host | Required |
-| Node.js | Required (for `npx mcp-remote`) | Required (for `npx mcp-remote`) |
+- **Python 3.11+** - Required for running the MCP server
+- **uv** - Python package manager (or pip)
+- **VectorForge API** - Must be running (on host or in Docker) before starting the MCP server
 
 ### **Installation**
 
@@ -227,31 +223,32 @@ uv sync --group mcp
 # Check if command is available
 which vectorforge-mcp
 
-# Test configuration validation
-uv run python -c "from vectorforge_mcp.config import MCPConfig; MCPConfig.validate(); print('Config valid')"
 ```
 
 ### **Running the Server**
 
-#### **Option A: Docker (recommended)**
+The MCP server runs on the host machine and communicates with MCP clients using the stdio transport protocol. It connects to the VectorForge API (which can run locally or in Docker).
 
-Runs both the VectorForge API and the MCP server as Docker containers. No local Python installation required to serve the SSE endpoint.
+**Start the VectorForge API first:**
 
 ```bash
+# Option 1: Run API locally
+uv run vectorforge-api
+
+# Option 2: Run API in Docker
 docker compose up -d
 ```
 
-The MCP SSE endpoint will be available at `http://localhost:3002/sse`.
+**Then start the MCP server:**
 
-#### **Option B: Host machine**
-
-Run the MCP server directly on the host without Docker. The VectorForge API must already be running (either locally via `uv run vectorforge-api` or in Docker).
+The server is typically started automatically by MCP clients (like Claude Desktop) when they connect. You can also run it manually for testing:
 
 ```bash
+# Manual execution (for testing)
 uv run vectorforge-mcp
 ```
 
-The MCP SSE endpoint will be available at `http://localhost:3002/sse`.
+When Claude Desktop or another MCP client connects, it will spawn the server process automatically using the stdio transport.
 
 ---
 
@@ -261,20 +258,26 @@ The MCP SSE endpoint will be available at `http://localhost:3002/sse`.
 
 1. **Configure Claude Desktop**
 
-Edit MCP config file: `claude_desktop_config.json` or equivalent:
+Edit your Claude Desktop MCP config file (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "vectorforge": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:3002/sse"]
+      "command": "uv",
+      "args": [
+      "--directory",
+      "/absolute/path/to/vectorforge",
+      "run",
+      "vectorforge-mcp"
+      ]
     }
   }
 }
 ```
 
-`mcp-remote` bridges Claude Desktop to the SSE server regardless of whether it is running in Docker or on the host.
+Replace `/absolute/path/to/vectorforge` with the absolute path to your VectorForge repository root.
+```
 
 2. **Restart Claude Desktop**
 
@@ -282,11 +285,11 @@ Edit MCP config file: `claude_desktop_config.json` or equivalent:
 
 In Claude, ask: "What VectorForge tools are available?"
 
-Claude should list all 16 MCP tools. `vectorforge` should appear as listed and enabled under `+ -> Add Connectors`.
+Claude should list all 16 MCP tools. `vectorforge` should appear as listed and enabled under the MCP connections menu.
 
 ### **Connecting from Other MCP Clients**
 
-This MCP server uses SSE transport. Point your MCP client at `http://localhost:3002/sse`. Refer to your client's documentation for connection setup.
+This MCP server uses stdio transport. Configure your MCP client to spawn the `vectorforge-mcp` command. Refer to your client's documentation for stdio server configuration.
 
 ---
 
@@ -542,8 +545,6 @@ Located in [`config.py`](config.py):
 | `SERVER_NAME` | `"VectorForge MCP Server"` | (none) | Display name reported to MCP clients |
 | `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | (none) | Server description reported to MCP clients |
 | `VECTORFORGE_API_BASE_URL` | `"http://localhost:3001"` | `VECTORFORGE_API_BASE_URL` | Base URL of the VectorForge REST API |
-| `MCP_HOST` | `"0.0.0.0"` | `MCP_HOST` | Network interface the SSE server binds to |
-| `MCP_PORT` | `3002` | `MCP_PORT` | TCP port the SSE server listens on |
 | `DEFAULT_COLLECTION_NAME` | `"vectorforge"` | (none) | Collection used when none is specified |
 | `DEFAULT_TOP_K` | `10` | (none) | Default number of results for `search_documents` |
 | `LOG_LEVEL` | `logging.INFO` | (none) | Logging level (DEBUG, INFO, WARNING, ERROR) |
@@ -551,16 +552,14 @@ Located in [`config.py`](config.py):
 
 ### **Customizing Configuration**
 
-Set environment variables before starting the container, or add them to `docker-compose.yml`:
+Set environment variables before starting the MCP server:
 
-```yaml
-environment:
-  - VECTORFORGE_API_BASE_URL=http://vectorforge:3001
-  - MCP_PORT=3002
-  - MCP_HOST=0.0.0.0
+```bash
+export VECTORFORGE_API_BASE_URL=http://localhost:3001
+uv run vectorforge-mcp
 ```
 
-For local dev, edit [`config.py`](config.py) class variables directly:
+Or edit [`config.py`](config.py) class variables directly:
 
 ```python
 class MCPConfig:
@@ -699,30 +698,20 @@ uv sync --group mcp
 
 **Solution:**
 ```bash
-# Docker
-docker compose up -d
-
-# Host machine
+# Start API locally
 uv run vectorforge-api
+
+# Or start API in Docker
+docker compose up -d
 ```
-
----
-
-### **mcp-remote Not Found / npx Fails**
-
-**Error:** `npx: command not found` or `mcp-remote` fails to launch
-
-**Cause:** Node.js is not installed on the host machine.
-
-**Solution:** Install Node.js (LTS version recommended), then restart Claude Desktop.
 
 ---
 
 ### **Tools Not Appearing in Claude**
 
 **Check:**
-1. Server is running (`vectorforge-mcp` command executed or `docker compose up -d`)
-2. `claude_desktop_config.json` is correctly configured
+1. VectorForge API is running (`uv run vectorforge-api` or Docker)
+2. `claude_desktop_config.json` is correctly configured with the correct path to your VectorForge repository
 3. Claude Desktop has been restarted after config changes
 4. Check Claude Desktop logs for connection errors
 
@@ -730,6 +719,43 @@ uv run vectorforge-api
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 - Linux: `~/.config/Claude/claude_desktop_config.json`
+
+**Verify config syntax:**
+```json
+{
+  "mcpServers": {
+    "vectorforge": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/vectorforge",
+        "run",
+        "vectorforge-mcp"
+      ]
+    }
+  }
+}
+```
+
+---
+
+### **Command Not Found**
+
+**Error:** `vectorforge-mcp: command not found`
+
+**Cause:** MCP server not installed or not in PATH.
+
+**Solution:**
+```bash
+# Ensure you're in the VectorForge directory
+cd /path/to/vectorforge
+
+# Install dependencies
+uv sync --group mcp
+
+# Verify installation
+which vectorforge-mcp
+```
 
 ---
 
@@ -739,6 +765,8 @@ Edit [`config.py`](config.py):
 ```python
 LOG_LEVEL: int = logging.DEBUG
 ```
+
+Then restart the MCP server (restart Claude Desktop).
 
 ---
 
