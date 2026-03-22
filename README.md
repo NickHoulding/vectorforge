@@ -227,9 +227,9 @@ The `demo/` directory contains an interactive REPL that lets you exercise every 
 
 ### **How it works**
 
-1. On startup the demo checks whether the `vectorforge` Docker container is already running. If it isn't, it runs `docker compose up -d` automatically and waits for the API to become live before proceeding.
+1. On startup the demo checks whether the VectorForge API is accessible. If it isn't, it runs `docker compose up -d` automatically to start the API container and waits for it to become live before proceeding.
 2. A menu of 19 feature keys is displayed. Type any key to invoke that endpoint. The demo will prompt you for the required parameters, fire the request, and pretty-print the JSON response.
-3. On exit you are asked what to do with the container: leave it running, stop it, remove it, or remove it along with all volume data.
+3. On exit you are asked what to do with the API container: leave it running, stop it, remove it, or remove it along with all volume data.
 
 ### **Prerequisites**
 
