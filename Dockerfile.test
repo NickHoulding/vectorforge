@@ -10,6 +10,6 @@ RUN uv sync --frozen
 
 # Temporarily un-comment tests/ directory in .dockerignore
 COPY tests/ ./tests/
-COPY pytest.ini ./
+COPY ./pyproject.toml ./
 
 CMD ["sh", "-c", "ulimit -n 65536 && .venv/bin/pytest tests/ -v"]

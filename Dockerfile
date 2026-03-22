@@ -18,7 +18,6 @@ ENV HF_HOME=/app/.cache/huggingface
 
 COPY pyproject.toml uv.lock ./
 COPY vectorforge/ ./vectorforge/
-COPY vectorforge_mcp/ ./vectorforge_mcp/
 
 RUN uv sync --frozen --no-dev
 
@@ -35,7 +34,6 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/.cache/huggingface /home/vectorforge/.cache/huggingface
 
 COPY vectorforge/ ./vectorforge
-COPY vectorforge_mcp/ ./vectorforge_mcp/
 
 RUN mkdir -p /data/chroma
 
