@@ -476,8 +476,15 @@ Semantic search across indexed documents using embeddings. Returns top-k most si
 **Parameters:**
 - `query` (str) - Search query (natural language)
 - `top_k` (int, optional) - Number of results (default: 10, max: 100)
-- `source_file` (str, optional) - Filter by source filename (exact match, case-sensitive)
-- `chunk_index` (int, optional) - Filter by chunk index
+- `where` (dict, optional) - Metadata filters as key-value pairs. All conditions use AND logic.
+
+  **VectorForge uses ChromaDB under the hood.** The `where` parameter is passed directly to ChromaDB's `where` clause. VectorForge supports the following ChromaDB operator expressions: `$gte`, `$lte`, `$ne`, `$in`. Refer to ChromaDB documentation to learn more about where clause syntax.
+
+  Examples:
+  - `{"source_file": "textbook.pdf"}` - exact match
+  - `{"year": {"$gte": 2024}}` - greater than or equal
+  - `{"category": {"$in": ["AI", "ML"]}}` - value in list
+  - `{"source_file": "guide.pdf", "chunk_index": 0}` - multiple conditions (AND)
 - `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Examples:**
@@ -487,12 +494,16 @@ Semantic search across indexed documents using embeddings. Returns top-k most si
 "Search for 'introduction' in file 'textbook.pdf'"
 
 "Find all first chunks containing 'overview'"
+
+"Search for AI papers from 2024 or later"
 ```
 
 **Filtering Options:**
-- Filter by `source_file` alone → returns all matching chunks from that file
-- Filter by `chunk_index` alone → returns all matching chunks at that index (any file)
-- Filter by both → returns specific chunk from specific file
+- Filter by `source_file` → `where={"source_file": "file.pdf"}` returns all matching chunks from that file
+- Filter by `chunk_index` → `where={"chunk_index": 0}` returns all matching chunks at that index (any file)
+- Filter by both → `where={"source_file": "file.pdf", "chunk_index": 0}` returns specific chunk from specific file
+- Filter by custom metadata → `where={"author": "Alice", "year": 2024}` filters by any metadata fields
+- Use operators → `where={"year": {"$gte": 2022}, "category": {"$in": ["AI", "ML"]}}` for advanced filtering
 - No filters → returns all matching results
 
 ---
@@ -607,7 +618,7 @@ Based on the indexed content, here are the relevant sections...
 You: Search for introductions only in textbook.pdf
 
 Claude: I'll search for introductions specifically in textbook.pdf.
-[Calls search_documents with query="introduction", source_file="textbook.pdf"]
+[Calls search_documents with query="introduction", where={"source_file": "textbook.pdf"}]
 Found 3 results from textbook.pdf:
 - Chapter 1 Introduction (Score: 0.92)
 - Chapter 5 Introduction (Score: 0.85)
@@ -616,7 +627,7 @@ Found 3 results from textbook.pdf:
 You: Now find all first chunks that mention "overview"
 
 Claude: I'll search for "overview" in all first chunks.
-[Calls search_documents with query="overview", chunk_index=0]
+[Calls search_documents with query="overview", where={"chunk_index": 0}]
 Found 2 results:
 - guide.pdf, chunk 0 (Score: 0.88)
 - manual.pdf, chunk 0 (Score: 0.82)

@@ -422,6 +422,16 @@ results = response.json()["results"]
 Filter search results using exact equality matching, operator expressions, or document-text
 filtering. All `filters` conditions use AND logic (all must match).
 
+**VectorForge uses ChromaDB under the hood.** The `filters` parameter (API) and `where` parameter
+(MCP) are passed directly to ChromaDB's `where` clause. VectorForge supports the following
+ChromaDB operator expressions: `$gte`, `$lte`, `$ne`, `$in` for metadata filtering, and
+`$contains`, `$not_contains` for document text filtering. Refer to ChromaDB documentation to
+learn more about where clause syntax.
+
+**Note:** When using the VectorForge MCP Server, the `filters` parameter is exposed as
+`where` in the `search_documents` tool for semantic consistency with ChromaDB terminology.
+Both accept the same dict structure shown in the examples below.
+
 **Key Features:**
 - **Exact matching**: Filters use case-sensitive equality comparison
 - **Operator expressions**: `$gte`, `$lte`, `$ne`, `$in` are supported inside `filters`
