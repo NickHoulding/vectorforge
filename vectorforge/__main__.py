@@ -1,9 +1,12 @@
 """Entry point when running vectorforge as a module"""
 
 import uvicorn
+from dotenv import load_dotenv
 
 from vectorforge.api.config import APIConfig
 from vectorforge.config import VFGConfig
+
+load_dotenv()
 
 
 def main() -> None:

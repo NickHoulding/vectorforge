@@ -14,62 +14,62 @@ class VFGConfig:
     # Model Configuration
     # =============================================================================
 
-    MODEL_NAME: str = "all-MiniLM-L6-v2"
+    MODEL_NAME: str = os.getenv("VF_MODEL_NAME", "all-MiniLM-L6-v2")
     """Sentence transformer model for generating embeddings."""
 
-    EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_DIMENSION: int = int(os.getenv("VF_EMBEDDING_DIMENSION", "384"))
     """Dimension of the embedding vectors (specific to all-MiniLM-L6-v2)."""
 
     # =============================================================================
     # Storage Configuration
     # =============================================================================
 
-    MAX_PATH_LEN: int = 4096
+    MAX_PATH_LEN: int = int(os.getenv("VF_MAX_PATH_LEN", "4096"))
     """Maximum valid path length for save/load functionality"""
 
-    MAX_FILENAME_LENGTH: int = 255
+    MAX_FILENAME_LENGTH: int = int(os.getenv("VF_MAX_FILENAME_LENGTH", "255"))
     """Maximum filename length (including extension)."""
 
     # =============================================================================
     # Content Validation
     # =============================================================================
 
-    MIN_CONTENT_LENGTH: int = 1
+    MIN_CONTENT_LENGTH: int = int(os.getenv("VF_MIN_CONTENT_LENGTH", "1"))
     """Minimum character length for document content."""
 
-    MAX_CONTENT_LENGTH: int = 10_000
+    MAX_CONTENT_LENGTH: int = int(os.getenv("VF_MAX_CONTENT_LENGTH", "10000"))
     """Maximum character length for document content."""
 
-    MAX_BATCH_SIZE: int = 100
+    MAX_BATCH_SIZE: int = int(os.getenv("VF_MAX_BATCH_SIZE", "100"))
     """Maximum number of documents per batch add or batch delete request."""
 
-    MIN_QUERY_LENGTH: int = 1
+    MIN_QUERY_LENGTH: int = int(os.getenv("VF_MIN_QUERY_LENGTH", "1"))
     """Minimum character length for search queries."""
 
-    MAX_QUERY_LENGTH: int = 2_000
+    MAX_QUERY_LENGTH: int = int(os.getenv("VF_MAX_QUERY_LENGTH", "2000"))
     """Maximum character length for search queries."""
 
     # =============================================================================
     # Document Processing
     # =============================================================================
 
-    DEFAULT_CHUNK_SIZE: int = 500
+    DEFAULT_CHUNK_SIZE: int = int(os.getenv("VF_DEFAULT_CHUNK_SIZE", "500"))
     """Default number of characters per chunk when splitting documents."""
 
-    DEFAULT_CHUNK_OVERLAP: int = 50
+    DEFAULT_CHUNK_OVERLAP: int = int(os.getenv("VF_DEFAULT_CHUNK_OVERLAP", "50"))
     """Default number of overlapping characters between consecutive chunks."""
 
     # =============================================================================
     # Search Configuration
     # =============================================================================
 
-    DEFAULT_TOP_K: int = 10
+    DEFAULT_TOP_K: int = int(os.getenv("VF_DEFAULT_TOP_K", "10"))
     """Default number of search results to return."""
 
-    MIN_TOP_K: int = 1
+    MIN_TOP_K: int = int(os.getenv("VF_MIN_TOP_K", "1"))
     """Minimum value for top_k parameter."""
 
-    MAX_TOP_K: int = 100
+    MAX_TOP_K: int = int(os.getenv("VF_MAX_TOP_K", "100"))
     """Maximum value for top_k parameter."""
 
     VALID_FILTER_OPERATORS: frozenset[str] = frozenset(["$gte", "$lte", "$in", "$ne"])
@@ -84,17 +84,19 @@ class VFGConfig:
     # Metrics Configuration
     # =============================================================================
 
-    MAX_QUERY_HISTORY: int = 1_000
+    MAX_QUERY_HISTORY: int = int(os.getenv("VF_MAX_QUERY_HISTORY", "1000"))
     """Maximum number of query times to retain for percentile calculations."""
 
-    DISK_SIZE_TTL_MINS: int = 5
+    DISK_SIZE_TTL_MINS: int = int(os.getenv("VF_DISK_SIZE_TTL_MINS", "5"))
     """TTL in minutes for the cached ChromaDB disk size calculation."""
 
     # =============================================================================
     # Supported File Types
     # =============================================================================
 
-    SUPPORTED_FILE_EXTENSIONS: tuple[str, ...] = (".pdf", ".txt")
+    SUPPORTED_FILE_EXTENSIONS: tuple[str, ...] = tuple(
+        os.getenv("VF_SUPPORTED_FILE_EXTENSIONS", ".pdf,.txt").split(",")
+    )
     """Tuple of supported file extensions for upload."""
 
     # =============================================================================
@@ -112,35 +114,43 @@ class VFGConfig:
     )
     """Directory for HuggingFace model cache. Configurable via HF_HOME env var."""
 
-    MIGRATION_BATCH_SIZE: int = 1000
+    MIGRATION_BATCH_SIZE: int = int(os.getenv("VF_MIGRATION_BATCH_SIZE", "1000"))
     """Batch size for HNSW configuration migration (collection-level recreation)."""
 
     # =============================================================================
     # Collection Management Configuration
     # =============================================================================
 
-    MAX_COLLECTIONS: int = int(os.getenv("MAX_COLLECTIONS", "100"))
+    MAX_COLLECTIONS: int = int(os.getenv("VF_MAX_COLLECTIONS", "100"))
     """Maximum number of collections allowed per instance."""
 
-    DEFAULT_COLLECTION_NAME: str = "vectorforge"
+    DEFAULT_COLLECTION_NAME: str = os.getenv(
+        "VF_DEFAULT_COLLECTION_NAME", "vectorforge"
+    )
     """Default collection when none specified."""
 
-    COLLECTION_CACHE_SIZE: int = int(os.getenv("COLLECTION_CACHE_SIZE", "50"))
+    COLLECTION_CACHE_SIZE: int = int(os.getenv("VF_COLLECTION_CACHE_SIZE", "50"))
     """FIFO cache size for collection engines."""
 
-    MAX_COLLECTION_NAME_LENGTH: int = 64
+    MAX_COLLECTION_NAME_LENGTH: int = int(
+        os.getenv("VF_MAX_COLLECTION_NAME_LENGTH", "64")
+    )
     """Maximum length for collection names."""
 
-    MIN_COLLECTION_NAME_LENGTH: int = 3
+    MIN_COLLECTION_NAME_LENGTH: int = int(
+        os.getenv("VF_MIN_COLLECTION_NAME_LENGTH", "3")
+    )
     """Minimum length for collection names."""
 
-    MAX_DESCRIPTION_LENGTH: int = 500
+    MAX_DESCRIPTION_LENGTH: int = int(os.getenv("VF_MAX_DESCRIPTION_LENGTH", "500"))
     """Maximum character length of a collection's description."""
 
-    COLLECTION_NAME_PATTERN: str = r"^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$"
+    COLLECTION_NAME_PATTERN: str = os.getenv(
+        "VF_COLLECTION_NAME_PATTERN", r"^[a-zA-Z0-9][a-zA-Z0-9_-]*[a-zA-Z0-9]$"
+    )
     """Regex pattern for valid collection names."""
 
-    MAX_METADATA_PAIRS: int = 20
+    MAX_METADATA_PAIRS: int = int(os.getenv("VF_MAX_METADATA_PAIRS", "20"))
     """Maximum number of key-value pairs for collection metadata."""
 
     VALID_SCALAR_TYPES: frozenset[type] = frozenset([str, int, float, bool])
