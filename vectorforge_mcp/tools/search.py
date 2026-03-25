@@ -1,5 +1,6 @@
 """MCP tools for semantic search across indexed documents."""
 
+import logging
 from typing import Any
 
 from ..client import post
@@ -7,6 +8,8 @@ from ..config import MCPConfig
 from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool(
@@ -38,9 +41,20 @@ def search_documents(
     Returns:
       List of search results with document IDs, content, similarity scores, and metadata.
     """
+    logger.debug(
+        "Searching documents: query_len=%d, top_k=%d, has_filters=%s, collection=%s",
+        len(query),
+        top_k,
+        where is not None,
+        collection_name,
+    )
     body: dict[str, Any] = {"query": query, "top_k": top_k}
     if where is not None:
         body["filters"] = where
 
     data = post(f"/collections/{collection_name}/search", json=body)
+    result_count = len(data.get("results", []))
+    logger.info(
+        "Search completed: collection=%s, results=%d", collection_name, result_count
+    )
     return build_success_response(data)

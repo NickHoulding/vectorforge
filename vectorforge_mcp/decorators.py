@@ -2,11 +2,14 @@
 
 import functools
 import inspect
+import logging
 from typing import Any, Callable, cast
 
 import requests
 
 from .utils import build_error_response
+
+logger = logging.getLogger(__name__)
 
 
 def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -27,14 +30,29 @@ def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
     def sync_wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
-            return cast(dict[str, Any], func(*args, **kwargs))
+            logger.debug("Calling tool function: %s", func.__name__)
+            result = cast(dict[str, Any], func(*args, **kwargs))
+            logger.debug("Tool function %s completed successfully", func.__name__)
+            return result
 
-        except requests.ConnectionError:
+        except requests.ConnectionError as e:
+            logger.error(
+                "Connection error in %s: %s",
+                func.__name__,
+                str(e),
+                exc_info=True,
+            )
             return build_error_response(
                 Exception("VectorForge API is not available"),
                 details="Connection refused - check if API is running",
             )
-        except requests.Timeout:
+        except requests.Timeout as e:
+            logger.error(
+                "Timeout error in %s: %s",
+                func.__name__,
+                str(e),
+                exc_info=True,
+            )
             return build_error_response(
                 Exception("Request timeout"),
                 details="VectorForge API request timed out",
@@ -47,21 +65,49 @@ def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
             except Exception:
                 detail = str(e)
 
+            logger.error(
+                "HTTP error in %s: status=%s, detail=%s",
+                func.__name__,
+                status_code,
+                detail,
+                exc_info=True,
+            )
             return build_error_response(Exception(detail), details=status_code)
         except Exception as e:
+            logger.error(
+                "Unexpected error in %s: %s",
+                func.__name__,
+                str(e),
+                exc_info=True,
+            )
             return build_error_response(Exception("Operation failed"), details=str(e))
 
     @functools.wraps(func)
     async def async_wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
-            return cast(dict[str, Any], await func(*args, **kwargs))
+            logger.debug("Calling async tool function: %s", func.__name__)
+            result = cast(dict[str, Any], await func(*args, **kwargs))
+            logger.debug("Async tool function %s completed successfully", func.__name__)
+            return result
 
-        except requests.ConnectionError:
+        except requests.ConnectionError as e:
+            logger.error(
+                "Connection error in %s: %s",
+                func.__name__,
+                str(e),
+                exc_info=True,
+            )
             return build_error_response(
                 Exception("VectorForge API is not available"),
                 details="Connection refused - check if API is running",
             )
-        except requests.Timeout:
+        except requests.Timeout as e:
+            logger.error(
+                "Timeout error in %s: %s",
+                func.__name__,
+                str(e),
+                exc_info=True,
+            )
             return build_error_response(
                 Exception("Request timeout"),
                 details="VectorForge API request timed out",
@@ -74,8 +120,21 @@ def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
             except Exception:
                 detail = str(e)
 
+            logger.error(
+                "HTTP error in %s: status=%s, detail=%s",
+                func.__name__,
+                status_code,
+                detail,
+                exc_info=True,
+            )
             return build_error_response(Exception(detail), details=status_code)
         except Exception as e:
+            logger.error(
+                "Unexpected error in %s: %s",
+                func.__name__,
+                str(e),
+                exc_info=True,
+            )
             return build_error_response(Exception("Operation failed"), details=str(e))
 
     if inspect.iscoroutinefunction(func):

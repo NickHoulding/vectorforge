@@ -1,11 +1,14 @@
 """MCP tools for managing VectorForge collections."""
 
+import logging
 from typing import Any
 
 from ..client import delete, get, post
 from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool(
@@ -18,7 +21,10 @@ def list_collections() -> dict[str, Any]:
     Returns:
       Dictionary with list of collections and their details (name, id, document_count, created_at).
     """
+    logger.debug("Listing all collections")
     data = get("/collections")
+    collection_count = len(data.get("collections", []))
+    logger.info("Listed %d collections", collection_count)
     return build_success_response(data)
 
 
@@ -35,7 +41,9 @@ def get_collection(collection_name: str) -> dict[str, Any]:
     Returns:
       Dictionary with collection details (name, id, document_count, created_at, hnsw_config, metadata).
     """
+    logger.debug("Getting collection: name=%s", collection_name)
     data = get(f"/collections/{collection_name}")
+    logger.info("Retrieved collection %s", collection_name)
     return build_success_response(data)
 
 
@@ -70,6 +78,13 @@ def create_collection(
     Returns:
       Dictionary with created collection details.
     """
+    logger.debug(
+        "Creating collection: name=%s, hnsw_space=%s, has_metadata=%s",
+        collection_name,
+        hnsw_space,
+        metadata is not None,
+    )
+
     hnsw_config: dict[str, Any] = {}
     for key, value in {
         "space": hnsw_space,
@@ -91,6 +106,7 @@ def create_collection(
         body["metadata"] = metadata
 
     data = post("/collections", json=body)
+    logger.info("Created collection %s", collection_name)
     return build_success_response(data)
 
 
@@ -108,8 +124,10 @@ def delete_collection(collection_name: str, confirm: bool = False) -> dict[str, 
     Returns:
       Dictionary with deletion status and message.
     """
+    logger.debug("Deleting collection: name=%s, confirmed=%s", collection_name, confirm)
     data = delete(
         f"/collections/{collection_name}",
         params={"confirm": confirm},
     )
+    logger.info("Deleted collection %s", collection_name)
     return build_success_response(data)

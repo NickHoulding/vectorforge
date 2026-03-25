@@ -1,5 +1,6 @@
 """MCP tools for uploading, listing, and deleting indexed files."""
 
+import logging
 import os
 from typing import Any
 
@@ -8,6 +9,8 @@ from ..config import MCPConfig
 from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_error_response, build_success_response
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool(
@@ -25,7 +28,10 @@ def list_files(
     Returns:
       List of filenames that have been uploaded and indexed.
     """
+    logger.debug("Listing files: collection=%s", collection_name)
     data = get(f"/collections/{collection_name}/files/list")
+    file_count = len(data.get("files", []))
+    logger.info("Listed %d files from collection %s", file_count, collection_name)
     return build_success_response(data)
 
 
@@ -50,7 +56,16 @@ def upload_file(
     Returns:
       Dictionary with upload status, filename, chunks created, and document IDs.
     """
+    logger.debug(
+        "Uploading file: path=%s, collection=%s, chunk_size=%s, chunk_overlap=%s",
+        file_path,
+        collection_name,
+        chunk_size,
+        chunk_overlap,
+    )
+
     if not os.path.exists(file_path):
+        logger.error("File not found: %s", file_path)
         return build_error_response(FileNotFoundError(f"File not found: {file_path}"))
 
     params: dict[str, Any] = {}
@@ -67,6 +82,13 @@ def upload_file(
             files=files,
         )
 
+    chunk_count = data.get("chunks_created", 0)
+    logger.info(
+        "Uploaded file %s to collection %s: %d chunks created",
+        os.path.basename(file_path),
+        collection_name,
+        chunk_count,
+    )
     return build_success_response(data)
 
 
@@ -87,5 +109,13 @@ def delete_file(
     Returns:
       Dictionary with deletion status, filename, chunks deleted, and document IDs.
     """
+    logger.debug("Deleting file: filename=%s, collection=%s", filename, collection_name)
     data = delete(f"/collections/{collection_name}/files/{filename}")
+    chunks_deleted = data.get("chunks_deleted", 0)
+    logger.info(
+        "Deleted file %s from collection %s: %d chunks removed",
+        filename,
+        collection_name,
+        chunks_deleted,
+    )
     return build_success_response(data)

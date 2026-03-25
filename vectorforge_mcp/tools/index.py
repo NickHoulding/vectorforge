@@ -1,5 +1,6 @@
 """MCP tools for retrieving index statistics."""
 
+import logging
 from typing import Any
 
 from ..client import get
@@ -7,6 +8,8 @@ from ..config import MCPConfig
 from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool(
@@ -24,5 +27,7 @@ def get_index_stats(
     Returns:
       Dictionary with index statistics including document count, embedding dimension, and HNSW configuration.
     """
+    logger.debug("Getting index stats: collection=%s", collection_name)
     data = get(f"/collections/{collection_name}/stats")
+    logger.info("Retrieved index stats for collection %s", collection_name)
     return build_success_response(data)

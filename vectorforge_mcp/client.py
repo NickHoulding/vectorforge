@@ -4,11 +4,15 @@ All functions call raise_for_status() so callers receive requests.HTTPError
 on any non-2xx response.
 """
 
+import logging
+import time
 from typing import Any
 
 import requests
 
 from vectorforge_mcp.config import MCPConfig
+
+logger = logging.getLogger(__name__)
 
 
 def _url(path: str) -> str:
@@ -33,7 +37,19 @@ def get(path: str, params: dict[str, Any] | None = None) -> Any:
     Returns:
       Parsed JSON response body.
     """
-    response = requests.get(_url(path), params=params)
+    url = _url(path)
+    logger.debug("GET request: path=%s, params=%s", path, params)
+
+    start_time = time.time()
+    response = requests.get(url, params=params)
+    elapsed = time.time() - start_time
+
+    logger.info(
+        "GET %s completed: status=%d, duration=%.2fs",
+        path,
+        response.status_code,
+        elapsed,
+    )
     response.raise_for_status()
     return response.json()
 
@@ -57,8 +73,24 @@ def post(
     Returns:
       Parsed JSON response body.
     """
-    response = requests.post(
-        _url(path), json=json, params=params, files=files, data=data
+    url = _url(path)
+    logger.debug(
+        "POST request: path=%s, has_json=%s, has_files=%s, has_data=%s",
+        path,
+        json is not None,
+        files is not None,
+        data is not None,
+    )
+
+    start_time = time.time()
+    response = requests.post(url, json=json, params=params, files=files, data=data)
+    elapsed = time.time() - start_time
+
+    logger.info(
+        "POST %s completed: status=%d, duration=%.2fs",
+        path,
+        response.status_code,
+        elapsed,
     )
     response.raise_for_status()
     return response.json()
@@ -79,7 +111,19 @@ def put(
     Returns:
       Parsed JSON response body.
     """
-    response = requests.put(_url(path), json=json, params=params)
+    url = _url(path)
+    logger.debug("PUT request: path=%s, has_json=%s", path, json is not None)
+
+    start_time = time.time()
+    response = requests.put(url, json=json, params=params)
+    elapsed = time.time() - start_time
+
+    logger.info(
+        "PUT %s completed: status=%d, duration=%.2fs",
+        path,
+        response.status_code,
+        elapsed,
+    )
     response.raise_for_status()
     return response.json()
 
@@ -99,6 +143,18 @@ def delete(
     Returns:
       Parsed JSON response body.
     """
-    response = requests.delete(_url(path), json=json, params=params)
+    url = _url(path)
+    logger.debug("DELETE request: path=%s, has_json=%s", path, json is not None)
+
+    start_time = time.time()
+    response = requests.delete(url, json=json, params=params)
+    elapsed = time.time() - start_time
+
+    logger.info(
+        "DELETE %s completed: status=%d, duration=%.2fs",
+        path,
+        response.status_code,
+        elapsed,
+    )
     response.raise_for_status()
     return response.json()

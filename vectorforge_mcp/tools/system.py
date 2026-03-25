@@ -1,5 +1,6 @@
 """MCP tools for system health checks and metrics."""
 
+import logging
 from typing import Any
 
 from ..client import get
@@ -7,6 +8,8 @@ from ..config import MCPConfig
 from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool(
@@ -24,7 +27,9 @@ def get_metrics(
     Returns:
       Dictionary with detailed performance, usage, memory, timestamp, and system metrics.
     """
+    logger.debug("Getting metrics: collection=%s", collection_name)
     data = get(f"/collections/{collection_name}/metrics")
+    logger.info("Retrieved metrics for collection %s", collection_name)
     return build_success_response(data)
 
 
@@ -38,5 +43,10 @@ def check_health() -> dict[str, Any]:
     Returns:
       Dictionary with health status and version information.
     """
+    logger.debug("Checking API health")
     data = get("/health")
+    logger.info(
+        "Health check completed: status=%s",
+        data.get("status", "unknown"),
+    )
     return build_success_response(data)

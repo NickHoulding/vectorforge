@@ -1,5 +1,6 @@
 """MCP tools for managing VectorForge documents."""
 
+import logging
 from typing import Any
 
 from ..client import delete, get, post
@@ -7,6 +8,8 @@ from ..config import MCPConfig
 from ..decorators import handle_tool_errors
 from ..instance import mcp
 from ..utils import build_success_response
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool(
@@ -26,7 +29,9 @@ def get_document(
     Returns:
       Dictionary with document ID, content, and metadata.
     """
+    logger.debug("Getting document: doc_id=%s, collection=%s", doc_id, collection_name)
     data = get(f"/collections/{collection_name}/documents/{doc_id}")
+    logger.info("Retrieved document %s from collection %s", doc_id, collection_name)
     return build_success_response(data)
 
 
@@ -49,11 +54,22 @@ def add_document(
     Returns:
       Dictionary with created document ID and status.
     """
+    logger.debug(
+        "Adding document: content_len=%d, has_metadata=%s, collection=%s",
+        len(content),
+        metadata is not None,
+        collection_name,
+    )
     body: dict[str, Any] = {"content": content}
     if metadata is not None:
         body["metadata"] = metadata
 
     data = post(f"/collections/{collection_name}/documents", json=body)
+    logger.info(
+        "Added document to collection %s: doc_id=%s",
+        collection_name,
+        data.get("id", "unknown"),
+    )
     return build_success_response(data)
 
 
@@ -77,9 +93,17 @@ def batch_add_documents(
     Returns:
       Dictionary with list of created document IDs and status.
     """
+    logger.debug(
+        "Batch adding documents: count=%d, collection=%s",
+        len(documents),
+        collection_name,
+    )
     data = post(
         f"/collections/{collection_name}/documents/batch",
         json={"documents": documents},
+    )
+    logger.info(
+        "Batch added %d documents to collection %s", len(documents), collection_name
     )
     return build_success_response(data)
 
@@ -101,7 +125,9 @@ def delete_document(
     Returns:
       Dictionary with document ID and deletion status.
     """
+    logger.debug("Deleting document: doc_id=%s, collection=%s", doc_id, collection_name)
     data = delete(f"/collections/{collection_name}/documents/{doc_id}")
+    logger.info("Deleted document %s from collection %s", doc_id, collection_name)
     return build_success_response(data)
 
 
@@ -122,8 +148,16 @@ def batch_delete_documents(
     Returns:
       Dictionary with list of deleted document IDs and status.
     """
+    logger.debug(
+        "Batch deleting documents: count=%d, collection=%s",
+        len(doc_ids),
+        collection_name,
+    )
     data = delete(
         f"/collections/{collection_name}/documents",
         json={"ids": doc_ids},
+    )
+    logger.info(
+        "Batch deleted %d documents from collection %s", len(doc_ids), collection_name
     )
     return build_success_response(data)
