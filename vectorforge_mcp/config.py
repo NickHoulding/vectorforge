@@ -15,11 +15,12 @@ class MCPConfig:
     # Server Metadata
     # =============================================================================
 
-    SERVER_NAME: str = "VectorForge MCP Server"
+    SERVER_NAME: str = os.environ.get("VF_SERVER_NAME", "VectorForge MCP Server")
     """Display name for the MCP server."""
 
-    SERVER_DESCRIPTION: str = (
-        "Model Context Protocol server for VectorForge vector database"
+    SERVER_DESCRIPTION: str = os.environ.get(
+        "VF_SERVER_DESCRIPTION",
+        "Model Context Protocol server for VectorForge vector database",
     )
     """Short description of the MCP server reported to MCP clients."""
 
@@ -36,20 +37,26 @@ class MCPConfig:
     # Collection Defaults
     # =============================================================================
 
-    DEFAULT_COLLECTION_NAME: str = "vectorforge"
+    DEFAULT_COLLECTION_NAME: str = os.environ.get(
+        "VF_DEFAULT_COLLECTION_NAME", "vectorforge"
+    )
     """Default collection used when no collection_name argument is provided to a tool."""
 
-    DEFAULT_TOP_K: int = 10
+    DEFAULT_TOP_K: int = int(os.environ.get("VF_DEFAULT_TOP_K", "10"))
     """Default number of search results returned by search_documents."""
 
     # =============================================================================
     # Logging
     # =============================================================================
 
-    LOG_LEVEL: int = logging.INFO
+    LOG_LEVEL: int = getattr(
+        logging, os.environ.get("VF_LOG_LEVEL", "INFO").upper(), logging.INFO
+    )
     """Logging verbosity level for the MCP server process."""
 
-    LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    LOG_FORMAT: str = os.environ.get(
+        "VF_LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     """Log record format string passed to logging.basicConfig."""
 
     # =============================================================================
