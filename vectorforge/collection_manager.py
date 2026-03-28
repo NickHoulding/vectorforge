@@ -62,14 +62,15 @@ class CollectionManager:
 
         self.chroma_path: str = chroma_path
         self.chroma_client = chromadb.PersistentClient(path=chroma_path)
-        logger.info(f"Loading shared model: {VFGConfig.MODEL_NAME}")
+        logger.info("Loading shared model: %s", VFGConfig.MODEL_NAME)
         self.model: SentenceTransformer = SentenceTransformer(VFGConfig.MODEL_NAME)
         self._engine_cache: dict[str, VectorEngine] = {}
         self._cache_lock = Lock()
 
         self._ensure_default_collection()
         logger.info(
-            f"CollectionManager initialized (max_collections={VFGConfig.MAX_COLLECTIONS})"
+            "CollectionManager initialized (max_collections=%d)",
+            VFGConfig.MAX_COLLECTIONS,
         )
 
     def _ensure_default_collection(self) -> None:
@@ -77,11 +78,11 @@ class CollectionManager:
         try:
             self.chroma_client.get_collection(name=VFGConfig.DEFAULT_COLLECTION_NAME)
             logger.info(
-                f"Default collection '{VFGConfig.DEFAULT_COLLECTION_NAME}' exists"
+                "Default collection '%s' exists", VFGConfig.DEFAULT_COLLECTION_NAME
             )
         except chromadb.errors.NotFoundError:
             logger.info(
-                f"Creating default collection: {VFGConfig.DEFAULT_COLLECTION_NAME}"
+                "Creating default collection: %s", VFGConfig.DEFAULT_COLLECTION_NAME
             )
             self.create_collection(
                 name=VFGConfig.DEFAULT_COLLECTION_NAME,
@@ -152,7 +153,7 @@ class CollectionManager:
 
         with self._cache_lock:
             if collection_name in self._engine_cache:
-                logger.debug(f"Using cached engine for collection: {collection_name}")
+                logger.debug("Using cached engine for collection: %s", collection_name)
                 return self._engine_cache[collection_name]
 
             if not self.collection_exists(collection_name):
@@ -160,7 +161,7 @@ class CollectionManager:
 
             collection = self.chroma_client.get_collection(name=collection_name)
 
-            logger.info(f"Creating new engine for collection: {collection_name}")
+            logger.info("Creating new engine for collection: %s", collection_name)
             engine = VectorEngine(
                 collection=collection,
                 model=self.model,
@@ -169,7 +170,7 @@ class CollectionManager:
 
             if len(self._engine_cache) >= VFGConfig.COLLECTION_CACHE_SIZE:
                 oldest_key = next(iter(self._engine_cache))
-                logger.debug(f"Cache full, evicting oldest: {oldest_key}")
+                logger.debug("Cache full, evicting oldest: %s", oldest_key)
                 del self._engine_cache[oldest_key]
 
             self._engine_cache[collection_name] = engine
@@ -310,12 +311,12 @@ class CollectionManager:
             for key, value in metadata.items():
                 hnsw_metadata[f"{self.META_PREFIX}{key}"] = str(value)
 
-        logger.info(f"Creating collection: {name}")
+        logger.info("Creating collection: %s", name)
         collection = self.chroma_client.create_collection(
             name=name, metadata=hnsw_metadata
         )
 
-        logger.info(f"Collection '{name}' created successfully")
+        logger.info("Collection '%s' created successfully", name)
 
         return self._get_collection_info(collection)
 
@@ -331,15 +332,15 @@ class CollectionManager:
         if not self.collection_exists(name):
             raise ValueError(f"Collection '{name}' does not exist")
 
-        logger.info(f"Deleting collection: {name}")
+        logger.info("Deleting collection: %s", name)
 
         with self._cache_lock:
             if name in self._engine_cache:
-                logger.debug(f"Removing {name} from engine cache")
+                logger.debug("Removing %s from engine cache", name)
                 del self._engine_cache[name]
 
         self.chroma_client.delete_collection(name=name)
-        logger.info(f"Collection '{name}' deleted successfully")
+        logger.info("Collection '%s' deleted successfully", name)
 
     def get_collection_count(self) -> int:
         """Get the total number of collections.

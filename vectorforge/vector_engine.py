@@ -20,6 +20,7 @@ from sentence_transformers import SentenceTransformer
 
 from vectorforge import __version__
 from vectorforge.config import VFGConfig
+from vectorforge.logging import _sanitize_text_for_logging
 from vectorforge.metrics_store import MetricsStore
 from vectorforge.models import SearchResult
 
@@ -248,6 +249,12 @@ class VectorEngine:
         if not query.strip():
             raise ValueError("Search query cannot be empty")
 
+        logger.debug(
+            "search: collection=%s query=%s top_k=%d",
+            self.collection.name,
+            _sanitize_text_for_logging(query),
+            top_k,
+        )
         start_time: float = time.perf_counter()
 
         if self.collection.count() == 0:
@@ -315,6 +322,12 @@ class VectorEngine:
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         self._update_query_metrics(elapsed_ms)
 
+        logger.info(
+            "search: collection=%s results=%d elapsed_ms=%.1f",
+            self.collection.name,
+            len(search_results),
+            elapsed_ms,
+        )
         return search_results
 
     def list_files(self) -> list[str]:
@@ -412,6 +425,9 @@ class VectorEngine:
             TypeError: If any metadata value is ``None`` or not a ChromaDB-supported
                 type (``str``, ``int``, ``float``, or ``bool``).
         """
+        logger.debug(
+            "add_docs: collection=%s count=%d", self.collection.name, len(docs)
+        )
         contents: list[str] = []
         metadatas: list[dict[str, Any]] = []
 
@@ -489,6 +505,9 @@ class VectorEngine:
             },
         )
 
+        logger.info(
+            "add_docs: collection=%s added=%d", self.collection.name, len(doc_ids)
+        )
         return doc_ids
 
     def delete_docs(self, ids: list[str]) -> list[str]:
@@ -504,6 +523,9 @@ class VectorEngine:
             List of IDs that were found and deleted. IDs not present in the
             collection are silently omitted from the result.
         """
+        logger.debug(
+            "delete_docs: collection=%s ids=%d", self.collection.name, len(ids)
+        )
         result = self.collection.get(ids=ids, include=["documents"])
 
         found_ids: list[str] = result.get("ids") or []
@@ -527,6 +549,11 @@ class VectorEngine:
             },
         )
 
+        logger.info(
+            "delete_docs: collection=%s deleted=%d",
+            self.collection.name,
+            len(found_ids),
+        )
         return found_ids
 
     def delete_file(self, filename: str) -> dict[str, Any]:
@@ -545,12 +572,20 @@ class VectorEngine:
                 - chunks_deleted: Number of chunks deleted
                 - doc_ids: List of deleted document IDs
         """
+        logger.debug(
+            "delete_file: collection=%s filename=%s", self.collection.name, filename
+        )
         results = self.collection.get(
             where={"source_file": filename}, include=["documents"]
         )
 
         doc_ids: list[str] = results.get("ids", [])
         if not doc_ids:
+            logger.info(
+                "delete_file: collection=%s filename=%s not found",
+                self.collection.name,
+                filename,
+            )
             return {
                 "status": "not_found",
                 "filename": filename,
@@ -560,6 +595,12 @@ class VectorEngine:
 
         deleted_ids = self.delete_docs(doc_ids)
 
+        logger.info(
+            "delete_file: collection=%s filename=%s chunks_deleted=%d",
+            self.collection.name,
+            filename,
+            len(deleted_ids),
+        )
         return {
             "status": "deleted",
             "filename": filename,
@@ -835,7 +876,7 @@ class VectorEngine:
             doc_count = old_collection.count()
 
             logger.info(
-                f"Starting HNSW config migration: {doc_count} documents to migrate"
+                "Starting HNSW config migration: %d documents to migrate", doc_count
             )
 
             hnsw_metadata = {
@@ -861,7 +902,7 @@ class VectorEngine:
             )
             base_name = old_collection.name[:max_base_len]
             temp_collection_name = f"{base_name}_temp_{uuid.uuid4().hex[:8]}"
-            logger.info(f"Creating temporary collection: {temp_collection_name}")
+            logger.info("Creating temporary collection: %s", temp_collection_name)
 
             new_collection = self.chroma_client.create_collection(
                 name=temp_collection_name, metadata=hnsw_metadata
@@ -887,7 +928,7 @@ class VectorEngine:
                 total_batches = (doc_count + batch_size - 1) // batch_size
 
                 logger.info(
-                    f"Migrating documents in {total_batches} batches of {batch_size}"
+                    "Migrating documents in %d batches of %d", total_batches, batch_size
                 )
 
                 for batch_num in range(total_batches):
@@ -912,7 +953,10 @@ class VectorEngine:
                         migrated = min(end_idx, doc_count)
                         percent = (migrated / doc_count) * 100
                         logger.info(
-                            f"Migration progress: {migrated}/{doc_count} documents ({percent:.1f}%)"
+                            "Migration progress: %d/%d documents (%.1f%%)",
+                            migrated,
+                            doc_count,
+                            percent,
                         )
 
             temp_count = new_collection.count()
@@ -921,22 +965,23 @@ class VectorEngine:
                     f"Temp collection count mismatch: expected {doc_count}, got {temp_count}"
                 )
             logger.info(
-                f"Temp collection verified: {temp_count} documents match expected count"
+                "Temp collection verified: %d documents match expected count",
+                temp_count,
             )
 
             original_name = old_collection.name
-            logger.info(f"Deleting old collection: {original_name}")
+            logger.info("Deleting old collection: %s", original_name)
             self.chroma_client.delete_collection(name=original_name)
 
             logger.info(
-                f"Creating final collection with original name: {original_name}"
+                "Creating final collection with original name: %s", original_name
             )
             final_collection = self.chroma_client.create_collection(
                 name=original_name, metadata=hnsw_metadata
             )
 
             if doc_count > 0:
-                logger.info(f"Migrating documents from temp to final collection")
+                logger.info("Migrating documents from temp to final collection")
                 temp_docs = new_collection.get(
                     include=["documents", "embeddings", "metadatas"]
                 )
@@ -956,10 +1001,11 @@ class VectorEngine:
                     f"Final collection count mismatch: expected {doc_count}, got {final_count}"
                 )
             logger.info(
-                f"Final collection verified: {final_count} documents match expected count"
+                "Final collection verified: %d documents match expected count",
+                final_count,
             )
 
-            logger.info(f"Deleting temporary collection: {new_collection.name}")
+            logger.info("Deleting temporary collection: %s", new_collection.name)
             self.chroma_client.delete_collection(name=new_collection.name)
 
             logger.info("Swapping collection reference to final collection")
@@ -967,7 +1013,7 @@ class VectorEngine:
 
             elapsed_seconds = time.perf_counter() - start_time
             logger.info(
-                f"Migration complete: {doc_count} docs in {elapsed_seconds:.2f}s"
+                "Migration complete: %d docs in %.2fs", doc_count, elapsed_seconds
             )
 
             new_hnsw_config = self.get_hnsw_config()
@@ -985,7 +1031,7 @@ class VectorEngine:
             }
 
         except Exception as e:
-            logger.error(f"Migration failed: {e}")
+            logger.error("Migration failed: %s", e, exc_info=True)
             try:
                 if new_collection is not None:
                     self.chroma_client.delete_collection(name=new_collection.name)

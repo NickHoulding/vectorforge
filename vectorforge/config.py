@@ -161,6 +161,30 @@ class VFGConfig:
     """
 
     # =============================================================================
+    # Logging Configuration
+    # =============================================================================
+
+    LOG_LEVEL: int = getattr(
+        __import__("logging"), os.getenv("VF_LOG_LEVEL", "INFO").upper(), 20
+    )
+    """Logging level (DEBUG=10, INFO=20, WARNING=30, ERROR=40). Configurable via VF_LOG_LEVEL."""
+
+    LOG_FILE: str = os.getenv("VF_LOG_FILE", ".logs/vectorforge.log")
+    """Path to rotating log file. Configurable via VF_LOG_FILE."""
+
+    LOG_JSON_CONSOLE: bool = os.getenv("VF_LOG_JSON_CONSOLE", "false").lower() == "true"
+    """Output JSON format to console instead of human-readable. Configurable via VF_LOG_JSON_CONSOLE."""
+
+    LOG_MAX_TEXT_LEN: int = int(os.getenv("VF_LOG_MAX_TEXT_LEN", "100"))
+    """Maximum characters for text values logged (truncation limit). Configurable via VF_LOG_MAX_TEXT_LEN."""
+
+    LOG_MAX_BYTES: int = int(os.getenv("VF_LOG_MAX_BYTES", str(10 * 1024 * 1024)))
+    """Maximum size per log file before rotation in bytes. Configurable via VF_LOG_MAX_BYTES."""
+
+    LOG_BACKUP_COUNT: int = int(os.getenv("VF_LOG_BACKUP_COUNT", "5"))
+    """Number of rotated log file backups to keep. Configurable via VF_LOG_BACKUP_COUNT."""
+
+    # =============================================================================
     # Configuration Class Validator
     # =============================================================================
 

@@ -1,5 +1,6 @@
 """Text extraction and chunking utilities for document pre-processing."""
 
+import logging
 from typing import cast
 
 import fitz
@@ -7,6 +8,8 @@ from fastapi import UploadFile
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from vectorforge.config import VFGConfig
+
+logger = logging.getLogger(__name__)
 
 
 def extract_pdf(content: bytes) -> str:
@@ -29,7 +32,7 @@ def extract_pdf(content: bytes) -> str:
     """
     with fitz.open(stream=content, filetype="pdf") as doc:
         pages: list[str] = [cast(str, page.get_text("text")) for page in doc]
-
+        logger.debug("extract_pdf: pages=%d", len(pages))
         return "\n\n".join(pages)
 
 
@@ -58,6 +61,7 @@ async def extract_file_content(file: UploadFile) -> str:
     if not file.filename:
         file.filename = ""
 
+    logger.debug("extract_file_content: filename=%s", file.filename)
     content: bytes = await file.read()
     text: str = ""
 
@@ -70,6 +74,7 @@ async def extract_file_content(file: UploadFile) -> str:
             f"Unsupported file type: {file.filename}. Supported types: {VFGConfig.SUPPORTED_FILE_EXTENSIONS}"
         )
 
+    logger.info("extract_file_content: filename=%s chars=%d", file.filename, len(text))
     return text
 
 
@@ -110,4 +115,11 @@ def chunk_text(
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=overlap
     )
-    return splitter.split_text(text=text)
+    chunks = splitter.split_text(text=text)
+    logger.debug(
+        "chunk_text: chunk_size=%d overlap=%d chunks=%d",
+        chunk_size,
+        overlap,
+        len(chunks),
+    )
+    return chunks

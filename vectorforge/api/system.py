@@ -1,5 +1,6 @@
 """Health check and metrics endpoints."""
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -19,6 +20,7 @@ from vectorforge.models import (
 )
 
 router: APIRouter = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/health")
@@ -64,6 +66,7 @@ async def readiness_check() -> dict[str, str | int]:
         }
 
     except Exception as e:
+        logger.error("Readiness check failed: %s", e, exc_info=True)
         raise HTTPException(status_code=503, detail=f"Service not ready: {str(e)}")
 
 

@@ -55,9 +55,7 @@ class MCPConfig:
     LOG_LEVEL: int = getattr(logging, _LOG_LEVEL_STR, logging.INFO)
     """Logging verbosity level for the MCP server process."""
 
-    LOG_FILE: str = os.environ.get(
-        "VF_LOG_FILE", ".logs/vectorforge_mcp/mcp_server.log"
-    )
+    LOG_FILE: str = os.environ.get("VF_LOG_FILE", ".logs/vectorforge_mcp.log")
     """Path to log file (relative or absolute)."""
 
     LOG_JSON_CONSOLE: bool = (

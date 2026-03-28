@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from vectorforge import __version__
 from vectorforge.collection_manager import CollectionManager
-from vectorforge.logging_config import configure_logging
+from vectorforge.logging import configure_logging
 
 configure_logging()
 

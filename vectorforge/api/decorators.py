@@ -42,25 +42,28 @@ def handle_api_errors(func: F) -> F:
             raise
 
         except FileNotFoundError as e:
-            logger.warning(f"FileNotFoundError: {e}")
+            logger.warning("FileNotFoundError in %s: %s", func.__name__, e)
             raise HTTPException(status_code=404, detail=f"Resource not found: {str(e)}")
 
         except ValueError as e:
-            logger.warning(f"ValueError: {e}")
+            logger.warning("ValueError in %s: %s", func.__name__, e)
             raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
 
         except TypeError as e:
-            logger.warning(f"TypeError: {e}")
+            logger.warning("TypeError in %s: %s", func.__name__, e)
             raise HTTPException(status_code=422, detail=f"Invalid type: {str(e)}")
 
         except RuntimeError as e:
             error_msg = str(e)
             if "already in progress" in error_msg.lower():
                 raise HTTPException(status_code=503, detail=error_msg)
+            logger.error(
+                "RuntimeError in %s: %s", func.__name__, error_msg, exc_info=True
+            )
             raise HTTPException(status_code=500, detail=error_msg)
 
         except Exception as e:
-            logger.error(f"Unexpected error in {func.__name__}: {e}")
+            logger.error("Unexpected error in %s: %s", func.__name__, e, exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
     @functools.wraps(func)
@@ -72,25 +75,28 @@ def handle_api_errors(func: F) -> F:
             raise
 
         except FileNotFoundError as e:
-            logger.warning(f"FileNotFoundError: {e}")
+            logger.warning("FileNotFoundError in %s: %s", func.__name__, e)
             raise HTTPException(status_code=404, detail=f"Resource not found: {str(e)}")
 
         except ValueError as e:
-            logger.warning(f"ValueError: {e}")
+            logger.warning("ValueError in %s: %s", func.__name__, e)
             raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
 
         except TypeError as e:
-            logger.warning(f"TypeError: {e}")
+            logger.warning("TypeError in %s: %s", func.__name__, e)
             raise HTTPException(status_code=422, detail=f"Invalid type: {str(e)}")
 
         except RuntimeError as e:
             error_msg = str(e)
             if "already in progress" in error_msg.lower():
                 raise HTTPException(status_code=503, detail=error_msg)
+            logger.error(
+                "RuntimeError in %s: %s", func.__name__, error_msg, exc_info=True
+            )
             raise HTTPException(status_code=500, detail=error_msg)
 
         except Exception as e:
-            logger.error(f"Unexpected error in {func.__name__}: {e}")
+            logger.error("Unexpected error in %s: %s", func.__name__, e, exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 
     if inspect.iscoroutinefunction(func):

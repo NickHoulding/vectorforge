@@ -2,10 +2,13 @@
 
 import logging
 
+from dotenv import load_dotenv
+
 from vectorforge_mcp.config import MCPConfig
 from vectorforge_mcp.logging import configure_logging
 
 logger = logging.getLogger(__name__)
+load_dotenv()
 
 
 def main() -> None:
