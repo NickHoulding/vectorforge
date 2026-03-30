@@ -1,6 +1,7 @@
 """VectorForge API Initialization"""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from vectorforge import __version__
 from vectorforge.collection_manager import CollectionManager
@@ -12,6 +13,13 @@ app: FastAPI = FastAPI(
     title="VectorForge API",
     version=__version__,
     description="High-performance vector database with semantic search and multi-collection support",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 manager: CollectionManager = CollectionManager()
