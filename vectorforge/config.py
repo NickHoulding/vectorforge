@@ -11,21 +11,29 @@ class VFGConfig:
     """
 
     # =============================================================================
-    # Model Configuration
+    # Models Configuration
     # =============================================================================
 
-    MODEL_NAME: str = os.getenv("VF_MODEL_NAME", "all-MiniLM-L6-v2")
+    EMBEDDING_MODEL_NAME: str = os.getenv("VF_MODEL_NAME", "all-MiniLM-L6-v2")
     """Sentence transformer model for generating embeddings."""
 
     EMBEDDING_DIMENSION: int = int(os.getenv("VF_EMBEDDING_DIMENSION", "384"))
     """Dimension of the embedding vectors (specific to all-MiniLM-L6-v2)."""
+
+    RERANKING_MODEL_NAME: str = os.getenv(
+        "VF_RERANKING_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    )
+    """Cross-encoder model used to re-score and reorder search results."""
+
+    SHOULD_RERANK: bool = bool(os.getenv("VF_SHOULD_RERANK", "True"))
+    """Whether to apply cross-encoder reranking to search results by default."""
 
     # =============================================================================
     # Storage Configuration
     # =============================================================================
 
     MAX_PATH_LEN: int = int(os.getenv("VF_MAX_PATH_LEN", "4096"))
-    """Maximum valid path length for save/load functionality"""
+    """Maximum valid path length for save/load functionality."""
 
     MAX_FILENAME_LENGTH: int = int(os.getenv("VF_MAX_FILENAME_LENGTH", "255"))
     """Maximum filename length (including extension)."""
@@ -71,6 +79,15 @@ class VFGConfig:
 
     MAX_TOP_K: int = int(os.getenv("VF_MAX_TOP_K", "100"))
     """Maximum value for top_k parameter."""
+
+    DEFAULT_TOP_N: int = int(os.getenv("VF_DEFAULT_TOP_N", "5"))
+    """Default number of reranked results to return after cross-encoder scoring."""
+
+    MIN_TOP_N: int = int(os.getenv("VF_MIN_TOP_N", "1"))
+    """Minimum value for the top_n reranking parameter."""
+
+    MAX_TOP_N: int = int(os.getenv("VF_MAX_TOP_N", "100"))
+    """Maximum value for the top_n reranking parameter."""
 
     VALID_FILTER_OPERATORS: frozenset[str] = frozenset(["$gte", "$lte", "$in", "$ne"])
     """Permitted operators for metadata search filters."""
@@ -195,15 +212,23 @@ class VFGConfig:
         Raises:
             ValueError: If any field has the wrong type or an out-of-range value.
         """
-        if not isinstance(cls.MODEL_NAME, str):
+        if not isinstance(cls.EMBEDDING_MODEL_NAME, str):
             raise ValueError("MODEL_NAME must be a string")
-        if len(cls.MODEL_NAME) == 0:
+        if len(cls.EMBEDDING_MODEL_NAME) == 0:
             raise ValueError("MODEL_NAME cannot be empty")
 
         if not isinstance(cls.EMBEDDING_DIMENSION, int):
             raise ValueError("EMBEDDING_DIMENSION must be an int")
         if cls.EMBEDDING_DIMENSION <= 0:
             raise ValueError("EMBEDDING_DIMENSION must be > 0")
+
+        if not isinstance(cls.RERANKING_MODEL_NAME, str):
+            raise ValueError("RERANKING_MODEL_NAME must be a string")
+        if len(cls.RERANKING_MODEL_NAME) == 0:
+            raise ValueError("RERANKING_MODEL_NAME cannot be empty")
+
+        if not isinstance(cls.SHOULD_RERANK, bool):
+            raise ValueError("SHOULD_RERANK must be a bool")
 
         if not isinstance(cls.MAX_PATH_LEN, int):
             raise ValueError("MAX_PATH_LEN must be an int")
@@ -271,6 +296,25 @@ class VFGConfig:
             raise ValueError("MAX_TOP_K must be > 0")
         if cls.MAX_TOP_K < cls.MIN_TOP_K:
             raise ValueError("MAX_TOP_K must be >= MIN_TOP_K")
+
+        if not isinstance(cls.MIN_TOP_N, int):
+            raise ValueError("MIN_TOP_N must be an int")
+        if cls.MIN_TOP_N <= 0:
+            raise ValueError("MIN_TOP_N must be > 0")
+
+        if not isinstance(cls.MAX_TOP_N, int):
+            raise ValueError("MAX_TOP_N must be an int")
+        if cls.MAX_TOP_N <= 0:
+            raise ValueError("MAX_TOP_N must be > 0")
+        if cls.MAX_TOP_N < cls.MIN_TOP_N:
+            raise ValueError("MAX_TOP_N must be >= MIN_TOP_N")
+
+        if not isinstance(cls.DEFAULT_TOP_N, int):
+            raise ValueError("DEFAULT_TOP_N must be an int")
+        if cls.DEFAULT_TOP_N <= 0:
+            raise ValueError("DEFAULT_TOP_N must be > 0")
+        if not (cls.MIN_TOP_N <= cls.DEFAULT_TOP_N <= cls.MAX_TOP_N):
+            raise ValueError("DEFAULT_TOP_N must be between MIN_TOP_N and MAX_TOP_N")
 
         if not isinstance(cls.MAX_QUERY_HISTORY, int):
             raise ValueError("MAX_QUERY_HISTORY must be an int")

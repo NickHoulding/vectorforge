@@ -29,7 +29,7 @@ def check_health() -> dict[str, Any]:
     """Verify the API is running and return basic health information.
 
     Returns:
-        Dictionary with status, version, chromadb_heartbeat, and total_collections.
+        Dictionary containing status, version, chromadb_heartbeat, and total_collections.
     """
     default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
     heartbeat = default_engine.chroma_client.heartbeat()
@@ -62,7 +62,7 @@ async def readiness_check() -> dict[str, str | int]:
         return {
             "status": "ready",
             "documents": doc_count,
-            "model": default_engine.model_name,
+            "model": default_engine.embedding_model_name,
         }
 
     except Exception as e:

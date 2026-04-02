@@ -24,7 +24,11 @@ from vectorforge.config import VFGConfig
 
 @pytest.fixture
 def metrics(client):
-    """Reusable fixture returning index metrics."""
+    """Fetch and return the metrics response body for the default collection.
+
+    Returns:
+        Parsed JSON response from GET /collections/vectorforge/metrics.
+    """
     resp = client.get("/collections/vectorforge/metrics")
     assert resp.status_code == 200
     return resp.json()
@@ -543,7 +547,7 @@ def test_metrics_usage_counters_are_cumulative(client):
 def test_metrics_model_name_is_correct(client):
     """Test that model_name matches the configured model."""
     metrics = client.get("/collections/vectorforge/metrics").json()
-    assert metrics["system"]["model_name"] == VFGConfig.MODEL_NAME
+    assert metrics["system"]["model_name"] == VFGConfig.EMBEDDING_MODEL_NAME
 
 
 def test_metrics_model_dimension_is_correct(client):

@@ -16,7 +16,7 @@ import chromadb
 import numpy as np
 from chromadb.api import ClientAPI
 from chromadb.api.types import Metadata, WhereDocument
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from vectorforge import __version__
 from vectorforge.config import VFGConfig
@@ -117,9 +117,10 @@ class VectorEngine:
 
     Attributes:
         collection: ChromaDB collection storing documents and embeddings.
-        model: Loaded SentenceTransformer model instance (shared across collections).
-        chroma_client: ChromaDB PersistentClient for database operations.
-        model_name: Name of the sentence transformer model being used.
+        embedding_model: Shared SentenceTransformer model instance.
+        reranking_model: Shared CrossEncoder model instance for result reranking.
+        chroma_client: ChromaDB client for database operations.
+        embedding_model_name: Name of the sentence transformer model being used.
         metrics: EngineMetrics instance tracking usage and performance.
 
     Example:
@@ -132,8 +133,9 @@ class VectorEngine:
 
     __slots__ = (
         "collection",
-        "model_name",
-        "model",
+        "embedding_model_name",
+        "embedding_model",
+        "reranking_model",
         "chroma_client",
         "metrics",
         "migration_in_progress",
@@ -145,23 +147,26 @@ class VectorEngine:
     def __init__(
         self,
         collection: chromadb.Collection,
-        model: SentenceTransformer,
+        embedding_model: SentenceTransformer,
+        reranking_model: CrossEncoder,
         chroma_client: ClientAPI,
     ) -> None:
         """Initialize the VectorEngine for a specific collection.
 
         Args:
-            collection: ChromaDB collection to operate on
-            model: Shared SentenceTransformer model
-            chroma_client: ChromaDB client for HNSW migration operations
+            collection: ChromaDB collection to operate on.
+            embedding_model: Shared SentenceTransformer model for generating embeddings.
+            reranking_model: CrossEncoder model for re-scoring search results.
+            chroma_client: ChromaDB client used for HNSW migration operations.
 
         Note:
             This constructor is called by CollectionManager, not directly. For
             multi-collection support, use CollectionManager.get_engine() instead.
         """
         self.collection = collection
-        self.model_name: str = VFGConfig.MODEL_NAME
-        self.model: SentenceTransformer = model
+        self.embedding_model_name: str = VFGConfig.EMBEDDING_MODEL_NAME
+        self.embedding_model: SentenceTransformer = embedding_model
+        self.reranking_model: CrossEncoder = reranking_model
         self.chroma_client = chroma_client
         self.migration_in_progress: bool = False
 
@@ -213,9 +218,52 @@ class VectorEngine:
             last_file_uploaded_at=row.get("last_file_uploaded_at"),
         )
 
+    def _sigmoid(self, score: float) -> float:
+        """Map a raw cross-encoder logit to a [0, 1] similarity score.
+
+        Args:
+            score: Raw logit output from the CrossEncoder model.
+
+        Returns:
+            Float in (0, 1) representing the normalised relevance score.
+        """
+        return float(1 / (1 + np.exp(-score)))
+
+    def _rerank(
+        self,
+        query: str,
+        iteration_data: list[SearchResult],
+        top_n: int = VFGConfig.DEFAULT_TOP_N,
+    ) -> list[SearchResult]:
+        """Re-score and re-order results using the cross-encoder reranking model.
+
+        Runs each (query, document) pair through the CrossEncoder, converts the
+        raw logit to a sigmoid score, sorts descending by score, and returns the
+        top ``top_n`` results.
+
+        Args:
+            query: The original search query string.
+            iteration_data: Candidate results from the initial vector search.
+            top_n: Maximum number of results to return after reranking.
+
+        Returns:
+            Reranked list of up to ``top_n`` SearchResult objects, sorted by
+            descending cross-encoder score.
+        """
+        pairs = [(query, doc.content) for doc in iteration_data]
+        scores = self.reranking_model.predict(pairs)
+
+        for i in range(len(scores)):
+            iteration_data[i].score = self._sigmoid(scores[i])
+
+        return sorted(iteration_data, key=lambda result: result.score, reverse=True)[
+            :top_n
+        ]
+
     def search(
         self,
         query: str,
+        rerank: bool = VFGConfig.SHOULD_RERANK,
         top_k: int = VFGConfig.DEFAULT_TOP_K,
         filters: dict[str, Any] | None = None,
         document_filter: WhereDocument | None = None,
@@ -262,7 +310,7 @@ class VectorEngine:
             self._update_query_metrics(elapsed_ms)
             return []
 
-        query_embedding: np.ndarray = self.model.encode(
+        query_embedding: np.ndarray = self.embedding_model.encode(
             sentences=query, convert_to_numpy=True
         )
         normalized_query_embedding: np.ndarray = query_embedding / np.linalg.norm(
@@ -284,40 +332,37 @@ class VectorEngine:
             include=["documents", "metadatas", "distances"],
         )
 
-        ids = results.get("ids")
-        documents = results.get("documents")
-        metadatas = results.get("metadatas")
-        distances = results.get("distances")
+        ids_list = results["ids"]
+        documents_list = results["documents"]
+        metadatas_list = results["metadatas"]
+        distances_list = results["distances"]
+
+        if documents_list is None or metadatas_list is None or distances_list is None:
+            return []
 
         search_results: list[SearchResult] = []
-        if (
-            ids
-            and documents
-            and metadatas
-            and distances
-            and len(ids) > 0
-            and len(ids[0]) > 0
+        for ids, documents, metadatas, distances in zip(
+            ids_list, documents_list, metadatas_list, distances_list
         ):
-            ids_list = ids[0]
-            docs_list = documents[0]
-            meta_list = metadatas[0]
-            dist_list = distances[0]
-
-            for i in range(len(ids_list)):
-                doc_id = ids_list[i]
-                content = docs_list[i]
-                metadata = meta_list[i] or {}
-                distance = dist_list[i]
-                score = 1.0 - distance
-
-                search_results.append(
-                    SearchResult(
-                        id=doc_id,
-                        content=content,
-                        metadata=dict(metadata) if metadata else {},
-                        score=score,
-                    )
+            iteration_data = [
+                SearchResult(
+                    id=doc_id,
+                    content=doc,
+                    metadata=dict(meta) if meta is not None else None,
+                    score=max(0.0, 1.0 - float(distance)),
                 )
+                for doc_id, doc, meta, distance in zip(
+                    ids, documents, metadatas, distances
+                )
+            ]
+
+            if rerank:
+                iteration_data = self._rerank(
+                    query, iteration_data, top_n=len(documents)
+                )
+
+            for result in iteration_data:
+                search_results.append(result)
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         self._update_query_metrics(elapsed_ms)
@@ -454,7 +499,9 @@ class VectorEngine:
             metadatas.append(metadata)
 
         doc_ids: list[str] = [str(uuid.uuid4()) for _ in contents]
-        embeddings: np.ndarray = self.model.encode(contents, convert_to_numpy=True)
+        embeddings: np.ndarray = self.embedding_model.encode(
+            contents, convert_to_numpy=True
+        )
         norms: np.ndarray = np.linalg.norm(embeddings, axis=1, keepdims=True)
         normalized: np.ndarray = embeddings / norms
 
@@ -644,7 +691,9 @@ class VectorEngine:
         min_time: float | None = min(sorted_times) if sorted_times else None
         max_time: float | None = max(sorted_times) if sorted_times else None
 
-        embedding_dim: int = self.model.get_sentence_embedding_dimension() or 0
+        embedding_dim: int = (
+            self.embedding_model.get_sentence_embedding_dimension() or 0
+        )
 
         created: datetime = datetime.fromisoformat(self.metrics.lifetime_created_at)
         uptime: float = (datetime.now(timezone.utc) - created).total_seconds()
@@ -661,7 +710,7 @@ class VectorEngine:
                 "p95_query_time_ms": p95,
                 "p99_query_time_ms": p99,
                 # System metrics
-                "model_name": self.model_name,
+                "model_name": self.embedding_model_name,
                 "model_dimension": embedding_dim,
                 "uptime_seconds": uptime,
                 "version": __version__,
@@ -682,7 +731,8 @@ class VectorEngine:
 
         return {
             "total_documents": total_docs,
-            "embedding_dimension": self.model.get_sentence_embedding_dimension() or 0,
+            "embedding_dimension": self.embedding_model.get_sentence_embedding_dimension()
+            or 0,
         }
 
     def _update_query_metrics(self, elapsed_ms: float) -> None:
@@ -797,7 +847,7 @@ class VectorEngine:
         approximate nearest neighbor search algorithm.
 
         Returns:
-            dict: HNSW configuration with the following keys:
+            Dictionary containing HNSW configuration keys:
                 - space: Distance metric (e.g., 'cosine', 'l2', 'ip')
                 - ef_construction: Construction-time search parameter
                 - ef_search: Query-time search parameter
@@ -860,9 +910,8 @@ class VectorEngine:
                 the old collection is deleted (i.e. during temp population).
 
         Example:
-            result = engine.update_hnsw_config({"ef_search": 150})
-            print(f"Migrated {result['migration']['documents_migrated']} docs")
-            print(f"Temp verified: {result['migration']['temp_verified']}")
+            >>> result = engine.update_hnsw_config({"ef_search": 150})
+            >>> print(f"Migrated {result['migration']['documents_migrated']} docs")
         """
         if self.migration_in_progress:
             raise RuntimeError("HNSW configuration migration already in progress")

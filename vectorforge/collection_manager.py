@@ -13,7 +13,7 @@ from typing import Any
 
 import chromadb
 import chromadb.errors
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from vectorforge.config import VFGConfig
 from vectorforge.models.collections import CollectionInfo
@@ -42,7 +42,8 @@ class CollectionManager:
     __slots__ = (
         "chroma_path",
         "chroma_client",
-        "model",
+        "embedding_model",
+        "reranking_model",
         "_engine_cache",
         "_cache_lock",
     )
@@ -62,8 +63,18 @@ class CollectionManager:
 
         self.chroma_path: str = chroma_path
         self.chroma_client = chromadb.PersistentClient(path=chroma_path)
-        logger.info("Loading shared model: %s", VFGConfig.MODEL_NAME)
-        self.model: SentenceTransformer = SentenceTransformer(VFGConfig.MODEL_NAME)
+        logger.info(
+            "Loading shared embedding model: %s", VFGConfig.EMBEDDING_MODEL_NAME
+        )
+        self.embedding_model: SentenceTransformer = SentenceTransformer(
+            VFGConfig.EMBEDDING_MODEL_NAME
+        )
+        logger.info(
+            "Loading shared re-ranking model: %s", VFGConfig.EMBEDDING_MODEL_NAME
+        )
+        self.reranking_model: CrossEncoder = CrossEncoder(
+            VFGConfig.RERANKING_MODEL_NAME
+        )
         self._engine_cache: dict[str, VectorEngine] = {}
         self._cache_lock = Lock()
 
@@ -164,7 +175,8 @@ class CollectionManager:
             logger.info("Creating new engine for collection: %s", collection_name)
             engine = VectorEngine(
                 collection=collection,
-                model=self.model,
+                embedding_model=self.embedding_model,
+                reranking_model=self.reranking_model,
                 chroma_client=self.chroma_client,
             )
 

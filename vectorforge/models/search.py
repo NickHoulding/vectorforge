@@ -16,7 +16,8 @@ class SearchQuery(BaseModel):
 
     Attributes:
         query: The search text to find semantically similar documents.
-        top_k: Maximum number of results to return (1-100, default: 10).
+        top_k: Maximum number of results to return.
+        rerank: Boolean flag for search result re-ranking.
         filters: Optional metadata filters as key-value pairs for narrowing results.
         document_filter: Optional document-text filter using ``$contains`` or
             ``$not_contains``, e.g. ``{"$contains": "machine learning"}``.
@@ -27,6 +28,7 @@ class SearchQuery(BaseModel):
             "example": {
                 "query": "What is machine learning?",
                 "top_k": 5,
+                "rerank": True,
                 "filters": {"source_file": "textbook.pdf"},
             }
         }
@@ -43,6 +45,10 @@ class SearchQuery(BaseModel):
         ge=VFGConfig.MIN_TOP_K,
         le=VFGConfig.MAX_TOP_K,
         description="Number of results to return",
+    )
+    rerank: bool = Field(
+        default=VFGConfig.SHOULD_RERANK,
+        description="Optional flag to enable search result re-ranking",
     )
     filters: dict[str, Any] | None = Field(
         default=None, description="Optional metadata filters"

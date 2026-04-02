@@ -2,6 +2,7 @@
 
 Provides:
 - ``shared_model``: session-scoped SentenceTransformer, loaded once per run
+- ``reranking_model``: session-scoped CrossEncoder, loaded once per run
 - ``make_ephemeral_engine``: factory for fresh in-memory VectorEngine instances
 - ``engine_small``, ``engine_medium``, ``engine_large``: pre-populated engines
 - ``empty_engine``: empty in-memory engine
@@ -24,7 +25,7 @@ import chromadb
 import numpy as np
 import pytest
 from faker import Faker
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from vectorforge.config import VFGConfig
 from vectorforge.vector_engine import VectorEngine
@@ -127,7 +128,7 @@ def _bulk_populate(
     metadatas = [d["metadata"] for d in docs]
     ids = [str(uuid.uuid4()) for _ in docs]
 
-    embeddings: np.ndarray = engine.model.encode(
+    embeddings: np.ndarray = engine.embedding_model.encode(
         contents, convert_to_numpy=True, show_progress_bar=False
     )
     norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
@@ -156,7 +157,17 @@ def shared_model() -> SentenceTransformer:
     Returns:
         Loaded SentenceTransformer model.
     """
-    return SentenceTransformer(VFGConfig.MODEL_NAME)
+    return SentenceTransformer(VFGConfig.EMBEDDING_MODEL_NAME)
+
+
+@pytest.fixture(scope="session")
+def reranking_model() -> CrossEncoder:
+    """Load the cross-encoder reranking model once for the entire benchmark session.
+
+    Returns:
+        Loaded CrossEncoder model.
+    """
+    return CrossEncoder(VFGConfig.RERANKING_MODEL_NAME)
 
 
 # ============================================================================
@@ -167,6 +178,7 @@ def shared_model() -> SentenceTransformer:
 @pytest.fixture
 def make_ephemeral_engine(
     shared_model: SentenceTransformer,
+    reranking_model: CrossEncoder,
 ) -> Callable[[], VectorEngine]:
     """Provide a factory that creates fresh in-memory VectorEngine instances.
 
@@ -174,12 +186,18 @@ def make_ephemeral_engine(
 
     Args:
         shared_model: Session-scoped SentenceTransformer model.
+        reranking_model: Session-scoped CrossEncoder model.
 
     Returns:
         Zero-argument callable that returns a new empty VectorEngine each call.
     """
 
     def _factory() -> VectorEngine:
+        """Create and return a fresh empty VectorEngine backed by an EphemeralClient.
+
+        Returns:
+            Empty VectorEngine using an in-memory ChromaDB collection.
+        """
         client = chromadb.EphemeralClient()
         collection = client.get_or_create_collection(
             name=VFGConfig.DEFAULT_COLLECTION_NAME,
@@ -187,7 +205,8 @@ def make_ephemeral_engine(
         )
         return VectorEngine(
             collection=collection,
-            model=shared_model,
+            embedding_model=shared_model,
+            reranking_model=reranking_model,
             chroma_client=client,
         )
 

@@ -1,4 +1,4 @@
-"""Tests for the VectorEngine class"""
+"""Tests for the VectorEngine class."""
 
 import time
 import uuid
@@ -27,10 +27,10 @@ def test_vector_engine_initialization(vector_engine):
 
 def test_vector_engine_loads_model(vector_engine):
     """Test that VectorEngine loads the sentence transformer model."""
-    assert vector_engine.model is not None
-    assert vector_engine.model_name == VFGConfig.MODEL_NAME
+    assert vector_engine.embedding_model is not None
+    assert vector_engine.embedding_model_name == VFGConfig.EMBEDDING_MODEL_NAME
     assert (
-        vector_engine.model.get_sentence_embedding_dimension()
+        vector_engine.embedding_model.get_sentence_embedding_dimension()
         == VFGConfig.EMBEDDING_DIMENSION
     )
 
@@ -488,7 +488,7 @@ def test_search_returns_list(vector_engine):
     """Test that search returns a list of results."""
     vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
 
-    results = vector_engine.search("test")
+    results = vector_engine.search("test", rerank=False)
 
     assert isinstance(results, list)
 
@@ -499,7 +499,7 @@ def test_search_returns_correct_structure(vector_engine):
         [{"content": "Test document", "metadata": {"key": "value"}}]
     )[0]
 
-    results = vector_engine.search("test")
+    results = vector_engine.search("test", rerank=False)
 
     assert len(results) > 0
     result = results[0]
@@ -514,7 +514,7 @@ def test_search_respects_top_k(vector_engine):
     for i in range(20):
         vector_engine.add_docs([{"content": f"Document number {i}", "metadata": {}}])[0]
 
-    results = vector_engine.search("document", top_k=5)
+    results = vector_engine.search("document", rerank=False, top_k=5)
 
     assert len(results) == 5
 
@@ -526,9 +526,9 @@ def test_search_excludes_deleted_documents(vector_engine):
     )[0]
     vector_engine.add_docs([{"content": "Other content", "metadata": {}}])[0]
 
-    results_before = vector_engine.search("unique searchable")
+    results_before = vector_engine.search("unique searchable", rerank=False)
     vector_engine.delete_docs([doc_id])
-    results_after = vector_engine.search("unique searchable")
+    results_after = vector_engine.search("unique searchable", rerank=False)
 
     doc_ids_before = [r.id for r in results_before]
     assert doc_id in doc_ids_before
@@ -544,7 +544,7 @@ def test_search_results_sorted_by_score(vector_engine):
             [{"content": f"Document with varying content topic {i}", "metadata": {}}]
         )[0]
 
-    results = vector_engine.search("document content")
+    results = vector_engine.search("document content", rerank=False)
 
     scores = [r.score for r in results]
     assert scores == sorted(scores, reverse=True)
@@ -553,7 +553,7 @@ def test_search_results_sorted_by_score(vector_engine):
 def test_search_with_empty_index(vector_engine):
     """Test that search on empty index returns empty list."""
 
-    results = vector_engine.search("test query")
+    results = vector_engine.search("test query", rerank=False)
 
     assert results == []
 
@@ -563,7 +563,7 @@ def test_search_updates_metrics(vector_engine):
     vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
     initial_queries = vector_engine.metrics.total_queries
 
-    vector_engine.search("test")
+    vector_engine.search("test", rerank=False)
 
     assert vector_engine.metrics.total_queries == initial_queries + 1
 
@@ -573,7 +573,7 @@ def test_search_tracks_query_time(vector_engine):
     vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
     initial_time = vector_engine.metrics.total_query_time_ms
 
-    vector_engine.search("test")
+    vector_engine.search("test", rerank=False)
 
     assert vector_engine.metrics.total_query_time_ms > initial_time
     assert len(vector_engine.metrics.query_times) == 1
@@ -584,7 +584,7 @@ def test_search_with_default_top_k(vector_engine):
     for i in range(20):
         vector_engine.add_docs([{"content": f"Document {i}", "metadata": {}}])[0]
 
-    results = vector_engine.search("document")
+    results = vector_engine.search("document", rerank=False)
 
     assert len(results) == VFGConfig.DEFAULT_TOP_K
 
@@ -596,7 +596,7 @@ def test_search_similarity_scores_in_range(vector_engine):
             0
         ]
 
-    results = vector_engine.search("document")
+    results = vector_engine.search("document", rerank=False)
 
     for result in results:
         assert 0.0 <= result.score <= 1.0
@@ -607,7 +607,7 @@ def test_search_with_whitespace_only_query_raises_error(vector_engine):
     vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
 
     with pytest.raises(ValueError, match="cannot be empty"):
-        vector_engine.search("   ")
+        vector_engine.search("   ", rerank=False)
 
 
 def test_search_returns_empty_list_when_all_deleted(vector_engine):
@@ -618,7 +618,7 @@ def test_search_returns_empty_list_when_all_deleted(vector_engine):
     vector_engine.delete_docs([doc_id1])
     vector_engine.delete_docs([doc_id2])
 
-    results = vector_engine.search("document")
+    results = vector_engine.search("document", rerank=False)
 
     assert results == []
 
@@ -628,7 +628,7 @@ def test_search_top_k_larger_than_available(vector_engine):
     vector_engine.add_docs([{"content": "Document 1", "metadata": {}}])[0]
     vector_engine.add_docs([{"content": "Document 2", "metadata": {}}])[0]
 
-    results = vector_engine.search("document", top_k=100)
+    results = vector_engine.search("document", rerank=False, top_k=100)
 
     assert len(results) == 2
 
@@ -666,7 +666,7 @@ def test_search_filter_by_source_file(vector_engine):
     )[0]
 
     results = vector_engine.search(
-        "tutorial", top_k=10, filters={"source_file": "python.pdf"}
+        "tutorial", rerank=False, top_k=10, filters={"source_file": "python.pdf"}
     )
 
     assert len(results) == 1
@@ -700,7 +700,9 @@ def test_search_filter_by_chunk_index(vector_engine):
         ]
     )[0]
 
-    results = vector_engine.search("content", top_k=10, filters={"chunk_index": 1})
+    results = vector_engine.search(
+        "content", rerank=False, top_k=10, filters={"chunk_index": 1}
+    )
 
     assert len(results) == 1
     assert results[0].metadata["chunk_index"] == 1
@@ -734,7 +736,10 @@ def test_search_filter_by_both_fields(vector_engine):
     )[0]
 
     results = vector_engine.search(
-        "doc chunk", top_k=10, filters={"source_file": "a.pdf", "chunk_index": 1}
+        "doc chunk",
+        rerank=False,
+        top_k=10,
+        filters={"source_file": "a.pdf", "chunk_index": 1},
     )
 
     assert len(results) == 1
@@ -783,6 +788,7 @@ def test_search_filter_and_logic(vector_engine):
 
     results = vector_engine.search(
         "programming",
+        rerank=False,
         top_k=10,
         filters={"source_file": "python.pdf", "topic": "programming"},
     )
@@ -804,7 +810,7 @@ def test_search_filter_no_matches(vector_engine):
     )[0]
 
     results = vector_engine.search(
-        "content", top_k=10, filters={"source_file": "missing.pdf"}
+        "content", rerank=False, top_k=10, filters={"source_file": "missing.pdf"}
     )
 
     assert len(results) == 0
@@ -822,7 +828,9 @@ def test_search_filter_custom_metadata(vector_engine):
         [{"content": "Article 3", "metadata": {"author": "Alice", "year": 2021}}]
     )[0]
 
-    results = vector_engine.search("article", top_k=10, filters={"author": "Alice"})
+    results = vector_engine.search(
+        "article", rerank=False, top_k=10, filters={"author": "Alice"}
+    )
 
     assert len(results) == 2
     for result in results:
@@ -838,7 +846,7 @@ def test_search_filter_none(vector_engine):
         [{"content": "Doc 2", "metadata": {"source_file": "b.pdf", "chunk_index": 0}}]
     )[0]
 
-    results = vector_engine.search("doc", top_k=10, filters=None)
+    results = vector_engine.search("doc", rerank=False, top_k=10, filters=None)
 
     assert len(results) == 2
 
@@ -852,7 +860,7 @@ def test_search_filter_empty_dict(vector_engine):
         [{"content": "Doc 2", "metadata": {"source_file": "b.pdf", "chunk_index": 0}}]
     )[0]
 
-    results = vector_engine.search("doc", top_k=10, filters={})
+    results = vector_engine.search("doc", rerank=False, top_k=10, filters={})
 
     assert len(results) == 2
 
@@ -869,13 +877,13 @@ def test_search_filter_case_sensitive(vector_engine):
     )[0]
 
     results = vector_engine.search(
-        "document", top_k=10, filters={"source_file": "doc.pdf"}
+        "document", rerank=False, top_k=10, filters={"source_file": "doc.pdf"}
     )
 
     assert len(results) == 0
 
     results = vector_engine.search(
-        "document", top_k=10, filters={"source_file": "Doc.pdf"}
+        "document", rerank=False, top_k=10, filters={"source_file": "Doc.pdf"}
     )
 
     assert len(results) == 1
@@ -1245,7 +1253,7 @@ def test_get_metrics_returns_dict(vector_engine):
 def test_get_metrics_includes_all_categories(vector_engine):
     """Test that get_metrics includes all metric categories."""
     vector_engine.add_docs([{"content": "Test", "metadata": {}}])[0]
-    vector_engine.search("test")
+    vector_engine.search("test", rerank=False)
 
     metrics = vector_engine.get_metrics()
 
@@ -1259,7 +1267,7 @@ def test_get_metrics_includes_all_categories(vector_engine):
 def test_get_metrics_includes_query_stats(vector_engine):
     """Test that metrics include query statistics."""
     vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
-    vector_engine.search("test")
+    vector_engine.search("test", rerank=False)
 
     metrics = vector_engine.get_metrics()
 
@@ -1295,7 +1303,7 @@ def test_get_metrics_includes_memory_stats(vector_engine):
 def test_get_metrics_includes_timestamps(vector_engine):
     """Test that metrics include timestamp information."""
     vector_engine.add_docs([{"content": "Test document", "metadata": {}}])[0]
-    vector_engine.search("test")
+    vector_engine.search("test", rerank=False)
 
     metrics = vector_engine.get_metrics()
 
@@ -1319,7 +1327,7 @@ def test_get_metrics_percentiles_with_few_queries(vector_engine):
     """Test that get_metrics handles percentile calculation with few data points."""
     vector_engine.add_docs([{"content": "Document", "metadata": {}}])[0]
 
-    vector_engine.search("test")
+    vector_engine.search("test", rerank=False)
 
     metrics = vector_engine.get_metrics()
 
@@ -1446,12 +1454,12 @@ def test_add_search_delete_workflow(vector_engine):
         [{"content": "Python snake species", "metadata": {"topic": "nature"}}]
     )[0]
 
-    results = vector_engine.search("Python")
+    results = vector_engine.search("Python", rerank=False)
     assert len(results) == 3
 
     assert vector_engine.delete_docs([doc_id2]) == [doc_id2]
 
-    results = vector_engine.search("Python")
+    results = vector_engine.search("Python", rerank=False)
     assert len(results) == 2
 
     result_ids = [r.id for r in results]
@@ -1466,7 +1474,7 @@ def test_multiple_operations_metrics_accuracy(vector_engine):
         vector_engine.add_docs([{"content": f"Document {i}", "metadata": {}}])[0]
 
     for i in range(3):
-        vector_engine.search("document")
+        vector_engine.search("document", rerank=False)
 
     all_docs = vector_engine.collection.get()
     doc_ids = all_docs["ids"][:2]
@@ -1955,11 +1963,11 @@ def test_update_hnsw_config_preserves_search_functionality(vector_engine):
     vector_engine.add_docs([{"content": "Machine learning algorithms"}])[0]
     vector_engine.add_docs([{"content": "Data science and analytics"}])[0]
 
-    results_before = vector_engine.search("Python programming", top_k=3)
+    results_before = vector_engine.search("Python programming", rerank=False, top_k=3)
 
     vector_engine.update_hnsw_config({"ef_search": 200})
 
-    results_after = vector_engine.search("Python programming", top_k=3)
+    results_after = vector_engine.search("Python programming", rerank=False, top_k=3)
 
     assert len(results_before) == len(results_after)
     assert results_before[0].id == results_after[0].id
@@ -2023,14 +2031,19 @@ def test_update_hnsw_config_raises_if_already_in_progress(vector_engine):
 # =============================================================================
 
 
-def test_metrics_persist_after_engine_restart(shared_model, use_temp_chroma_dir):
+def test_metrics_persist_after_engine_restart(
+    shared_model, reranking_model, use_temp_chroma_dir
+):
     """Counters survive engine restart by loading from SQLite on re-init."""
     client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
     collection1 = client1.get_or_create_collection(
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine1 = VectorEngine(
-        collection=collection1, model=shared_model, chroma_client=client1
+        collection=collection1,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=client1,
     )
 
     engine1.add_docs(
@@ -2049,8 +2062,8 @@ def test_metrics_persist_after_engine_restart(shared_model, use_temp_chroma_dir)
             }
         ]
     )[0]
-    engine1.search("document")
-    engine1.search("first")
+    engine1.search("document", rerank=False)
+    engine1.search("first", rerank=False)
 
     assert engine1.metrics.docs_added == 2
     assert engine1.metrics.total_queries == 2
@@ -2062,7 +2075,10 @@ def test_metrics_persist_after_engine_restart(shared_model, use_temp_chroma_dir)
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine2 = VectorEngine(
-        collection=collection2, model=shared_model, chroma_client=client2
+        collection=collection2,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=client2,
     )
 
     assert engine2.metrics.docs_added == 2, "docs_added should survive restart"
@@ -2073,14 +2089,19 @@ def test_metrics_persist_after_engine_restart(shared_model, use_temp_chroma_dir)
     SharedSystemClient.clear_system_cache()
 
 
-def test_lifetime_created_at_persists_across_restart(shared_model, use_temp_chroma_dir):
+def test_lifetime_created_at_persists_across_restart(
+    shared_model, reranking_model, use_temp_chroma_dir
+):
     """lifetime_created_at from the first init is preserved after restart."""
     client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
     collection1 = client1.get_or_create_collection(
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine1 = VectorEngine(
-        collection=collection1, model=shared_model, chroma_client=client1
+        collection=collection1,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=client1,
     )
     original_created_at = engine1.metrics.lifetime_created_at
 
@@ -2091,7 +2112,10 @@ def test_lifetime_created_at_persists_across_restart(shared_model, use_temp_chro
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine2 = VectorEngine(
-        collection=collection2, model=shared_model, chroma_client=client2
+        collection=collection2,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=client2,
     )
 
     assert (
@@ -2101,18 +2125,23 @@ def test_lifetime_created_at_persists_across_restart(shared_model, use_temp_chro
     SharedSystemClient.clear_system_cache()
 
 
-def test_query_times_deque_is_session_scoped(shared_model, use_temp_chroma_dir):
+def test_query_times_deque_is_session_scoped(
+    shared_model, reranking_model, use_temp_chroma_dir
+):
     """query_times rolling window resets on restart; lifetime totals do not."""
     client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
     collection1 = client1.get_or_create_collection(
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine1 = VectorEngine(
-        collection=collection1, model=shared_model, chroma_client=client1
+        collection=collection1,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=client1,
     )
     engine1.add_docs([{"content": "Some content", "metadata": {}}])[0]
-    engine1.search("content")
-    engine1.search("content")
+    engine1.search("content", rerank=False)
+    engine1.search("content", rerank=False)
 
     assert len(engine1.metrics.query_times) == 2
     assert engine1.metrics.total_queries == 2
@@ -2126,7 +2155,10 @@ def test_query_times_deque_is_session_scoped(shared_model, use_temp_chroma_dir):
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine2 = VectorEngine(
-        collection=collection2, model=shared_model, chroma_client=client2
+        collection=collection2,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=client2,
     )
 
     assert (
@@ -2140,14 +2172,19 @@ def test_query_times_deque_is_session_scoped(shared_model, use_temp_chroma_dir):
     SharedSystemClient.clear_system_cache()
 
 
-def test_delete_metrics_persist_after_restart(shared_model, use_temp_chroma_dir):
+def test_delete_metrics_persist_after_restart(
+    shared_model, reranking_model, use_temp_chroma_dir
+):
     """docs_deleted and total_doc_size_bytes survive an engine restart."""
     client1 = chromadb.PersistentClient(path=use_temp_chroma_dir)
     collection1 = client1.get_or_create_collection(
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine1 = VectorEngine(
-        collection=collection1, model=shared_model, chroma_client=client1
+        collection=collection1,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=client1,
     )
     doc_id = engine1.add_docs([{"content": "Content to delete", "metadata": {}}])[0]
     engine1.delete_docs([doc_id])
@@ -2162,7 +2199,10 @@ def test_delete_metrics_persist_after_restart(shared_model, use_temp_chroma_dir)
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine2 = VectorEngine(
-        collection=collection2, model=shared_model, chroma_client=client2
+        collection=collection2,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=client2,
     )
 
     assert engine2.metrics.docs_added == 1, "docs_added should persist"
@@ -2175,7 +2215,7 @@ def test_delete_metrics_persist_after_restart(shared_model, use_temp_chroma_dir)
 
 
 def test_cumulative_metrics_accumulate_across_multiple_restarts(
-    shared_model, use_temp_chroma_dir
+    shared_model, reranking_model, use_temp_chroma_dir
 ):
     """Counters accumulate correctly across three successive engine restarts."""
     for session in range(3):
@@ -2185,10 +2225,13 @@ def test_cumulative_metrics_accumulate_across_multiple_restarts(
             name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
         )
         engine = VectorEngine(
-            collection=collection, model=shared_model, chroma_client=client
+            collection=collection,
+            embedding_model=shared_model,
+            reranking_model=reranking_model,
+            chroma_client=client,
         )
         engine.add_docs([{"content": f"Session {session} document", "metadata": {}}])[0]
-        engine.search("document")
+        engine.search("document", rerank=False)
 
     SharedSystemClient.clear_system_cache()
     final_client = chromadb.PersistentClient(path=use_temp_chroma_dir)
@@ -2196,7 +2239,10 @@ def test_cumulative_metrics_accumulate_across_multiple_restarts(
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     final_engine = VectorEngine(
-        collection=final_collection, model=shared_model, chroma_client=final_client
+        collection=final_collection,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=final_client,
     )
 
     assert final_engine.metrics.docs_added == 3, "3 docs across 3 sessions"

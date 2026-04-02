@@ -10,7 +10,7 @@ import pytest
 from chromadb.api.shared_system_client import SharedSystemClient
 from fastapi.testclient import TestClient
 from httpx import Response
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from vectorforge.api import app, manager
 from vectorforge.config import VFGConfig
@@ -50,6 +50,9 @@ def client() -> TestClient:
 
     Provides a FastAPI TestClient instance for making HTTP requests
     to the VectorForge API endpoints in tests.
+
+    Returns:
+        Configured TestClient wrapping the FastAPI app.
     """
     return TestClient(app)
 
@@ -66,6 +69,9 @@ def reset_engine() -> Generator[None, Any, None]:
     Also wipes the metrics.db row for the default collection so that
     lifetime-persistent counters start at zero for every test, matching
     the behaviour of a brand-new collection.
+
+    Yields:
+        None
     """
     default_engine = manager.get_engine(VFGConfig.DEFAULT_COLLECTION_NAME)
 
@@ -109,12 +115,24 @@ def shared_model() -> SentenceTransformer:
     Session-scoped fixture that loads the model once and reuses it across
     all vector engine tests. This significantly speeds up test execution.
     """
-    return SentenceTransformer(VFGConfig.MODEL_NAME)
+    return SentenceTransformer(VFGConfig.EMBEDDING_MODEL_NAME)
+
+
+@pytest.fixture(scope="session")
+def reranking_model() -> CrossEncoder:
+    """Load the cross-encoder reranking model once for all tests.
+
+    Session-scoped fixture that loads the model once and reuses it across
+    all vector engine tests. This significantly speeds up test execution.
+    """
+    return CrossEncoder(VFGConfig.RERANKING_MODEL_NAME)
 
 
 @pytest.fixture
 def vector_engine(
-    shared_model: SentenceTransformer, use_temp_chroma_dir: str
+    shared_model: SentenceTransformer,
+    reranking_model: CrossEncoder,
+    use_temp_chroma_dir: str,
 ) -> Generator[VectorEngine, Any, None]:
     """Create a fresh VectorEngine for each test with a pre-loaded model.
 
@@ -126,13 +144,24 @@ def vector_engine(
     PersistentClient's file handles are released promptly. Without this,
     each test leaks 3-4 file descriptors and the container's default ulimit
     of 1024 is exhausted after ~110 tests.
+
+    Args:
+        shared_model: Session-scoped SentenceTransformer, shared to avoid reloading.
+        reranking_model: Session-scoped CrossEncoder, shared to avoid reloading.
+        use_temp_chroma_dir: Path to the isolated temporary ChromaDB directory.
+
+    Yields:
+        Configured VectorEngine backed by a fresh in-memory collection.
     """
     chroma_client = chromadb.PersistentClient(path=use_temp_chroma_dir)
     collection = chroma_client.get_or_create_collection(
         name=VFGConfig.DEFAULT_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
     )
     engine_instance = VectorEngine(
-        collection=collection, model=shared_model, chroma_client=chroma_client
+        collection=collection,
+        embedding_model=shared_model,
+        reranking_model=reranking_model,
+        chroma_client=chroma_client,
     )
 
     yield engine_instance

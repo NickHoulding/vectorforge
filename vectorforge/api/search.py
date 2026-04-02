@@ -16,23 +16,23 @@ router: APIRouter = APIRouter()
 @require_collection
 @handle_api_errors
 def search(collection_name: str, search_params: SearchQuery) -> SearchResponse:
-    """
-    Perform semantic search within a specific collection
+    """Perform semantic search within a specific collection.
 
     Searches the collection's vector index using semantic similarity to find
     the most relevant document chunks for the given query. Returns results
     ranked by similarity score. Optionally filter results by metadata fields.
 
     Args:
-        collection_name: Name of the collection to search
-        search_params: Query string, number of results (top_k), and optional filters
+        collection_name: Name of the collection to search.
+        search_params: Query string, number of results (top_k), re-ranking flag,
+            and optional metadata/document filters.
 
     Returns:
-        SearchResponse: Ranked search results with similarity scores and metadata
+        Ranked search results with similarity scores and metadata.
 
     Raises:
-        HTTPException: 404 if collection not found
-        HTTPException: 500 if search fails
+        HTTPException: 404 if collection not found.
+        HTTPException: 500 if search fails.
 
     Example:
         ```
@@ -54,6 +54,7 @@ def search(collection_name: str, search_params: SearchQuery) -> SearchResponse:
     results: list[SearchResult] = engine.search(
         query=query,
         top_k=search_params.top_k,
+        rerank=search_params.rerank,
         filters=search_params.filters,
         document_filter=doc_filter,
     )
