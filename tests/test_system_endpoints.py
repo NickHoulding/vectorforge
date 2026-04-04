@@ -242,10 +242,12 @@ def test_metrics_includes_timestamp_metrics(metrics):
 
 def test_metrics_includes_system_info(metrics):
     """Test that metrics response includes system information."""
-    assert "model_name" in metrics["system"]
-    assert isinstance(metrics["system"]["model_name"], str)
-    assert "model_dimension" in metrics["system"]
-    assert isinstance(metrics["system"]["model_dimension"], int)
+    assert "embedding_model_name" in metrics["system"]
+    assert isinstance(metrics["system"]["embedding_model_name"], str)
+    assert "reranking_model_name" in metrics["system"]
+    assert isinstance(metrics["system"]["reranking_model_name"], str)
+    assert "embedding_dimension" in metrics["system"]
+    assert isinstance(metrics["system"]["embedding_dimension"], int)
     assert "uptime_seconds" in metrics["system"]
     assert isinstance(metrics["system"]["uptime_seconds"], float)
     assert "version" in metrics["system"]
@@ -545,15 +547,16 @@ def test_metrics_usage_counters_are_cumulative(client):
 
 
 def test_metrics_model_name_is_correct(client):
-    """Test that model_name matches the configured model."""
+    """Test that embedding_model_name and reranking_model_name match configured models."""
     metrics = client.get("/collections/vectorforge/metrics").json()
-    assert metrics["system"]["model_name"] == VFGConfig.EMBEDDING_MODEL_NAME
+    assert metrics["system"]["embedding_model_name"] == VFGConfig.EMBEDDING_MODEL_NAME
+    assert metrics["system"]["reranking_model_name"] == VFGConfig.RERANKING_MODEL_NAME
 
 
 def test_metrics_model_dimension_is_correct(client):
-    """Test that model_dimension matches the configured dimension."""
+    """Test that embedding_dimension matches the configured dimension."""
     metrics = client.get("/collections/vectorforge/metrics").json()
-    assert metrics["system"]["model_dimension"] == VFGConfig.EMBEDDING_DIMENSION
+    assert metrics["system"]["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
 
 
 # =============================================================================

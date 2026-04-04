@@ -120,7 +120,6 @@ class VectorEngine:
         embedding_model: Shared SentenceTransformer model instance.
         reranking_model: Shared CrossEncoder model instance for result reranking.
         chroma_client: ChromaDB client for database operations.
-        embedding_model_name: Name of the sentence transformer model being used.
         metrics: EngineMetrics instance tracking usage and performance.
 
     Example:
@@ -133,7 +132,6 @@ class VectorEngine:
 
     __slots__ = (
         "collection",
-        "embedding_model_name",
         "embedding_model",
         "reranking_model",
         "chroma_client",
@@ -164,7 +162,6 @@ class VectorEngine:
             multi-collection support, use CollectionManager.get_engine() instead.
         """
         self.collection = collection
-        self.embedding_model_name: str = VFGConfig.EMBEDDING_MODEL_NAME
         self.embedding_model: SentenceTransformer = embedding_model
         self.reranking_model: CrossEncoder = reranking_model
         self.chroma_client = chroma_client
@@ -662,7 +659,7 @@ class VectorEngine:
                 - Counters: total_queries, docs_added, docs_deleted, etc.
                 - Performance: avg/min/max/p50/p95/p99 query times
                 - Index stats: total_documents
-                - System info: model_name, model_dimension, uptime_seconds
+                - System info: embedding_model_name, embedding_dimension, uptime_seconds
                 - Timestamps: lifetime_created_at, last_query_at, last_doc_added_at, etc.
         """
         metrics_dict: dict[str, Any] = self.metrics.to_dict()
@@ -709,8 +706,9 @@ class VectorEngine:
                 "p95_query_time_ms": p95,
                 "p99_query_time_ms": p99,
                 # System metrics
-                "model_name": self.embedding_model_name,
-                "model_dimension": embedding_dim,
+                "embedding_model_name": VFGConfig.EMBEDDING_MODEL_NAME,
+                "reranking_model_name": VFGConfig.RERANKING_MODEL_NAME,
+                "embedding_dimension": embedding_dim,
                 "uptime_seconds": uptime,
                 "version": __version__,
             }

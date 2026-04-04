@@ -28,7 +28,7 @@ def test_vector_engine_initialization(vector_engine):
 def test_vector_engine_loads_model(vector_engine):
     """Test that VectorEngine loads the sentence transformer model."""
     assert vector_engine.embedding_model is not None
-    assert vector_engine.embedding_model_name == VFGConfig.EMBEDDING_MODEL_NAME
+
     assert (
         vector_engine.embedding_model.get_sentence_embedding_dimension()
         == VFGConfig.EMBEDDING_DIMENSION
@@ -1258,7 +1258,8 @@ def test_get_metrics_includes_all_categories(vector_engine):
     assert "total_queries" in metrics
     assert "docs_added" in metrics
     assert "total_documents" in metrics
-    assert "model_name" in metrics
+    assert "embedding_model_name" in metrics
+    assert "reranking_model_name" in metrics
     assert "lifetime_created_at" in metrics
 
 

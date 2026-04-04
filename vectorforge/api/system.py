@@ -62,7 +62,7 @@ async def readiness_check() -> dict[str, str | int]:
         return {
             "status": "ready",
             "documents": doc_count,
-            "model": default_engine.embedding_model_name,
+            "embedding_model": VFGConfig.EMBEDDING_MODEL_NAME,
         }
 
     except Exception as e:
@@ -134,8 +134,9 @@ def get_collection_metrics(collection_name: str) -> MetricsResponse:
         last_file_uploaded_at=metrics["last_file_uploaded_at"],
     )
     system_info: SystemInfo = SystemInfo(
-        model_name=metrics["model_name"],
-        model_dimension=metrics["model_dimension"],
+        embedding_model_name=metrics["embedding_model_name"],
+        reranking_model_name=metrics["reranking_model_name"],
+        embedding_dimension=metrics["embedding_dimension"],
         uptime_seconds=metrics["uptime_seconds"],
         version=metrics["version"],
     )

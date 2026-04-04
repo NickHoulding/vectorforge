@@ -105,14 +105,16 @@ class SystemInfo(BaseModel):
     embedding model, dimensionality, version, and uptime.
 
     Attributes:
-        model_name: Name of the sentence transformer model being used.
-        model_dimension: Dimensionality of the embedding vectors.
+        embedding_model_name: Name of the sentence transformer model being used.
+        reranking_model_name: Name of the cross-encoder reranking model being used.
+        embedding_dimension: Dimensionality of the embedding vectors.
         uptime_seconds: Time elapsed since engine initialization (if available).
         version: VectorForge version number.
     """
 
-    model_name: str = Field(..., description="Embedding model name")
-    model_dimension: int = Field(..., description="Embedding dimension")
+    embedding_model_name: str = Field(..., description="Embedding model name")
+    reranking_model_name: str = Field(..., description="Reranking model name")
+    embedding_dimension: int = Field(..., description="Embedding dimension")
     uptime_seconds: float | None = Field(None, ge=0, description="Engine uptime")
     version: str = Field(..., description="vectorforge version")
 
@@ -193,8 +195,9 @@ class MetricsResponse(BaseModel):
                     "last_file_uploaded_at": "2024-01-15T15:15:42Z",
                 },
                 "system": {
-                    "model_name": "all-MiniLM-L6-v2",
-                    "model_dimension": 384,
+                    "embedding_model_name": "all-MiniLM-L6-v2",
+                    "reranking_model_name": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                    "embedding_dimension": 384,
                     "uptime_seconds": 22523.45,
                     "version": "1.0.0",
                 },
