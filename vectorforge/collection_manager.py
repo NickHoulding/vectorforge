@@ -70,7 +70,7 @@ class CollectionManager:
             VFGConfig.EMBEDDING_MODEL_NAME
         )
         logger.info(
-            "Loading shared re-ranking model: %s", VFGConfig.EMBEDDING_MODEL_NAME
+            "Loading shared re-ranking model: %s", VFGConfig.RERANKING_MODEL_NAME
         )
         self.reranking_model: CrossEncoder = CrossEncoder(
             VFGConfig.RERANKING_MODEL_NAME

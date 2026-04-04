@@ -55,6 +55,7 @@ def search(collection_name: str, search_params: SearchQuery) -> SearchResponse:
         query=query,
         top_k=search_params.top_k,
         rerank=search_params.rerank,
+        top_n=cast(int, search_params.top_n),
         filters=search_params.filters,
         document_filter=doc_filter,
     )

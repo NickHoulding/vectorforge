@@ -41,7 +41,7 @@ class SearchQuery(BaseModel):
         description="Search query text",
     )
     top_k: int = Field(
-        VFGConfig.DEFAULT_TOP_K,
+        default=VFGConfig.DEFAULT_TOP_K,
         ge=VFGConfig.MIN_TOP_K,
         le=VFGConfig.MAX_TOP_K,
         description="Number of results to return",
@@ -49,6 +49,12 @@ class SearchQuery(BaseModel):
     rerank: bool = Field(
         default=VFGConfig.SHOULD_RERANK,
         description="Optional flag to enable search result re-ranking",
+    )
+    top_n: int | None = Field(
+        default=None,
+        ge=VFGConfig.MIN_TOP_N,
+        le=VFGConfig.MAX_TOP_N,
+        description="Number of re-ranked results to return, if re-ranking is enabled",
     )
     filters: dict[str, Any] | None = Field(
         default=None, description="Optional metadata filters"
@@ -61,6 +67,42 @@ class SearchQuery(BaseModel):
             'e.g. {"$contains": "machine learning"}.'
         ),
     )
+
+    @model_validator(mode="after")
+    def resolve_top_n(self) -> "SearchQuery":
+        """Resolve top_n to a concrete value and validate it against top_k.
+
+        When reranking is disabled, top_n is unused - resolve it to the default
+        so downstream code always receives an int.
+
+        When reranking is enabled but top_k is 1, reranking is automatically
+        disabled. There is nothing to reorder with a single candidate.
+
+        When reranking is enabled, clamp top_n to min(DEFAULT_TOP_N, top_k - 1)
+        if it was not explicitly provided, so callers that only set top_k never
+        receive a validation error due to the default top_n exceeding top_k.
+
+        Returns:
+            SearchQuery: The validated model instance with top_n set to an int.
+
+        Raises:
+            ValueError: If an explicit top_n is >= top_k when reranking is enabled.
+        """
+        if not self.rerank or self.top_k == 1:
+            self.rerank = False
+            self.top_n = (
+                self.top_n if self.top_n is not None else VFGConfig.DEFAULT_TOP_N
+            )
+            return self
+
+        if self.top_n is None:
+            self.top_n = min(VFGConfig.DEFAULT_TOP_N, self.top_k - 1)
+        elif self.top_n >= self.top_k:
+            raise ValueError(
+                f"top_n ({self.top_n}) must be strictly less than top_k ({self.top_k})"
+            )
+
+        return self
 
     @model_validator(mode="after")
     def validate_filter_operators(self) -> "SearchQuery":

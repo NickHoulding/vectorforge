@@ -772,14 +772,14 @@ def test_search_returns_result_from_correct_collection(
 
     resp_a = client.post(
         f"/collections/{col_a}/search",
-        json={"query": "quantum physics", "top_k": 1},
+        json={"query": "quantum physics", "top_k": 1, "rerank": False},
     )
     assert resp_a.json()["count"] == 1
     assert "quantum" in resp_a.json()["results"][0]["content"].lower()
 
     resp_b = client.post(
         f"/collections/{col_b}/search",
-        json={"query": "quantum physics", "top_k": 1},
+        json={"query": "quantum physics", "top_k": 1, "rerank": False},
     )
     assert resp_b.json()["count"] == 1
     assert "roman" in resp_b.json()["results"][0]["content"].lower()

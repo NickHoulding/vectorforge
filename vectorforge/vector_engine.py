@@ -263,8 +263,9 @@ class VectorEngine:
     def search(
         self,
         query: str,
-        rerank: bool = VFGConfig.SHOULD_RERANK,
         top_k: int = VFGConfig.DEFAULT_TOP_K,
+        rerank: bool = VFGConfig.SHOULD_RERANK,
+        top_n: int = VFGConfig.DEFAULT_TOP_N,
         filters: dict[str, Any] | None = None,
         document_filter: WhereDocument | None = None,
     ) -> list[SearchResult]:
@@ -296,6 +297,8 @@ class VectorEngine:
         """
         if not query.strip():
             raise ValueError("Search query cannot be empty")
+        if rerank and top_n >= top_k:
+            raise ValueError(f"top_n ({top_n}) must be less than top_k ({top_k})")
 
         logger.debug(
             "search: collection=%s query=%s top_k=%d",
@@ -357,9 +360,7 @@ class VectorEngine:
             ]
 
             if rerank:
-                iteration_data = self._rerank(
-                    query, iteration_data, top_n=len(documents)
-                )
+                iteration_data = self._rerank(query, iteration_data, top_n=top_n)
 
             for result in iteration_data:
                 search_results.append(result)

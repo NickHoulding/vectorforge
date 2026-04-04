@@ -63,7 +63,8 @@ def test_search_with_empty_index_returns_empty_results(client):
 def test_search_respects_small_top_k(client, multiple_added_docs):
     """Test that search respects top_k parameter when less than default."""
     response = client.post(
-        "/collections/vectorforge/search", json={"query": "test search", "top_k": 5}
+        "/collections/vectorforge/search",
+        json={"query": "test search", "top_k": 5, "rerank": False},
     )
     assert len(response.json()["results"]) == 5
 
@@ -71,7 +72,8 @@ def test_search_respects_small_top_k(client, multiple_added_docs):
 def test_search_respects_large_top_k(client, multiple_added_docs):
     """Test that search respects top_k parameter when greater than default."""
     response = client.post(
-        "/collections/vectorforge/search", json={"query": "test search", "top_k": 15}
+        "/collections/vectorforge/search",
+        json={"query": "test search", "top_k": 15, "rerank": False},
     )
     assert len(response.json()["results"]) == 15
 
@@ -241,7 +243,11 @@ def test_search_returns_results_regardless_of_relevance(client):
     )
     response = client.post(
         "/collections/vectorforge/search",
-        json={"query": "ancient Egyptian pyramids and pharaohs", "top_k": 1},
+        json={
+            "query": "ancient Egyptian pyramids and pharaohs",
+            "top_k": 1,
+            "rerank": False,
+        },
     )
     assert response.status_code == 200
 
@@ -285,12 +291,13 @@ def test_search_default_top_k_value(client, multiple_added_docs):
         "/collections/vectorforge/search",
         json={
             "query": "test search",
+            "rerank": False,
         },
     )
     assert response.status_code == 200
 
     results = response.json()["results"]
-    assert len(results) == 10
+    assert len(results) == 20
 
 
 def test_search_increments_total_queries_metric(client, added_doc):
@@ -450,7 +457,8 @@ def test_search_returns_consistent_results_on_repeat(client, added_doc):
 def test_search_with_top_k_one(client, multiple_added_docs):
     """Test search with minimum valid top_k value."""
     response = client.post(
-        "/collections/vectorforge/search", json={"query": "test", "top_k": 1}
+        "/collections/vectorforge/search",
+        json={"query": "test", "top_k": 1, "rerank": False},
     )
     assert len(response.json()["results"]) == 1
 

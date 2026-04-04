@@ -71,23 +71,23 @@ class VFGConfig:
     # Search Configuration
     # =============================================================================
 
-    DEFAULT_TOP_K: int = int(os.getenv("VF_DEFAULT_TOP_K", "10"))
-    """Default number of search results to return."""
-
-    MIN_TOP_K: int = int(os.getenv("VF_MIN_TOP_K", "1"))
-    """Minimum value for top_k parameter."""
-
-    MAX_TOP_K: int = int(os.getenv("VF_MAX_TOP_K", "100"))
-    """Maximum value for top_k parameter."""
+    MIN_TOP_N: int = int(os.getenv("VF_MIN_TOP_N", "1"))
+    """Minimum value for the top_n reranking parameter."""
 
     DEFAULT_TOP_N: int = int(os.getenv("VF_DEFAULT_TOP_N", "5"))
     """Default number of reranked results to return after cross-encoder scoring."""
 
-    MIN_TOP_N: int = int(os.getenv("VF_MIN_TOP_N", "1"))
-    """Minimum value for the top_n reranking parameter."""
-
-    MAX_TOP_N: int = int(os.getenv("VF_MAX_TOP_N", "100"))
+    MAX_TOP_N: int = int(os.getenv("VF_MAX_TOP_N", "99"))
     """Maximum value for the top_n reranking parameter."""
+
+    MIN_TOP_K: int = int(os.getenv("VF_MIN_TOP_K", "1"))
+    """Minimum value for top_k parameter."""
+
+    DEFAULT_TOP_K: int = int(os.getenv("VF_DEFAULT_TOP_K", "20"))
+    """Default number of search results to return."""
+
+    MAX_TOP_K: int = int(os.getenv("VF_MAX_TOP_K", "100"))
+    """Maximum value for top_k parameter."""
 
     VALID_FILTER_OPERATORS: frozenset[str] = frozenset(["$gte", "$lte", "$in", "$ne"])
     """Permitted operators for metadata search filters."""
@@ -315,6 +315,9 @@ class VFGConfig:
             raise ValueError("DEFAULT_TOP_N must be > 0")
         if not (cls.MIN_TOP_N <= cls.DEFAULT_TOP_N <= cls.MAX_TOP_N):
             raise ValueError("DEFAULT_TOP_N must be between MIN_TOP_N and MAX_TOP_N")
+
+        if cls.DEFAULT_TOP_N >= cls.DEFAULT_TOP_K:
+            raise ValueError("DEFAULT_TOP_N must be strictly less than DEFAULT_TOP_K")
 
         if not isinstance(cls.MAX_QUERY_HISTORY, int):
             raise ValueError("MAX_QUERY_HISTORY must be an int")
