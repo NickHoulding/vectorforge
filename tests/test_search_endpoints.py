@@ -882,3 +882,150 @@ def test_search_document_filter_non_string_value_returns_422(client):
         json={"query": "test", "document_filter": {"$contains": 42}},
     )
     assert response.status_code == 422
+
+
+# =============================================================================
+# Re-ranking Endpoint Tests
+# =============================================================================
+
+
+def test_search_with_rerank_true_returns_200(client, multiple_added_docs):
+    """Test that rerank=True is accepted and returns 200."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "programming", "top_k": 10, "rerank": True, "top_n": 3},
+    )
+    assert response.status_code == 200
+
+
+def test_search_with_rerank_true_returns_top_n_results(client, multiple_added_docs):
+    """Test that rerank=True returns exactly top_n results, not top_k."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "programming", "top_k": 10, "rerank": True, "top_n": 3},
+    )
+    assert len(response.json()["results"]) == 3
+
+
+def test_search_with_rerank_true_count_reflects_top_n(client, multiple_added_docs):
+    """Test that the count field matches the number of reranked results."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "programming", "top_k": 10, "rerank": True, "top_n": 4},
+    )
+    data = response.json()
+    assert data["count"] == 4
+    assert data["count"] == len(data["results"])
+
+
+def test_search_with_rerank_true_results_sorted_by_score_descending(
+    client, multiple_added_docs
+):
+    """Test that reranked results are returned in descending score order."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "top_k": 10, "rerank": True, "top_n": 5},
+    )
+    results = response.json()["results"]
+    for i in range(len(results) - 1):
+        assert results[i]["score"] >= results[i + 1]["score"]
+
+
+def test_search_with_rerank_true_scores_are_in_valid_range(client, multiple_added_docs):
+    """Test that reranked scores are all within [0, 1]."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "top_k": 10, "rerank": True, "top_n": 5},
+    )
+    for result in response.json()["results"]:
+        assert 0.0 <= result["score"] <= 1.0
+
+
+def test_search_with_rerank_true_top_n_equal_to_top_k_returns_422(client):
+    """Test that top_n == top_k with rerank=True is rejected."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "top_k": 5, "rerank": True, "top_n": 5},
+    )
+    assert response.status_code == 422
+
+
+def test_search_with_rerank_true_top_n_greater_than_top_k_returns_422(client):
+    """Test that top_n > top_k with rerank=True is rejected."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "top_k": 5, "rerank": True, "top_n": 6},
+    )
+    assert response.status_code == 422
+
+
+def test_search_with_rerank_true_top_k_one_auto_disables_reranking(client, added_doc):
+    """Test that top_k=1 with rerank=True auto-disables reranking and returns 1 result."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "machine learning", "top_k": 1, "rerank": True},
+    )
+    assert response.status_code == 200
+    assert len(response.json()["results"]) == 1
+
+
+def test_search_with_rerank_true_on_empty_index_returns_empty_results(client):
+    """Test that rerank=True on an empty index returns empty results."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "test", "top_k": 10, "rerank": True, "top_n": 5},
+    )
+    assert response.status_code == 200
+    assert response.json()["count"] == 0
+    assert response.json()["results"] == []
+
+
+def test_search_with_rerank_true_returns_fewer_results_than_top_k(
+    client, multiple_added_docs
+):
+    """Test that reranked result count (top_n) is less than the initial fetch count (top_k)."""
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={"query": "programming", "top_k": 10, "rerank": True, "top_n": 3},
+    )
+    data = response.json()
+    assert data["count"] == 3
+    assert data["count"] < 10
+
+
+def test_search_with_rerank_and_filters_returns_only_filtered_documents(client):
+    """Test that metadata filters are applied before reranking, so results respect both."""
+    client.post(
+        "/collections/vectorforge/documents",
+        json={
+            "content": "Python is a programming language",
+            "metadata": {"lang": "python"},
+        },
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={
+            "content": "Java is a programming language",
+            "metadata": {"lang": "java"},
+        },
+    )
+    client.post(
+        "/collections/vectorforge/documents",
+        json={"content": "Go is a programming language", "metadata": {"lang": "go"}},
+    )
+
+    response = client.post(
+        "/collections/vectorforge/search",
+        json={
+            "query": "programming language",
+            "top_k": 3,
+            "rerank": True,
+            "top_n": 2,
+            "filters": {"lang": "python"},
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["results"][0]["metadata"]["lang"] == "python"
