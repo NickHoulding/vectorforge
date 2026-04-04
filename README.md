@@ -211,7 +211,7 @@ class EngineMetrics:
 - Production debugging and optimization
 
 #### **6. Metadata Coupling Validation**
-File-based documents require both `source_file` and `chunk_index`:
+File-based documents require both `source` and `chunk_index`:
 ```python
 if has_source != has_chunk_index:
     raise ValueError("Must contain both or neither")
@@ -370,7 +370,7 @@ response = requests.post(
     json={
         "content": "Machine learning is a subset of artificial intelligence",
         "metadata": {
-            "source_file": "ml_intro.txt",
+            "source": "ml_intro.txt",
             "chunk_index": 0,
             "author": "John Doe",
         },
@@ -407,7 +407,7 @@ results = response.json()["results"]
       "content": "Machine learning is a subset of artificial intelligence",
       "score": 0.8234,
       "metadata": {
-        "source_file": "ml_intro.txt",
+        "source": "ml_intro.txt",
         "chunk_index": 0,
         "author": "John Doe"
       }
@@ -438,7 +438,7 @@ Both accept the same dict structure shown in the examples below.
 - **Document-text filtering**: `document_filter` with `$contains` or `$not_contains` filters on document content
 - **AND logic**: Multiple filters require all to match
 - **Flexible filtering**: Filter by any metadata field independently
-- **No pairing required**: `source_file` and `chunk_index` can be used separately or together
+- **No pairing required**: `source` and `chunk_index` can be used separately or together
 - **Performance**: Filtering happens after similarity scoring
 
 #### **Common Filtering Scenarios:**
@@ -451,7 +451,7 @@ response = requests.post(
     json={
         "query": "machine learning concepts",
         "top_k": 10,
-        "filters": {"source_file": "textbook.pdf"},
+        "filters": {"source": "textbook.pdf"},
     },
 )
 ```
@@ -481,7 +481,7 @@ response = requests.post(
     json={
         "query": "overview",
         "top_k": 10,
-        "filters": {"source_file": "guide.pdf", "chunk_index": 0},
+        "filters": {"source": "guide.pdf", "chunk_index": 0},
     },
 )
 ```
@@ -550,7 +550,7 @@ response = requests.post(
       "content": "Machine learning is a subset of artificial intelligence",
       "score": 0.8234,
       "metadata": {
-        "source_file": "textbook.pdf",
+        "source": "textbook.pdf",
         "chunk_index": 3,
         "author": "John Doe"
       }
@@ -560,7 +560,7 @@ response = requests.post(
 }
 ```
 
-**Note:** When creating documents with `source_file` and `chunk_index`, both must be provided together. However, when filtering, they can be used either independently or together.
+**Note:** When creating documents with `source` and `chunk_index`, both must be provided together. However, when filtering, they can be used either independently or together.
 
 ### **4. Upload a File**
 
@@ -611,11 +611,11 @@ response = requests.post(
         "documents": [
             {
                 "content": "Machine learning is a subset of artificial intelligence",
-                "metadata": {"source_file": "ml_intro.txt", "chunk_index": 0},
+                "metadata": {"source": "ml_intro.txt", "chunk_index": 0},
             },
             {
                 "content": "Deep learning uses multi-layered neural networks",
-                "metadata": {"source_file": "ml_intro.txt", "chunk_index": 1},
+                "metadata": {"source": "ml_intro.txt", "chunk_index": 1},
             },
         ]
     },

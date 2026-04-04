@@ -29,7 +29,7 @@ class SearchQuery(BaseModel):
                 "query": "What is machine learning?",
                 "top_k": 5,
                 "rerank": True,
-                "filters": {"source_file": "textbook.pdf"},
+                "filters": {"source": "textbook.pdf"},
             }
         }
     )
@@ -219,7 +219,7 @@ class SearchResult(BaseModel):
             "example": {
                 "id": "abc-123-def",
                 "content": "Machine learning is a subset of AI that focuses on...",
-                "metadata": {"source_file": "textbook.pdf", "chunk_index": 0},
+                "metadata": {"source": "textbook.pdf", "chunk_index": 0},
                 "score": 0.89,
             }
         }
@@ -254,13 +254,13 @@ class SearchResponse(BaseModel):
                     {
                         "id": "abc-123",
                         "content": "Machine learning is a subset of AI...",
-                        "metadata": {"source_file": "textbook.pdf", "chunk_index": 0},
+                        "metadata": {"source": "textbook.pdf", "chunk_index": 0},
                         "score": 0.89,
                     },
                     {
                         "id": "def-456",
                         "content": "ML algorithms learn from data patterns...",
-                        "metadata": {"source_file": "textbook.pdf", "chunk_index": 1},
+                        "metadata": {"source": "textbook.pdf", "chunk_index": 1},
                         "score": 0.82,
                     },
                 ],

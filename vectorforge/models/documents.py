@@ -150,7 +150,7 @@ class DocumentDetail(BaseModel):
             "example": {
                 "id": "abc-123-def",
                 "content": "Machine learning is a subset of artificial intelligence...",
-                "metadata": {"source_file": "textbook.pdf", "chunk_index": 0},
+                "metadata": {"source": "textbook.pdf", "chunk_index": 0},
             }
         }
     )

@@ -491,7 +491,7 @@ def test_search_result_content_is_complete(client):
 def test_search_preserves_all_metadata_fields(client):
     """Test that search results include all original metadata fields."""
     metadata = {
-        "source_file": "test.txt",
+        "source": "test.txt",
         "chunk_index": 0,
         "custom_field": "custom_value",
     }
@@ -521,14 +521,14 @@ def test_search_with_filters_success(client):
         "/collections/vectorforge/documents",
         json={
             "content": "Python programming tutorial",
-            "metadata": {"source_file": "python.pdf", "chunk_index": 0},
+            "metadata": {"source": "python.pdf", "chunk_index": 0},
         },
     )
     client.post(
         "/collections/vectorforge/documents",
         json={
             "content": "Java programming tutorial",
-            "metadata": {"source_file": "java.pdf", "chunk_index": 0},
+            "metadata": {"source": "java.pdf", "chunk_index": 0},
         },
     )
 
@@ -537,14 +537,14 @@ def test_search_with_filters_success(client):
         json={
             "query": "programming",
             "top_k": 10,
-            "filters": {"source_file": "python.pdf"},
+            "filters": {"source": "python.pdf"},
         },
     )
 
     assert response.status_code == 200
     data = response.json()
     assert data["count"] == 1
-    assert data["results"][0]["metadata"]["source_file"] == "python.pdf"
+    assert data["results"][0]["metadata"]["source"] == "python.pdf"
 
 
 def test_search_with_filters_no_matches(client):
@@ -553,13 +553,13 @@ def test_search_with_filters_no_matches(client):
         "/collections/vectorforge/documents",
         json={
             "content": "Test content",
-            "metadata": {"source_file": "doc.pdf", "chunk_index": 0},
+            "metadata": {"source": "doc.pdf", "chunk_index": 0},
         },
     )
 
     response = client.post(
         "/collections/vectorforge/search",
-        json={"query": "test", "top_k": 10, "filters": {"source_file": "missing.pdf"}},
+        json={"query": "test", "top_k": 10, "filters": {"source": "missing.pdf"}},
     )
 
     assert response.status_code == 200

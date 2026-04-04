@@ -146,29 +146,29 @@ def test_add_doc_with_empty_metadata(vector_engine):
     assert result["metadatas"][0] is None or result["metadatas"][0] == {}
 
 
-def test_add_doc_with_only_source_file_raises_error(vector_engine):
-    """Test that metadata with only source_file raises ValueError."""
-    with pytest.raises(ValueError, match="both 'source_file' and 'chunk_index'"):
+def test_add_doc_with_only_source_raises_error(vector_engine):
+    """Test that metadata with only source raises ValueError."""
+    with pytest.raises(ValueError, match="both 'source' and 'chunk_index'"):
         vector_engine.add_docs(
-            [{"content": "Test content", "metadata": {"source_file": "test.txt"}}]
+            [{"content": "Test content", "metadata": {"source": "test.txt"}}]
         )[0]
 
 
 def test_add_doc_with_only_chunk_index_raises_error(vector_engine):
     """Test that metadata with only chunk_index raises ValueError."""
-    with pytest.raises(ValueError, match="both 'source_file' and 'chunk_index'"):
+    with pytest.raises(ValueError, match="both 'source' and 'chunk_index'"):
         vector_engine.add_docs(
             [{"content": "Test content", "metadata": {"chunk_index": 0}}]
         )[0]
 
 
-def test_add_doc_with_invalid_source_file_type_raises_error(vector_engine):
-    """Test that non-string source_file raises ValueError."""
+def test_add_doc_with_invalid_source_type_raises_error(vector_engine):
+    """Test that non-string source raises ValueError."""
     doc_id = vector_engine.add_docs(
         [
             {
                 "content": "Test content",
-                "metadata": {"source_file": 123, "chunk_index": 0},
+                "metadata": {"source": 123, "chunk_index": 0},
             }
         ]
     )[0]
@@ -182,7 +182,7 @@ def test_add_doc_with_invalid_chunk_index_type_raises_error(vector_engine):
         [
             {
                 "content": "Test content",
-                "metadata": {"source_file": "test.txt", "chunk_index": "0"},
+                "metadata": {"source": "test.txt", "chunk_index": "0"},
             }
         ]
     )[0]
@@ -190,8 +190,8 @@ def test_add_doc_with_invalid_chunk_index_type_raises_error(vector_engine):
 
 
 def test_add_doc_with_valid_chunk_metadata(vector_engine):
-    """Test that add_doc accepts both source_file and chunk_index."""
-    metadata = {"source_file": "test.txt", "chunk_index": 1}
+    """Test that add_doc accepts both source and chunk_index."""
+    metadata = {"source": "test.txt", "chunk_index": 1}
     doc_id = vector_engine.add_docs(
         [{"content": "Test content", "metadata": metadata}]
     )[0]
@@ -208,7 +208,7 @@ def test_add_doc_updates_file_metrics(vector_engine):
         [
             {
                 "content": "Test content",
-                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+                "metadata": {"source": "test.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -224,7 +224,7 @@ def test_add_doc_updates_chunk_metrics(vector_engine):
         [
             {
                 "content": "Test content",
-                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+                "metadata": {"source": "test.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -638,13 +638,13 @@ def test_search_top_k_larger_than_available(vector_engine):
 # =============================================================================
 
 
-def test_search_filter_by_source_file(vector_engine):
-    """Test that filtering by source_file returns only matching documents."""
+def test_search_filter_by_source(vector_engine):
+    """Test that filtering by source returns only matching documents."""
     vector_engine.add_docs(
         [
             {
                 "content": "Python tutorial",
-                "metadata": {"source_file": "python.pdf", "chunk_index": 0},
+                "metadata": {"source": "python.pdf", "chunk_index": 0},
             }
         ]
     )[0]
@@ -652,7 +652,7 @@ def test_search_filter_by_source_file(vector_engine):
         [
             {
                 "content": "Java tutorial",
-                "metadata": {"source_file": "java.pdf", "chunk_index": 0},
+                "metadata": {"source": "java.pdf", "chunk_index": 0},
             }
         ]
     )[0]
@@ -660,17 +660,17 @@ def test_search_filter_by_source_file(vector_engine):
         [
             {
                 "content": "JavaScript tutorial",
-                "metadata": {"source_file": "js.pdf", "chunk_index": 0},
+                "metadata": {"source": "js.pdf", "chunk_index": 0},
             }
         ]
     )[0]
 
     results = vector_engine.search(
-        "tutorial", rerank=False, top_k=10, filters={"source_file": "python.pdf"}
+        "tutorial", rerank=False, top_k=10, filters={"source": "python.pdf"}
     )
 
     assert len(results) == 1
-    assert results[0].metadata["source_file"] == "python.pdf"
+    assert results[0].metadata["source"] == "python.pdf"
 
 
 def test_search_filter_by_chunk_index(vector_engine):
@@ -679,7 +679,7 @@ def test_search_filter_by_chunk_index(vector_engine):
         [
             {
                 "content": "Chunk 0 content",
-                "metadata": {"source_file": "doc.pdf", "chunk_index": 0},
+                "metadata": {"source": "doc.pdf", "chunk_index": 0},
             }
         ]
     )[0]
@@ -687,7 +687,7 @@ def test_search_filter_by_chunk_index(vector_engine):
         [
             {
                 "content": "Chunk 1 content",
-                "metadata": {"source_file": "doc.pdf", "chunk_index": 1},
+                "metadata": {"source": "doc.pdf", "chunk_index": 1},
             }
         ]
     )[0]
@@ -695,7 +695,7 @@ def test_search_filter_by_chunk_index(vector_engine):
         [
             {
                 "content": "Chunk 2 content",
-                "metadata": {"source_file": "doc.pdf", "chunk_index": 2},
+                "metadata": {"source": "doc.pdf", "chunk_index": 2},
             }
         ]
     )[0]
@@ -709,12 +709,12 @@ def test_search_filter_by_chunk_index(vector_engine):
 
 
 def test_search_filter_by_both_fields(vector_engine):
-    """Test that filtering by both source_file and chunk_index uses AND logic."""
+    """Test that filtering by both source and chunk_index uses AND logic."""
     vector_engine.add_docs(
         [
             {
                 "content": "Doc A Chunk 0",
-                "metadata": {"source_file": "a.pdf", "chunk_index": 0},
+                "metadata": {"source": "a.pdf", "chunk_index": 0},
             }
         ]
     )[0]
@@ -722,7 +722,7 @@ def test_search_filter_by_both_fields(vector_engine):
         [
             {
                 "content": "Doc A Chunk 1",
-                "metadata": {"source_file": "a.pdf", "chunk_index": 1},
+                "metadata": {"source": "a.pdf", "chunk_index": 1},
             }
         ]
     )[0]
@@ -730,7 +730,7 @@ def test_search_filter_by_both_fields(vector_engine):
         [
             {
                 "content": "Doc B Chunk 0",
-                "metadata": {"source_file": "b.pdf", "chunk_index": 0},
+                "metadata": {"source": "b.pdf", "chunk_index": 0},
             }
         ]
     )[0]
@@ -739,11 +739,11 @@ def test_search_filter_by_both_fields(vector_engine):
         "doc chunk",
         rerank=False,
         top_k=10,
-        filters={"source_file": "a.pdf", "chunk_index": 1},
+        filters={"source": "a.pdf", "chunk_index": 1},
     )
 
     assert len(results) == 1
-    assert results[0].metadata["source_file"] == "a.pdf"
+    assert results[0].metadata["source"] == "a.pdf"
     assert results[0].metadata["chunk_index"] == 1
 
 
@@ -754,7 +754,7 @@ def test_search_filter_and_logic(vector_engine):
             {
                 "content": "Python programming",
                 "metadata": {
-                    "source_file": "python.pdf",
+                    "source": "python.pdf",
                     "chunk_index": 0,
                     "topic": "programming",
                 },
@@ -766,7 +766,7 @@ def test_search_filter_and_logic(vector_engine):
             {
                 "content": "Python data science",
                 "metadata": {
-                    "source_file": "python.pdf",
+                    "source": "python.pdf",
                     "chunk_index": 1,
                     "topic": "data",
                 },
@@ -778,7 +778,7 @@ def test_search_filter_and_logic(vector_engine):
             {
                 "content": "Java programming",
                 "metadata": {
-                    "source_file": "java.pdf",
+                    "source": "java.pdf",
                     "chunk_index": 0,
                     "topic": "programming",
                 },
@@ -790,11 +790,11 @@ def test_search_filter_and_logic(vector_engine):
         "programming",
         rerank=False,
         top_k=10,
-        filters={"source_file": "python.pdf", "topic": "programming"},
+        filters={"source": "python.pdf", "topic": "programming"},
     )
 
     assert len(results) == 1
-    assert results[0].metadata["source_file"] == "python.pdf"
+    assert results[0].metadata["source"] == "python.pdf"
     assert results[0].metadata["topic"] == "programming"
 
 
@@ -804,13 +804,13 @@ def test_search_filter_no_matches(vector_engine):
         [
             {
                 "content": "Document content",
-                "metadata": {"source_file": "doc.pdf", "chunk_index": 0},
+                "metadata": {"source": "doc.pdf", "chunk_index": 0},
             }
         ]
     )[0]
 
     results = vector_engine.search(
-        "content", rerank=False, top_k=10, filters={"source_file": "missing.pdf"}
+        "content", rerank=False, top_k=10, filters={"source": "missing.pdf"}
     )
 
     assert len(results) == 0
@@ -840,10 +840,10 @@ def test_search_filter_custom_metadata(vector_engine):
 def test_search_filter_none(vector_engine):
     """Test that filters=None returns all results."""
     vector_engine.add_docs(
-        [{"content": "Doc 1", "metadata": {"source_file": "a.pdf", "chunk_index": 0}}]
+        [{"content": "Doc 1", "metadata": {"source": "a.pdf", "chunk_index": 0}}]
     )[0]
     vector_engine.add_docs(
-        [{"content": "Doc 2", "metadata": {"source_file": "b.pdf", "chunk_index": 0}}]
+        [{"content": "Doc 2", "metadata": {"source": "b.pdf", "chunk_index": 0}}]
     )[0]
 
     results = vector_engine.search("doc", rerank=False, top_k=10, filters=None)
@@ -854,10 +854,10 @@ def test_search_filter_none(vector_engine):
 def test_search_filter_empty_dict(vector_engine):
     """Test that filters={} (empty dict) returns all results."""
     vector_engine.add_docs(
-        [{"content": "Doc 1", "metadata": {"source_file": "a.pdf", "chunk_index": 0}}]
+        [{"content": "Doc 1", "metadata": {"source": "a.pdf", "chunk_index": 0}}]
     )[0]
     vector_engine.add_docs(
-        [{"content": "Doc 2", "metadata": {"source_file": "b.pdf", "chunk_index": 0}}]
+        [{"content": "Doc 2", "metadata": {"source": "b.pdf", "chunk_index": 0}}]
     )[0]
 
     results = vector_engine.search("doc", rerank=False, top_k=10, filters={})
@@ -871,19 +871,19 @@ def test_search_filter_case_sensitive(vector_engine):
         [
             {
                 "content": "Document",
-                "metadata": {"source_file": "Doc.pdf", "chunk_index": 0},
+                "metadata": {"source": "Doc.pdf", "chunk_index": 0},
             }
         ]
     )[0]
 
     results = vector_engine.search(
-        "document", rerank=False, top_k=10, filters={"source_file": "doc.pdf"}
+        "document", rerank=False, top_k=10, filters={"source": "doc.pdf"}
     )
 
     assert len(results) == 0
 
     results = vector_engine.search(
-        "document", rerank=False, top_k=10, filters={"source_file": "Doc.pdf"}
+        "document", rerank=False, top_k=10, filters={"source": "Doc.pdf"}
     )
 
     assert len(results) == 1
@@ -904,9 +904,7 @@ def test_list_files_returns_list(vector_engine):
 
 def test_list_files_empty_when_no_files(vector_engine):
     """Test that list_files returns empty list when no files uploaded."""
-    vector_engine.add_docs(
-        [{"content": "Document without source_file", "metadata": {}}]
-    )[0]
+    vector_engine.add_docs([{"content": "Document without source", "metadata": {}}])[0]
 
     files = vector_engine.list_files()
 
@@ -919,7 +917,7 @@ def test_list_files_includes_uploaded_files(vector_engine):
         [
             {
                 "content": "Content 1",
-                "metadata": {"source_file": "file1.txt", "chunk_index": 0},
+                "metadata": {"source": "file1.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -927,7 +925,7 @@ def test_list_files_includes_uploaded_files(vector_engine):
         [
             {
                 "content": "Content 2",
-                "metadata": {"source_file": "file2.txt", "chunk_index": 0},
+                "metadata": {"source": "file2.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -944,7 +942,7 @@ def test_list_files_returns_unique_filenames(vector_engine):
         [
             {
                 "content": "Chunk 1",
-                "metadata": {"source_file": "file.txt", "chunk_index": 0},
+                "metadata": {"source": "file.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -952,7 +950,7 @@ def test_list_files_returns_unique_filenames(vector_engine):
         [
             {
                 "content": "Chunk 2",
-                "metadata": {"source_file": "file.txt", "chunk_index": 1},
+                "metadata": {"source": "file.txt", "chunk_index": 1},
             }
         ]
     )[0]
@@ -960,7 +958,7 @@ def test_list_files_returns_unique_filenames(vector_engine):
         [
             {
                 "content": "Chunk 3",
-                "metadata": {"source_file": "file.txt", "chunk_index": 2},
+                "metadata": {"source": "file.txt", "chunk_index": 2},
             }
         ]
     )[0]
@@ -971,13 +969,13 @@ def test_list_files_returns_unique_filenames(vector_engine):
     assert len(files) == 1
 
 
-def test_list_files_ignores_docs_without_source_file(vector_engine):
-    """Test that list_files only includes docs with source_file metadata."""
+def test_list_files_ignores_docs_without_source(vector_engine):
+    """Test that list_files only includes docs with source metadata."""
     vector_engine.add_docs(
         [
             {
                 "content": "Doc with file",
-                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+                "metadata": {"source": "test.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -997,7 +995,7 @@ def test_list_files_sorted_alphabetically(vector_engine):
         [
             {
                 "content": "Content",
-                "metadata": {"source_file": "zebra.txt", "chunk_index": 0},
+                "metadata": {"source": "zebra.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1005,7 +1003,7 @@ def test_list_files_sorted_alphabetically(vector_engine):
         [
             {
                 "content": "Content",
-                "metadata": {"source_file": "apple.txt", "chunk_index": 0},
+                "metadata": {"source": "apple.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1013,7 +1011,7 @@ def test_list_files_sorted_alphabetically(vector_engine):
         [
             {
                 "content": "Content",
-                "metadata": {"source_file": "banana.txt", "chunk_index": 0},
+                "metadata": {"source": "banana.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1029,7 +1027,7 @@ def test_list_files_excludes_deleted_docs(vector_engine):
         [
             {
                 "content": "Content 1",
-                "metadata": {"source_file": "keep.txt", "chunk_index": 0},
+                "metadata": {"source": "keep.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1037,7 +1035,7 @@ def test_list_files_excludes_deleted_docs(vector_engine):
         [
             {
                 "content": "Content 2",
-                "metadata": {"source_file": "delete.txt", "chunk_index": 0},
+                "metadata": {"source": "delete.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1061,7 +1059,7 @@ def test_delete_file_returns_dict(vector_engine):
         [
             {
                 "content": "Content",
-                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+                "metadata": {"source": "test.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1081,7 +1079,7 @@ def test_delete_file_deletes_all_chunks(vector_engine):
         [
             {
                 "content": "Chunk 1",
-                "metadata": {"source_file": "test.txt", "chunk_index": 0},
+                "metadata": {"source": "test.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1089,7 +1087,7 @@ def test_delete_file_deletes_all_chunks(vector_engine):
         [
             {
                 "content": "Chunk 2",
-                "metadata": {"source_file": "test.txt", "chunk_index": 1},
+                "metadata": {"source": "test.txt", "chunk_index": 1},
             }
         ]
     )[0]
@@ -1097,7 +1095,7 @@ def test_delete_file_deletes_all_chunks(vector_engine):
         [
             {
                 "content": "Chunk 3",
-                "metadata": {"source_file": "test.txt", "chunk_index": 2},
+                "metadata": {"source": "test.txt", "chunk_index": 2},
             }
         ]
     )[0]
@@ -1114,7 +1112,7 @@ def test_delete_file_returns_deleted_count(vector_engine):
         [
             {
                 "content": "Chunk 1",
-                "metadata": {"source_file": "file.txt", "chunk_index": 0},
+                "metadata": {"source": "file.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1122,7 +1120,7 @@ def test_delete_file_returns_deleted_count(vector_engine):
         [
             {
                 "content": "Chunk 2",
-                "metadata": {"source_file": "file.txt", "chunk_index": 1},
+                "metadata": {"source": "file.txt", "chunk_index": 1},
             }
         ]
     )[0]
@@ -1138,7 +1136,7 @@ def test_delete_file_returns_doc_ids(vector_engine):
         [
             {
                 "content": "Chunk 1",
-                "metadata": {"source_file": "file.txt", "chunk_index": 0},
+                "metadata": {"source": "file.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1146,7 +1144,7 @@ def test_delete_file_returns_doc_ids(vector_engine):
         [
             {
                 "content": "Chunk 2",
-                "metadata": {"source_file": "file.txt", "chunk_index": 1},
+                "metadata": {"source": "file.txt", "chunk_index": 1},
             }
         ]
     )[0]
@@ -1174,7 +1172,7 @@ def test_delete_file_updates_metrics(vector_engine):
         [
             {
                 "content": "Chunk 1",
-                "metadata": {"source_file": "file.txt", "chunk_index": 0},
+                "metadata": {"source": "file.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1182,7 +1180,7 @@ def test_delete_file_updates_metrics(vector_engine):
         [
             {
                 "content": "Chunk 2",
-                "metadata": {"source_file": "file.txt", "chunk_index": 1},
+                "metadata": {"source": "file.txt", "chunk_index": 1},
             }
         ]
     )[0]
@@ -1199,7 +1197,7 @@ def test_delete_file_with_mixed_chunks(vector_engine):
         [
             {
                 "content": "Chunk 1",
-                "metadata": {"source_file": "target.txt", "chunk_index": 0},
+                "metadata": {"source": "target.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1207,7 +1205,7 @@ def test_delete_file_with_mixed_chunks(vector_engine):
         [
             {
                 "content": "Chunk 2",
-                "metadata": {"source_file": "target.txt", "chunk_index": 1},
+                "metadata": {"source": "target.txt", "chunk_index": 1},
             }
         ]
     )[0]
@@ -1215,7 +1213,7 @@ def test_delete_file_with_mixed_chunks(vector_engine):
         [
             {
                 "content": "Other 1",
-                "metadata": {"source_file": "other.txt", "chunk_index": 0},
+                "metadata": {"source": "other.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -1223,7 +1221,7 @@ def test_delete_file_with_mixed_chunks(vector_engine):
         [
             {
                 "content": "Other 2",
-                "metadata": {"source_file": "other.txt", "chunk_index": 1},
+                "metadata": {"source": "other.txt", "chunk_index": 1},
             }
         ]
     )[0]
@@ -1938,7 +1936,7 @@ def test_update_hnsw_config_preserves_documents(vector_engine):
 def test_update_hnsw_config_preserves_metadata(vector_engine):
     """Test that metadata is preserved after HNSW config update."""
     metadata = {
-        "source_file": "test.pdf",
+        "source": "test.pdf",
         "chunk_index": 0,
         "page": 42,
         "author": "Test Author",
@@ -1951,7 +1949,7 @@ def test_update_hnsw_config_preserves_metadata(vector_engine):
     doc = vector_engine.get_doc(doc_id)
 
     assert doc is not None
-    assert doc["metadata"]["source_file"] == "test.pdf"
+    assert doc["metadata"]["source"] == "test.pdf"
     assert doc["metadata"]["chunk_index"] == 0
     assert doc["metadata"]["page"] == 42
     assert doc["metadata"]["author"] == "Test Author"
@@ -2050,7 +2048,7 @@ def test_metrics_persist_after_engine_restart(
         [
             {
                 "content": "First document",
-                "metadata": {"source_file": "a.txt", "chunk_index": 0},
+                "metadata": {"source": "a.txt", "chunk_index": 0},
             }
         ]
     )[0]
@@ -2058,7 +2056,7 @@ def test_metrics_persist_after_engine_restart(
         [
             {
                 "content": "Second document",
-                "metadata": {"source_file": "a.txt", "chunk_index": 1},
+                "metadata": {"source": "a.txt", "chunk_index": 1},
             }
         ]
     )[0]

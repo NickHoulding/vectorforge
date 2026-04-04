@@ -88,7 +88,7 @@ def test_doc_get_preserves_metadata(client, sample_doc):
     get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
 
     metadata = get_response.json()["metadata"]
-    assert metadata["source_file"] == "test.txt"
+    assert metadata["source"] == "test.txt"
     assert metadata["chunk_index"] == 0
 
 
@@ -148,16 +148,16 @@ def test_doc_delete_returns_404_when_not_found(client):
     assert response.status_code == 404
 
 
-def test_doc_add_metadata_with_only_source_file(client, sample_doc):
-    """Test that metadata with only 'source_file' (missing 'chunk_index') returns 400."""
+def test_doc_add_metadata_with_only_source(client, sample_doc):
+    """Test that metadata with only 'source' (missing 'chunk_index') returns 400."""
     del sample_doc["metadata"]["chunk_index"]
     response = client.post("/collections/vectorforge/documents", json=sample_doc)
     assert response.status_code == 400
 
 
 def test_doc_add_metadata_with_only_chunk_index(client, sample_doc):
-    """Test that metadata with only 'chunk_index' (missing 'source_file') returns 400."""
-    del sample_doc["metadata"]["source_file"]
+    """Test that metadata with only 'chunk_index' (missing 'source') returns 400."""
+    del sample_doc["metadata"]["source"]
     response = client.post("/collections/vectorforge/documents", json=sample_doc)
     assert response.status_code == 400
 
@@ -255,7 +255,7 @@ def test_doc_delete_same_document_twice(client, added_doc):
 
 def test_doc_add_invalid_json_structure(client):
     """Test that POST /collections/vectorforge/documents with invalid JSON structure (missing 'content') returns 422."""
-    invalid_doc = {"metadata": {"source_file": "test.txt", "chunk_index": 0}}
+    invalid_doc = {"metadata": {"source": "test.txt", "chunk_index": 0}}
 
     response = client.post("/collections/vectorforge/documents", json=invalid_doc)
     assert response.status_code == 422
@@ -292,10 +292,10 @@ def test_doc_add_preserves_metadata_fields(client, sample_doc):
     doc = get_response.json()
     assert "content" in doc
     assert "metadata" in doc
-    assert "source_file" in doc["metadata"]
+    assert "source" in doc["metadata"]
     assert "chunk_index" in doc["metadata"]
     assert doc["content"] == sample_doc["content"]
-    assert doc["metadata"]["source_file"] == sample_doc["metadata"]["source_file"]
+    assert doc["metadata"]["source"] == sample_doc["metadata"]["source"]
     assert doc["metadata"]["chunk_index"] == sample_doc["metadata"]["chunk_index"]
 
 
@@ -407,8 +407,8 @@ def test_doc_get_response_contains_all_required_fields(client, added_doc):
 
 
 def test_doc_add_with_valid_chunk_metadata(client, sample_doc):
-    """Test that documents with both 'source_file' and 'chunk_index' are accepted."""
-    assert "source_file" in sample_doc["metadata"]
+    """Test that documents with both 'source' and 'chunk_index' are accepted."""
+    assert "source" in sample_doc["metadata"]
     assert "chunk_index" in sample_doc["metadata"]
 
     response = client.post("/collections/vectorforge/documents", json=sample_doc)
@@ -732,7 +732,7 @@ def test_batch_add_invalid_document_returns_422(client, sample_doc):
     payload = {
         "documents": [
             sample_doc,
-            {"metadata": {"source_file": "x.txt", "chunk_index": 0}},
+            {"metadata": {"source": "x.txt", "chunk_index": 0}},
         ]
     }
     response = client.post("/collections/vectorforge/documents/batch", json=payload)

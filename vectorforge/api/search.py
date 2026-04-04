@@ -40,7 +40,7 @@ def search(collection_name: str, search_params: SearchQuery) -> SearchResponse:
         {
             "query": "What is machine learning?",
             "top_k": 5,
-            "filters": {"source_file": "textbook.pdf"}
+            "filters": {"source": "textbook.pdf"}
         }
         ```
     """

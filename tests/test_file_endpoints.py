@@ -124,15 +124,15 @@ def test_file_upload_returns_doc_ids(uploaded_test_file):
 
 
 def test_file_upload_chunks_have_metadata(client, uploaded_test_file):
-    """Test that uploaded file chunks contain source_file and chunk_index metadata."""
+    """Test that uploaded file chunks contain source and chunk_index metadata."""
     for doc_id in uploaded_test_file["doc_ids"]:
         resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert resp.status_code == 200
 
         doc_data = resp.json()
         assert "metadata" in doc_data
-        assert "source_file" in doc_data["metadata"]
-        assert isinstance(doc_data["metadata"]["source_file"], str)
+        assert "source" in doc_data["metadata"]
+        assert isinstance(doc_data["metadata"]["source"], str)
         assert "chunk_index" in doc_data["metadata"]
         assert isinstance(doc_data["metadata"]["chunk_index"], int)
 
@@ -527,9 +527,9 @@ def test_file_upload_chunk_metadata_contains_chunk_index(
         assert metadata["chunk_index"] == i
 
 
-def test_file_upload_chunk_metadata_contains_source_file(client, upload_file):
-    """Test that each chunk has the source_file in metadata."""
-    filename = "source_file_test.txt"
+def test_file_upload_chunk_metadata_contains_source(client, upload_file):
+    """Test that each chunk has the source in metadata."""
+    filename = "source_test.txt"
     resp = upload_file(filename, b"Testing source file metadata")
     assert resp.status_code == 201
 
@@ -538,8 +538,8 @@ def test_file_upload_chunk_metadata_contains_source_file(client, upload_file):
         assert doc_resp.status_code == 200
 
         metadata = doc_resp.json()["metadata"]
-        assert "source_file" in metadata
-        assert metadata["source_file"] == filename
+        assert "source" in metadata
+        assert metadata["source"] == filename
 
 
 def test_file_list_response_structure(client):

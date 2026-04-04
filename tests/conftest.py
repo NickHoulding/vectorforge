@@ -177,7 +177,7 @@ def sample_doc() -> dict[str, Any]:
     """
     return {
         "content": "This is a test document content",
-        "metadata": {"source_file": "test.txt", "chunk_index": 0},
+        "metadata": {"source": "test.txt", "chunk_index": 0},
     }
 
 
@@ -238,7 +238,7 @@ def multiple_added_docs(client: TestClient) -> list[str]:
             "/collections/vectorforge/documents",
             json={
                 "content": content,
-                "metadata": {"source_file": f"doc_{i}.txt", "chunk_index": 0},
+                "metadata": {"source": f"doc_{i}.txt", "chunk_index": 0},
             },
         )
         doc_ids.append(response.json()["id"])

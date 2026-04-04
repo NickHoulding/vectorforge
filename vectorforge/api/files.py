@@ -107,7 +107,7 @@ async def upload_file(
     docs: list[dict[str, Any]] = [
         {
             "content": chunk,
-            "metadata": {"source_file": file.filename, "chunk_index": index},
+            "metadata": {"source": file.filename, "chunk_index": index},
         }
         for index, chunk in enumerate(chunks)
     ]

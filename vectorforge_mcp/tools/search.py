@@ -32,10 +32,10 @@ def search_documents(
       query: Search query string (natural language).
       top_k: Number of top results to return (default: 10, max: 100).
       where: Optional metadata filters as dict. Examples:
-          - {"source_file": "textbook.pdf"} - exact match
+          - {"source": "textbook.pdf"} - exact match
           - {"year": {"$gte": 2024}} - greater than or equal
           - {"category": {"$in": ["AI", "ML"]}} - value in list
-          - {"source_file": "guide.pdf", "chunk_index": 0} - multiple conditions (AND)
+          - {"source": "guide.pdf", "chunk_index": 0} - multiple conditions (AND)
       collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:

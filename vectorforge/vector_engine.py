@@ -127,7 +127,7 @@ class VectorEngine:
         >>> from vectorforge.collection_manager import CollectionManager
         >>> manager = CollectionManager()
         >>> engine = manager.get_engine("my_collection")
-        >>> doc_ids = engine.add_docs([{"content": "Hello world", "metadata": {"source_file": "test.txt"}}])
+        >>> doc_ids = engine.add_docs([{"content": "Hello world", "metadata": {"source": "test.txt"}}])
         >>> results = engine.search("greeting", top_k=5)
     """
 
@@ -379,11 +379,11 @@ class VectorEngine:
     def list_files(self) -> list[str]:
         """List all unique source files referenced in documents.
 
-        Extracts the 'source_file' field from document metadata and returns
+        Extracts the 'source' field from document metadata and returns
         a sorted list of unique filenames.
 
         Returns:
-            Sorted list of unique source filenames. Documents lacking source_file
+            Sorted list of unique source filenames. Documents lacking source
             metadata are skipped. Returns empty list if no documents have been uploaded.
         """
         results = self.collection.get(include=["metadatas"])
@@ -391,9 +391,9 @@ class VectorEngine:
         filenames: set[str] = set()
         if results["metadatas"]:
             for metadata in results["metadatas"]:
-                if metadata and "source_file" in metadata:
-                    source_file = str(metadata["source_file"])
-                    filenames.add(source_file)
+                if metadata and "source" in metadata:
+                    source = str(metadata["source"])
+                    filenames.add(source)
 
         unique_filenames = list(filenames)
         unique_filenames.sort()
@@ -467,7 +467,7 @@ class VectorEngine:
 
         Raises:
             ValueError: If any document's content is empty/whitespace, or if any
-                metadata contains 'source_file' without 'chunk_index' (or vice versa).
+                metadata contains 'source' without 'chunk_index' (or vice versa).
             TypeError: If any metadata value is ``None`` or not a ChromaDB-supported
                 type (``str``, ``int``, ``float``, or ``bool``).
         """
@@ -489,11 +489,11 @@ class VectorEngine:
 
             self._validate_metadata(metadata)
 
-            has_source: bool = "source_file" in metadata
+            has_source: bool = "source" in metadata
             has_chunk_index: bool = "chunk_index" in metadata
             if has_source != has_chunk_index:
                 raise ValueError(
-                    "Metadata must contain both 'source_file' and 'chunk_index' or neither"
+                    "Metadata must contain both 'source' and 'chunk_index' or neither"
                 )
 
             contents.append(content)
@@ -525,7 +525,7 @@ class VectorEngine:
             self.metrics.docs_added += 1
             self.metrics.total_doc_size_bytes += len(content)
 
-            if metadata.get("source_file"):
+            if metadata.get("source"):
                 if metadata.get("chunk_index") == 0:
                     files_uploaded_delta += 1
                     last_file_uploaded_at = now
@@ -607,7 +607,7 @@ class VectorEngine:
     def delete_file(self, filename: str) -> dict[str, Any]:
         """Delete all document chunks associated with a specific source file.
 
-        Finds all documents where metadata['source_file'] matches the given
+        Finds all documents where metadata['source'] matches the given
         filename and deletes them immediately.
 
         Args:
@@ -623,9 +623,7 @@ class VectorEngine:
         logger.debug(
             "delete_file: collection=%s filename=%s", self.collection.name, filename
         )
-        results = self.collection.get(
-            where={"source_file": filename}, include=["documents"]
-        )
+        results = self.collection.get(where={"source": filename}, include=["documents"])
 
         doc_ids: list[str] = results.get("ids", [])
         if not doc_ids:

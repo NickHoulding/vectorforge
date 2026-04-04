@@ -484,10 +484,10 @@ Semantic search across indexed documents using embeddings. Returns top-k most si
   **VectorForge uses ChromaDB under the hood.** The `where` parameter is passed directly to ChromaDB's `where` clause. VectorForge supports the following ChromaDB operator expressions: `$gte`, `$lte`, `$ne`, `$in`. Refer to ChromaDB documentation to learn more about where clause syntax.
 
   Examples:
-  - `{"source_file": "textbook.pdf"}` - exact match
+  - `{"source": "textbook.pdf"}` - exact match
   - `{"year": {"$gte": 2024}}` - greater than or equal
   - `{"category": {"$in": ["AI", "ML"]}}` - value in list
-  - `{"source_file": "guide.pdf", "chunk_index": 0}` - multiple conditions (AND)
+  - `{"source": "guide.pdf", "chunk_index": 0}` - multiple conditions (AND)
 - `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Examples:**
@@ -502,9 +502,9 @@ Semantic search across indexed documents using embeddings. Returns top-k most si
 ```
 
 **Filtering Options:**
-- Filter by `source_file` → `where={"source_file": "file.pdf"}` returns all matching chunks from that file
+- Filter by `source` → `where={"source": "file.pdf"}` returns all matching chunks from that file
 - Filter by `chunk_index` → `where={"chunk_index": 0}` returns all matching chunks at that index (any file)
-- Filter by both → `where={"source_file": "file.pdf", "chunk_index": 0}` returns specific chunk from specific file
+- Filter by both → `where={"source": "file.pdf", "chunk_index": 0}` returns specific chunk from specific file
 - Filter by custom metadata → `where={"author": "Alice", "year": 2024}` filters by any metadata fields
 - Use operators → `where={"year": {"$gte": 2022}, "category": {"$in": ["AI", "ML"]}}` for advanced filtering
 - No filters → returns all matching results
@@ -617,7 +617,7 @@ Based on the indexed content, here are the relevant sections...
 You: Search for introductions only in textbook.pdf
 
 Claude: I'll search for introductions specifically in textbook.pdf.
-[Calls search_documents with query="introduction", where={"source_file": "textbook.pdf"}]
+[Calls search_documents with query="introduction", where={"source": "textbook.pdf"}]
 Found 3 results from textbook.pdf:
 - Chapter 1 Introduction (Score: 0.92)
 - Chapter 5 Introduction (Score: 0.85)
