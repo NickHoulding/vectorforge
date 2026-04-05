@@ -3,10 +3,12 @@
 Handles create, list, get, and delete operations for named collections.
 """
 
-from fastapi import APIRouter, HTTPException, Query, status
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from vectorforge.api import manager
-from vectorforge.api.decorators import handle_api_errors
+from vectorforge.api.decorators import handle_api_errors, require_collection
 from vectorforge.config import VFGConfig
 from vectorforge.models import (
     CollectionCreateRequest,
@@ -14,7 +16,11 @@ from vectorforge.models import (
     CollectionDeleteResponse,
     CollectionInfo,
     CollectionListResponse,
+    DocumentDetail,
+    DocumentListParams,
+    DocumentListResponse,
 )
+from vectorforge.vector_engine import VectorEngine
 
 router: APIRouter = APIRouter()
 
@@ -107,6 +113,53 @@ def list_collections() -> CollectionListResponse:
 
     return CollectionListResponse(
         status="success", collections=collections, total=len(collections)
+    )
+
+
+@router.get(
+    "/collections/{collection_name}/documents",
+    response_model=DocumentListResponse,
+)
+@handle_api_errors
+@require_collection
+def list_documents(
+    collection_name: str, params: DocumentListParams = Depends()
+) -> DocumentListResponse:
+    """List documents in a collection with pagination.
+
+    Returns a paginated list of all documents stored in the specified
+    collection, including their content and metadata.
+
+    Args:
+        collection_name: Name of the collection to list documents from.
+        params: Pagination parameters (limit, offset).
+
+    Returns:
+        DocumentListResponse: Paginated list of documents with total count.
+
+    Raises:
+        HTTPException: 404 if the collection does not exist.
+
+    Example:
+        ```
+        GET /collections/customer_docs/documents?limit=50&offset=0
+        ```
+    """
+    engine: VectorEngine = manager.get_engine(collection_name)
+    results: dict[str, Any] = engine.list_documents(
+        limit=params.limit, offset=params.offset
+    )
+    documents: list[DocumentDetail] = [
+        DocumentDetail(
+            id=results["ids"][i],
+            content=results["documents"][i],
+            metadata=results["metadatas"][i],
+        )
+        for i in range(len(results["ids"]))
+    ]
+
+    return DocumentListResponse(
+        status="success", documents=documents, total=len(results["ids"])
     )
 
 

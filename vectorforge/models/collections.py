@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from vectorforge.config import VFGConfig
 
+from .documents import DocumentDetail
 from .index import HNSWConfig, HNSWConfigUpdate
 
 
@@ -149,6 +150,64 @@ class CollectionListResponse(BaseModel):
                 "total": 2,
             }
         }
+    )
+
+
+class DocumentListResponse(BaseModel):
+    """Response containing a paginated list of documents from a collection.
+
+    Attributes:
+        status: Operation status (always "success" for 200 response).
+        documents: List of document detail objects.
+        total: Number of documents returned in this page.
+    """
+
+    status: str = Field(..., description="Operation status")
+    documents: list[DocumentDetail] = Field(
+        ..., description="List of documents contained in the collection."
+    )
+    total: int = Field(..., description="Number of documents present in the collection")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "status": "success",
+                "documents": [
+                    {
+                        "id": "abc-123-def",
+                        "content": "Machine learning is a subset of artificial intelligence...",
+                        "metadata": {"source": "textbook_1.pdf", "chunk_index": 0},
+                    },
+                    {
+                        "id": "ghi-456-jkl",
+                        "content": "The quick brown fox jumps over the lazy dog.",
+                        "metadata": {"source": "textbook_2.pdf", "chunk_index": 1},
+                    },
+                ],
+                "total": 2,
+            }
+        }
+    )
+
+
+class DocumentListParams(BaseModel):
+    """Query parameters for paginating a document list request.
+
+    Attributes:
+        limit: Maximum number of documents to return per page.
+        offset: Number of documents to skip before returning results.
+    """
+
+    limit: int = Field(
+        default=VFGConfig.DEFAULT_GET_LIMIT,
+        ge=1,
+        le=VFGConfig.MAX_GET_LIMIT,
+        description="Max number of documents to return.",
+    )
+    offset: int = Field(default=0, ge=0, description="Number of documents to skip.")
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"limit": 100, "offset": 0}}
     )
 
 

@@ -6,6 +6,8 @@ from .collections import (
     CollectionDeleteResponse,
     CollectionInfo,
     CollectionListResponse,
+    DocumentListParams,
+    DocumentListResponse,
 )
 from .documents import (
     BatchDeleteInput,
@@ -48,6 +50,8 @@ __all__: list[str] = [
     "CollectionDeleteResponse",
     "CollectionInfo",
     "CollectionListResponse",
+    "DocumentListResponse",
+    "DocumentListParams",
     # Files
     "FileUploadResponse",
     "FileDeleteResponse",

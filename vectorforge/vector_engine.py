@@ -22,7 +22,7 @@ from vectorforge import __version__
 from vectorforge.config import VFGConfig
 from vectorforge.logging import _sanitize_text_for_logging
 from vectorforge.metrics_store import MetricsStore
-from vectorforge.models import SearchResult
+from vectorforge.models import DocumentDetail, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -396,6 +396,28 @@ class VectorEngine:
         unique_filenames.sort()
 
         return unique_filenames
+
+    def list_documents(self, limit: int, offset: int) -> dict[str, Any]:
+        """Retrieve a paginated slice of documents from the collection.
+
+        Args:
+            limit: Maximum number of documents to return.
+            offset: Number of documents to skip before returning results.
+
+        Returns:
+            dict: Dictionary with keys ``ids``, ``documents``, and
+                ``metadatas``, each a list of the corresponding values
+                for the returned documents.
+        """
+        results = self.collection.get(
+            limit=limit, offset=offset, include=["documents", "metadatas"]
+        )
+
+        return {
+            "ids": results["ids"],
+            "documents": results["documents"],
+            "metadatas": results["metadatas"],
+        }
 
     def get_doc(self, doc_id: str) -> dict[str, Any] | None:
         """Retrieve a document by its ID.

@@ -67,6 +67,12 @@ class VFGConfig:
     DEFAULT_CHUNK_OVERLAP: int = int(os.getenv("VF_DEFAULT_CHUNK_OVERLAP", "50"))
     """Default number of overlapping characters between consecutive chunks."""
 
+    DEFAULT_GET_LIMIT: int = int(os.getenv("VF_DEFAULT_GET_LIMIT", "50"))
+    """Default number of documents returned per paginated list_documents collection request."""
+
+    MAX_GET_LIMIT: int = int(os.getenv("VF_MAX_GET_LIMIT", "1000"))
+    """Maximum number of documents allowed per paginated list_documents collection request."""
+
     # =============================================================================
     # Search Configuration
     # =============================================================================
