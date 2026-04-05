@@ -38,6 +38,7 @@ dev = [
     "faker>=40.1.2",
     "black>=24.0.0",
     "pre-commit>=4.0.0",
+    "pygount>=3.1.1",
 ]
 mcp = [
     "fastmcp>=2.14.1",
