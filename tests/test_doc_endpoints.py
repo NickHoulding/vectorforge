@@ -268,18 +268,6 @@ def test_doc_add_content_not_string(client, sample_doc):
     assert response.status_code == 422
 
 
-def test_doc_get_with_empty_string_id(client):
-    """Test that GET /collections/vectorforge/documents/ with empty string returns 404 or 405."""
-    response = client.get("/collections/vectorforge/documents/")
-    assert response.status_code in (404, 405)
-
-
-def test_doc_delete_with_empty_string_id(client):
-    """Test that DELETE /collections/vectorforge/documents/ with empty string returns 404, 405, or 422."""
-    response = client.delete("/collections/vectorforge/documents/")
-    assert response.status_code in (404, 405, 422)
-
-
 def test_doc_add_preserves_metadata_fields(client, sample_doc):
     """Test that all metadata fields are preserved after adding a document."""
     response = client.post("/collections/vectorforge/documents", json=sample_doc)

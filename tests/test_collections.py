@@ -5,6 +5,7 @@ Covers:
     POST   /collections
     GET    /collections/{name}
     DELETE /collections/{name}?confirm=true
+    GET    /collections/{name}/documents
 """
 
 import io
@@ -966,3 +967,355 @@ def test_delete_collection_confirm_integer_zero_returns_400(client: TestClient) 
     client.post("/collections", json={"name": "int_zero_col"})
     response = client.delete("/collections/int_zero_col", params={"confirm": 0})
     assert response.status_code == 400
+
+
+# =============================================================================
+# GET /collections/{name}/documents: list documents with pagination
+# =============================================================================
+
+
+def test_list_documents_empty_collection_returns_200(client: TestClient) -> None:
+    """An empty collection returns HTTP 200 with an empty document list."""
+    client.post("/collections", json={"name": "empty_list_col"})
+    response = client.get("/collections/empty_list_col/documents")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["documents"] == []
+    assert data["total"] == 0
+
+
+def test_list_documents_response_shape(client: TestClient) -> None:
+    """Response contains status, documents, and total fields."""
+    response = client.get(f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "status" in data
+    assert "documents" in data
+    assert "total" in data
+
+
+def test_list_documents_document_shape(client: TestClient) -> None:
+    """Each document entry contains id, content, and metadata fields."""
+    client.post(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
+        json={
+            "content": "shape check doc",
+            "metadata": {"source": "shape.txt", "chunk_index": 0},
+        },
+    )
+
+    data = client.get(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents"
+    ).json()
+
+    doc = data["documents"][0]
+    assert "id" in doc
+    assert "content" in doc
+    assert "metadata" in doc
+
+
+def test_list_documents_returns_added_documents(client: TestClient) -> None:
+    """Documents added to a collection appear in the list response."""
+    client.post("/collections", json={"name": "list_docs_col"})
+    client.post(
+        "/collections/list_docs_col/documents",
+        json={"content": "first document", "metadata": {}},
+    )
+    client.post(
+        "/collections/list_docs_col/documents",
+        json={"content": "second document", "metadata": {}},
+    )
+
+    data = client.get("/collections/list_docs_col/documents").json()
+
+    assert data["total"] == 2
+    assert len(data["documents"]) == 2
+
+
+def test_list_documents_total_matches_documents_length(client: TestClient) -> None:
+    """total field always equals len(documents) in the response."""
+    client.post("/collections", json={"name": "total_match_col"})
+    for i in range(5):
+        client.post(
+            "/collections/total_match_col/documents",
+            json={"content": f"doc {i}", "metadata": {}},
+        )
+
+    data = client.get("/collections/total_match_col/documents").json()
+    assert data["total"] == len(data["documents"])
+
+
+def test_list_documents_content_round_trips(client: TestClient) -> None:
+    """Document content is returned unchanged from what was stored."""
+    content = "The quick brown fox jumps over the lazy dog"
+    client.post(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
+        json={"content": content, "metadata": {}},
+    )
+
+    data = client.get(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents"
+    ).json()
+
+    assert data["documents"][0]["content"] == content
+
+
+def test_list_documents_metadata_round_trips(client: TestClient) -> None:
+    """Document metadata is returned unchanged from what was stored."""
+    client.post(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
+        json={
+            "content": "meta round-trip doc",
+            "metadata": {"source": "test.txt", "chunk_index": 3},
+        },
+    )
+
+    data = client.get(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents"
+    ).json()
+
+    meta = data["documents"][0]["metadata"]
+    assert meta["source"] == "test.txt"
+    assert meta["chunk_index"] == 3
+
+
+def test_list_documents_limit_restricts_count(client: TestClient) -> None:
+    """limit query parameter caps the number of documents returned."""
+    client.post("/collections", json={"name": "limit_col"})
+    for i in range(10):
+        client.post(
+            "/collections/limit_col/documents",
+            json={"content": f"doc {i}", "metadata": {}},
+        )
+
+    data = client.get("/collections/limit_col/documents", params={"limit": 3}).json()
+
+    assert len(data["documents"]) == 3
+    assert data["total"] == 3
+
+
+def test_list_documents_offset_skips_documents(client: TestClient) -> None:
+    """offset query parameter skips the specified number of documents."""
+    client.post("/collections", json={"name": "offset_col"})
+    for i in range(5):
+        client.post(
+            "/collections/offset_col/documents",
+            json={"content": f"doc {i}", "metadata": {}},
+        )
+
+    all_data = client.get("/collections/offset_col/documents").json()
+    offset_data = client.get(
+        "/collections/offset_col/documents", params={"offset": 3}
+    ).json()
+
+    assert len(offset_data["documents"]) == 2
+    assert offset_data["total"] == 2
+
+    all_ids = [d["id"] for d in all_data["documents"]]
+    offset_ids = [d["id"] for d in offset_data["documents"]]
+    assert offset_ids == all_ids[3:]
+
+
+def test_list_documents_limit_and_offset_together(client: TestClient) -> None:
+    """limit and offset work together to select a page window."""
+    client.post("/collections", json={"name": "page_col"})
+    for i in range(8):
+        client.post(
+            "/collections/page_col/documents",
+            json={"content": f"doc {i}", "metadata": {}},
+        )
+
+    all_data = client.get("/collections/page_col/documents").json()
+    page_data = client.get(
+        "/collections/page_col/documents", params={"limit": 3, "offset": 2}
+    ).json()
+
+    assert len(page_data["documents"]) == 3
+    assert page_data["total"] == 3
+    all_ids = [d["id"] for d in all_data["documents"]]
+    page_ids = [d["id"] for d in page_data["documents"]]
+    assert page_ids == all_ids[2:5]
+
+
+def test_list_documents_offset_beyond_total_returns_empty(client: TestClient) -> None:
+    """An offset larger than the total document count returns an empty list."""
+    client.post("/collections", json={"name": "big_offset_col"})
+    client.post(
+        "/collections/big_offset_col/documents",
+        json={"content": "only doc", "metadata": {}},
+    )
+
+    data = client.get(
+        "/collections/big_offset_col/documents", params={"offset": 100}
+    ).json()
+
+    assert data["documents"] == []
+    assert data["total"] == 0
+
+
+def test_list_documents_nonexistent_collection_returns_404(client: TestClient) -> None:
+    """Requesting documents from an unknown collection returns HTTP 404."""
+    response = client.get("/collections/nonexistent_col/documents")
+    assert response.status_code == 404
+
+
+def test_list_documents_limit_zero_returns_422(client: TestClient) -> None:
+    """limit=0 violates the ge=1 constraint and returns HTTP 422."""
+    client.post("/collections", json={"name": "zero_limit_col"})
+    response = client.get("/collections/zero_limit_col/documents", params={"limit": 0})
+    assert response.status_code == 422
+
+
+def test_list_documents_limit_exceeds_max_returns_422(client: TestClient) -> None:
+    """limit above MAX_GET_LIMIT is rejected with HTTP 422."""
+    from vectorforge.config import VFGConfig as _VFGConfig
+
+    client.post("/collections", json={"name": "over_limit_col"})
+    response = client.get(
+        "/collections/over_limit_col/documents",
+        params={"limit": _VFGConfig.MAX_GET_LIMIT + 1},
+    )
+    assert response.status_code == 422
+
+
+def test_list_documents_negative_offset_returns_422(client: TestClient) -> None:
+    """offset=-1 violates the ge=0 constraint and returns HTTP 422."""
+    client.post("/collections", json={"name": "neg_offset_col"})
+    response = client.get(
+        "/collections/neg_offset_col/documents", params={"offset": -1}
+    )
+    assert response.status_code == 422
+
+
+def test_list_documents_default_collection_works(client: TestClient) -> None:
+    """The default collection's documents endpoint is accessible."""
+    client.post(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
+        json={"content": "default collection doc", "metadata": {}},
+    )
+
+    response = client.get(f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+
+
+def test_list_documents_id_is_non_empty_string(client: TestClient) -> None:
+    """Each document entry has a non-empty string id."""
+    client.post(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
+        json={"content": "id check doc", "metadata": {}},
+    )
+
+    data = client.get(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents"
+    ).json()
+
+    doc_id = data["documents"][0]["id"]
+    assert isinstance(doc_id, str)
+    assert len(doc_id) > 0
+
+
+def test_list_documents_isolated_from_other_collections(
+    client: TestClient, col_a: str, col_b: str
+) -> None:
+    """Documents listed for col_a do not include documents from col_b."""
+    client.post(
+        f"/collections/{col_a}/documents",
+        json={"content": "exclusive to col_a", "metadata": {}},
+    )
+
+    data = client.get(f"/collections/{col_b}/documents").json()
+
+    assert data["total"] == 0
+    assert data["documents"] == []
+
+
+def test_list_documents_status_is_success_when_docs_present(client: TestClient) -> None:
+    """status field is 'success' when the collection contains documents."""
+    client.post(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
+        json={"content": "status check doc", "metadata": {}},
+    )
+
+    data = client.get(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents"
+    ).json()
+
+    assert data["status"] == "success"
+
+
+def test_list_documents_limit_one_returns_single_doc(client: TestClient) -> None:
+    """limit=1 (minimum valid value) returns exactly one document."""
+    client.post("/collections", json={"name": "min_limit_col"})
+    for i in range(3):
+        client.post(
+            "/collections/min_limit_col/documents",
+            json={"content": f"doc {i}", "metadata": {}},
+        )
+
+    data = client.get(
+        "/collections/min_limit_col/documents", params={"limit": 1}
+    ).json()
+
+    assert data["total"] == 1
+    assert len(data["documents"]) == 1
+
+
+def test_list_documents_default_limit_applied_when_omitted(client: TestClient) -> None:
+    """When no limit is specified, DEFAULT_GET_LIMIT (50) documents are returned.
+
+    Adds DEFAULT_GET_LIMIT + 5 documents and verifies that a request with no
+    limit param returns exactly DEFAULT_GET_LIMIT documents, not all of them.
+    """
+    client.post("/collections", json={"name": "default_limit_col"})
+    doc_count = VFGConfig.DEFAULT_GET_LIMIT + 5
+    for i in range(doc_count):
+        client.post(
+            "/collections/default_limit_col/documents",
+            json={"content": f"doc {i}", "metadata": {}},
+        )
+
+    data = client.get("/collections/default_limit_col/documents").json()
+
+    assert data["total"] == VFGConfig.DEFAULT_GET_LIMIT
+    assert len(data["documents"]) == VFGConfig.DEFAULT_GET_LIMIT
+
+
+def test_list_documents_total_reflects_page_size_not_collection_size(
+    client: TestClient,
+) -> None:
+    """total equals the number of documents returned on the page, not the full collection size.
+
+    With 10 documents in the collection and limit=3, total should be 3, not 10.
+    """
+    client.post("/collections", json={"name": "page_total_col"})
+    for i in range(10):
+        client.post(
+            "/collections/page_total_col/documents",
+            json={"content": f"doc {i}", "metadata": {}},
+        )
+
+    data = client.get(
+        "/collections/page_total_col/documents", params={"limit": 3}
+    ).json()
+
+    assert data["total"] == 3
+    assert len(data["documents"]) == 3
+
+
+def test_list_documents_null_metadata_returned_as_none(client: TestClient) -> None:
+    """A document stored with metadata=null has metadata returned as null."""
+    client.post(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
+        json={"content": "no metadata doc", "metadata": None},
+    )
+
+    data = client.get(
+        f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents"
+    ).json()
+
+    assert data["documents"][0]["metadata"] is None
