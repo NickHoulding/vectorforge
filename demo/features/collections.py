@@ -40,6 +40,23 @@ def get() -> None:
     client.print_response(resp)
 
 
+def list_documents() -> None:
+    """Prompt for a collection name and pagination params, then list its documents."""
+    print("\n-- List Documents --")
+    collection_name = client.prompt_collection()
+    limit = client.prompt_int("Limit", default=50)
+    offset = client.prompt_int("Offset", default=0)
+
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    if offset:
+        params["offset"] = offset
+
+    resp = client.get(f"/collections/{collection_name}/documents", params=params)
+    client.print_response(resp)
+
+
 def delete() -> None:
     """Prompt for a collection name and delete it after confirmation."""
     print("\n-- Delete Collection --")

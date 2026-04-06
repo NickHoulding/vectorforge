@@ -20,6 +20,10 @@ FEATURES: dict[str, tuple[Callable[..., Any], str]] = {
     "collections:list": (collections.list_all, "List all collections"),
     "collections:get": (collections.get, "Get details for one collection"),
     "collections:delete": (collections.delete, "Delete a collection"),
+    "collections:list_documents": (
+        collections.list_documents,
+        "List documents in a collection with pagination",
+    ),
     "documents:add": (documents.add, "Add a single document"),
     "documents:get": (documents.get, "Fetch a document by ID"),
     "documents:batch_add": (documents.batch_add, "Add multiple documents"),
