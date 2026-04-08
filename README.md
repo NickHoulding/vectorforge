@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Version](https://img.shields.io/badge/version-1.0.3-orange.svg)
 
-> A high-performance vector database with semantic search capabilities, powered by ChromaDB, built with FastAPI and sentence transformers.
+> A high-performance vector database microservice with semantic search capabilities, powered by ChromaDB, built with FastAPI and sentence transformers.
 
 ---
 
