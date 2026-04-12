@@ -157,7 +157,7 @@ collection.delete(ids=[doc_id])  # Immediate removal
 - Simplified implementation - no compaction needed
 - ChromaDB handles internal cleanup and optimization
 
-#### **3. Normalized Embeddings**
+#### **3. Pre-Normalized Embeddings**
 All embeddings are L2-normalized using numpy during creation:
 ```python
 embedding = embedding / np.linalg.norm(embedding)
