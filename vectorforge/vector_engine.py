@@ -317,12 +317,7 @@ class VectorEngine:
             query_embedding
         )
 
-        where_clause: dict[str, Any] | None = None
-        if filters:
-            if len(filters) == 1:
-                where_clause = dict(filters)
-            else:
-                where_clause = {"$and": [dict({k: v}) for k, v in filters.items()]}
+        where_clause: dict[str, Any] | None = self._build_where_clause(filters)
 
         results = self.collection.query(
             query_embeddings=[normalized_query_embedding.tolist()],
@@ -753,6 +748,27 @@ class VectorEngine:
             "embedding_dimension": self.embedding_model.get_sentence_embedding_dimension()
             or 0,
         }
+
+    def _build_where_clause(
+        self, filters: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        """Build a ChromaDB ``where`` clause from a flat filters dict.
+
+        Args:
+            filters: Metadata filters as key-value pairs. Single-key dicts are
+                passed through directly; multi-key dicts are wrapped in an
+                ``$and`` expression.
+
+        Returns:
+            A ChromaDB-compatible ``where`` clause, or ``None`` if ``filters``
+            is empty or ``None``.
+        """
+        if not filters:
+            return None
+        if len(filters) == 1:
+            return dict(filters)
+
+        return {"$and": [{k: v} for k, v in filters.items()]}
 
     def _update_query_metrics(self, elapsed_ms: float) -> None:
         """Record a completed query's execution time in the rolling metrics window.
