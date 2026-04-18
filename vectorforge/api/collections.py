@@ -3,6 +3,7 @@
 Handles create, list, get, and delete operations for named collections.
 """
 
+import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -116,6 +117,129 @@ def list_collections() -> CollectionListResponse:
     )
 
 
+def _parse_document_filters(filters_raw: str | None) -> dict[str, Any] | None:
+    """Parse and validate a JSON-encoded metadata filters query parameter.
+
+    Args:
+        filters_raw: Raw JSON string from the query parameter, or ``None``.
+
+    Returns:
+        Parsed filters dict, or ``None`` if no filter was provided.
+
+    Raises:
+        HTTPException: 422 if the string is not valid JSON, not a JSON object,
+            uses an unrecognised operator, or passes a value of the wrong type
+            to an operator.
+    """
+    if filters_raw is None:
+        return None
+
+    try:
+        parsed = json.loads(filters_raw)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=422,
+            detail=[
+                {
+                    "loc": ["query", "filters"],
+                    "msg": "filters must be a valid JSON string",
+                    "type": "value_error",
+                }
+            ],
+        )
+
+    if not isinstance(parsed, dict):
+        raise HTTPException(
+            status_code=422,
+            detail=[
+                {
+                    "loc": ["query", "filters"],
+                    "msg": "filters must be a JSON object",
+                    "type": "value_error",
+                }
+            ],
+        )
+
+    valid_scalar_types = VFGConfig.VALID_SCALAR_TYPES
+    valid_operators = VFGConfig.VALID_FILTER_OPERATORS
+
+    for field_name, filter_value in parsed.items():
+        if not isinstance(filter_value, dict):
+            continue
+
+        operators_used = set(filter_value.keys())
+
+        for op in operators_used:
+            if op not in valid_operators:
+                raise HTTPException(
+                    status_code=422,
+                    detail=[
+                        {
+                            "loc": ["query", "filters", field_name],
+                            "msg": (
+                                f"filters[{field_name!r}] contains unknown operator {op!r}. "
+                                f"Allowed operators: {sorted(valid_operators)}"
+                            ),
+                            "type": "value_error",
+                        }
+                    ],
+                )
+
+        if "$in" in operators_used:
+            in_operand = filter_value["$in"]
+            if not isinstance(in_operand, list):
+                raise HTTPException(
+                    status_code=422,
+                    detail=[
+                        {
+                            "loc": ["query", "filters", field_name],
+                            "msg": f"filters[{field_name!r}]['$in'] must be a list, got {type(in_operand).__name__!r}",
+                            "type": "value_error",
+                        }
+                    ],
+                )
+            invalid_items = [
+                item for item in in_operand if type(item) not in valid_scalar_types
+            ]
+            if invalid_items:
+                bad_types = {type(item).__name__ for item in invalid_items}
+                raise HTTPException(
+                    status_code=422,
+                    detail=[
+                        {
+                            "loc": ["query", "filters", field_name],
+                            "msg": (
+                                f"filters[{field_name!r}]['$in'] contains unsupported value types: "
+                                f"{sorted(bad_types)}. Allowed types: str, int, float, bool"
+                            ),
+                            "type": "value_error",
+                        }
+                    ],
+                )
+
+        for scalar_op in ("$gte", "$lte", "$ne"):
+            scalar_operand = filter_value.get(scalar_op)
+            if (
+                scalar_operand is not None
+                and type(scalar_operand) not in valid_scalar_types
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail=[
+                        {
+                            "loc": ["query", "filters", field_name],
+                            "msg": (
+                                f"filters[{field_name!r}][{scalar_op!r}] must be a str, int, float, or bool, "
+                                f"got {type(scalar_operand).__name__!r}"
+                            ),
+                            "type": "value_error",
+                        }
+                    ],
+                )
+
+    return parsed
+
+
 @router.get(
     "/collections/{collection_name}/documents",
     response_model=DocumentListResponse,
@@ -125,29 +249,32 @@ def list_collections() -> CollectionListResponse:
 def list_documents(
     collection_name: str, params: DocumentListParams = Depends()
 ) -> DocumentListResponse:
-    """List documents in a collection with pagination.
+    """List documents in a collection with pagination and optional filtering.
 
-    Returns a paginated list of all documents stored in the specified
-    collection, including their content and metadata.
+    Returns a paginated list of documents stored in the specified collection,
+    including their content and metadata. Supports metadata filtering via a
+    JSON-encoded query parameter.
 
     Args:
         collection_name: Name of the collection to list documents from.
-        params: Pagination parameters (limit, offset).
+        params: Pagination and filter parameters (limit, offset, filters).
 
     Returns:
         DocumentListResponse: Paginated list of documents with total count.
 
     Raises:
         HTTPException: 404 if the collection does not exist.
+        HTTPException: 422 if filters is not valid JSON or uses invalid operators.
 
     Example:
         ```
-        GET /collections/customer_docs/documents?limit=50&offset=0
+        GET /collections/customer_docs/documents?limit=50&offset=0&filters={"source":"notes.txt"}
         ```
     """
+    filters = _parse_document_filters(params.filters)
     engine: VectorEngine = manager.get_engine(collection_name)
     results: dict[str, Any] = engine.list_documents(
-        limit=params.limit, offset=params.offset
+        limit=params.limit, offset=params.offset, filters=filters
     )
     documents: list[DocumentDetail] = [
         DocumentDetail(

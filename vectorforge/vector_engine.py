@@ -392,20 +392,33 @@ class VectorEngine:
 
         return unique_filenames
 
-    def list_documents(self, limit: int, offset: int) -> dict[str, Any]:
+    def list_documents(
+        self,
+        limit: int,
+        offset: int,
+        filters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Retrieve a paginated slice of documents from the collection.
 
         Args:
             limit: Maximum number of documents to return.
             offset: Number of documents to skip before returning results.
+            filters: Optional metadata filters as key-value pairs. All filters
+                must match (AND logic). Accepts exact values or operator
+                expressions (``$gte``, ``$lte``, ``$ne``, ``$in``).
+                Example: ``{"source": "file.txt", "year": {"$gte": 2020}}``
 
         Returns:
             dict: Dictionary with keys ``ids``, ``documents``, and
                 ``metadatas``, each a list of the corresponding values
                 for the returned documents.
         """
+        where_clause = self._build_where_clause(filters)
         results = self.collection.get(
-            limit=limit, offset=offset, include=["documents", "metadatas"]
+            limit=limit,
+            offset=offset,
+            where=where_clause,
+            include=["documents", "metadatas"],
         )
 
         return {

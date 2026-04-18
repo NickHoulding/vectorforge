@@ -191,11 +191,16 @@ class DocumentListResponse(BaseModel):
 
 
 class DocumentListParams(BaseModel):
-    """Query parameters for paginating a document list request.
+    """Query parameters for paginating and filtering a document list request.
 
     Attributes:
         limit: Maximum number of documents to return per page.
         offset: Number of documents to skip before returning results.
+        filters: Optional metadata filters as key-value pairs. All filters
+            must match (AND logic). Accepts exact values or operator expressions
+            (``$gte``, ``$lte``, ``$ne``, ``$in``). Pass as a JSON-encoded
+            string query parameter.
+            Example: ``{"source": "file.txt"}``
     """
 
     limit: int = Field(
@@ -205,9 +210,18 @@ class DocumentListParams(BaseModel):
         description="Max number of documents to return.",
     )
     offset: int = Field(default=0, ge=0, description="Number of documents to skip.")
+    filters: str | None = Field(
+        default=None,
+        description=(
+            "Optional JSON-encoded metadata filters as key-value pairs. "
+            'Example: \'{"source": "file.txt"}\''
+        ),
+    )
 
     model_config = ConfigDict(
-        json_schema_extra={"example": {"limit": 100, "offset": 0}}
+        json_schema_extra={
+            "example": {"limit": 100, "offset": 0, "filters": '{"source": "file.txt"}'}
+        }
     )
 
 

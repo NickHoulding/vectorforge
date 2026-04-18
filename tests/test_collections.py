@@ -1319,3 +1319,217 @@ def test_list_documents_null_metadata_returned_as_none(client: TestClient) -> No
     ).json()
 
     assert data["documents"][0]["metadata"] is None
+
+
+# =============================================================================
+# GET /collections/{name}/documents: list documents with metadata filters
+# =============================================================================
+
+
+def test_list_documents_filter_by_exact_metadata_value(client: TestClient) -> None:
+    """A single exact-match filter returns only documents matching that metadata."""
+    import json
+
+    client.post("/collections", json={"name": "filter_exact_col"})
+    client.post(
+        "/collections/filter_exact_col/documents",
+        json={
+            "content": "doc from notes",
+            "metadata": {"source": "notes.txt", "chunk_index": 0},
+        },
+    )
+    client.post(
+        "/collections/filter_exact_col/documents",
+        json={
+            "content": "doc from report",
+            "metadata": {"source": "report.txt", "chunk_index": 0},
+        },
+    )
+
+    data = client.get(
+        "/collections/filter_exact_col/documents",
+        params={"filters": json.dumps({"source": "notes.txt"})},
+    ).json()
+
+    assert data["total"] == 1
+    assert data["documents"][0]["metadata"]["source"] == "notes.txt"
+
+
+def test_list_documents_filter_no_matches_returns_empty(client: TestClient) -> None:
+    """A filter that matches no documents returns an empty list."""
+    import json
+
+    client.post("/collections", json={"name": "filter_no_match_col"})
+    client.post(
+        "/collections/filter_no_match_col/documents",
+        json={"content": "some doc", "metadata": {"source": "a.txt", "chunk_index": 0}},
+    )
+
+    data = client.get(
+        "/collections/filter_no_match_col/documents",
+        params={"filters": json.dumps({"source": "nonexistent.txt"})},
+    ).json()
+
+    assert data["total"] == 0
+    assert data["documents"] == []
+
+
+def test_list_documents_filter_multiple_keys_and_logic(client: TestClient) -> None:
+    """Multiple filter keys are combined with AND logic."""
+    import json
+
+    client.post("/collections", json={"name": "filter_and_col"})
+    client.post(
+        "/collections/filter_and_col/documents",
+        json={
+            "content": "matches both",
+            "metadata": {"source": "a.txt", "chunk_index": 0},
+        },
+    )
+    client.post(
+        "/collections/filter_and_col/documents",
+        json={
+            "content": "matches source only",
+            "metadata": {"source": "a.txt", "chunk_index": 1},
+        },
+    )
+    client.post(
+        "/collections/filter_and_col/documents",
+        json={
+            "content": "matches neither",
+            "metadata": {"source": "b.txt", "chunk_index": 0},
+        },
+    )
+
+    data = client.get(
+        "/collections/filter_and_col/documents",
+        params={"filters": json.dumps({"source": "a.txt", "chunk_index": 0})},
+    ).json()
+
+    assert data["total"] == 1
+    assert data["documents"][0]["content"] == "matches both"
+
+
+def test_list_documents_filter_with_gte_operator(client: TestClient) -> None:
+    """$gte operator returns documents where the metadata value meets the threshold."""
+    import json
+
+    client.post("/collections", json={"name": "filter_gte_col"})
+    for i in range(5):
+        client.post(
+            "/collections/filter_gte_col/documents",
+            json={
+                "content": f"doc {i}",
+                "metadata": {"chunk_index": i, "source": "f.txt"},
+            },
+        )
+
+    data = client.get(
+        "/collections/filter_gte_col/documents",
+        params={"filters": json.dumps({"chunk_index": {"$gte": 3}})},
+    ).json()
+
+    returned_indices = {d["metadata"]["chunk_index"] for d in data["documents"]}
+    assert returned_indices == {3, 4}
+
+
+def test_list_documents_filter_with_in_operator(client: TestClient) -> None:
+    """$in operator returns documents whose metadata value is in the given list."""
+    import json
+
+    client.post("/collections", json={"name": "filter_in_col"})
+    for name in ("alice.txt", "bob.txt", "charlie.txt"):
+        client.post(
+            "/collections/filter_in_col/documents",
+            json={
+                "content": f"doc from {name}",
+                "metadata": {"source": name, "chunk_index": 0},
+            },
+        )
+
+    data = client.get(
+        "/collections/filter_in_col/documents",
+        params={
+            "filters": json.dumps({"source": {"$in": ["alice.txt", "charlie.txt"]}})
+        },
+    ).json()
+
+    sources = {d["metadata"]["source"] for d in data["documents"]}
+    assert sources == {"alice.txt", "charlie.txt"}
+
+
+def test_list_documents_filter_invalid_json_returns_422(client: TestClient) -> None:
+    """A non-JSON string for filters returns HTTP 422."""
+    client.post("/collections", json={"name": "filter_badjson_col"})
+
+    response = client.get(
+        "/collections/filter_badjson_col/documents",
+        params={"filters": "not-json"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_list_documents_filter_json_not_object_returns_422(client: TestClient) -> None:
+    """A JSON array (not an object) for filters returns HTTP 422."""
+    import json
+
+    client.post("/collections", json={"name": "filter_array_col"})
+
+    response = client.get(
+        "/collections/filter_array_col/documents",
+        params={"filters": json.dumps(["source", "file.txt"])},
+    )
+
+    assert response.status_code == 422
+
+
+def test_list_documents_filter_unknown_operator_returns_422(client: TestClient) -> None:
+    """An unrecognised filter operator returns HTTP 422."""
+    import json
+
+    client.post("/collections", json={"name": "filter_badop_col"})
+
+    response = client.get(
+        "/collections/filter_badop_col/documents",
+        params={"filters": json.dumps({"source": {"$unknown": "x"}})},
+    )
+
+    assert response.status_code == 422
+
+
+def test_list_documents_filter_in_non_list_returns_422(client: TestClient) -> None:
+    """$in with a non-list operand returns HTTP 422."""
+    import json
+
+    client.post("/collections", json={"name": "filter_in_nonlist_col"})
+
+    response = client.get(
+        "/collections/filter_in_nonlist_col/documents",
+        params={"filters": json.dumps({"source": {"$in": "not-a-list"}})},
+    )
+
+    assert response.status_code == 422
+
+
+def test_list_documents_filter_respects_limit_and_offset(client: TestClient) -> None:
+    """Pagination (limit/offset) is applied after filtering."""
+    import json
+
+    client.post("/collections", json={"name": "filter_page_col"})
+    for i in range(6):
+        client.post(
+            "/collections/filter_page_col/documents",
+            json={
+                "content": f"doc {i}",
+                "metadata": {"source": "same.txt", "chunk_index": i},
+            },
+        )
+
+    data = client.get(
+        "/collections/filter_page_col/documents",
+        params={"filters": json.dumps({"source": "same.txt"}), "limit": 3, "offset": 2},
+    ).json()
+
+    assert data["total"] == 3
+    assert len(data["documents"]) == 3
