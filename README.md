@@ -201,8 +201,8 @@ VectorForge uses a dataclass-based metrics system:
 @dataclass
 class EngineMetrics:
     total_queries: int
-    query_times: deque[float]  # Rolling window
-    # ... 15+ tracked metrics
+    query_times: deque[float]
+    # Other tracked metrics...
 ```
 
 **Benefits**:
