@@ -5,6 +5,7 @@ from io import BufferedReader
 from typing import Any
 
 import requests
+from icecream import ic
 
 BASE_URL = "http://localhost:3001"
 
@@ -105,14 +106,10 @@ def print_response(resp: requests.Response) -> None:
     Args:
       resp: The response returned by one of the request helpers.
     """
-    status_label = _status_label(resp.status_code)
-    print(f"\n  {status_label}  {resp.status_code} {resp.reason}")
-
     try:
-        body = resp.json()
-        print(json.dumps(body, indent=2))
+        ic(resp, resp.json())
     except ValueError:
-        print(resp.text or "(empty body)")
+        ic(resp.text)
 
     print()
 
