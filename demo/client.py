@@ -114,25 +114,6 @@ def print_response(resp: requests.Response) -> None:
     print()
 
 
-def _status_label(code: int) -> str:
-    """Return a short bracket label describing the HTTP status class.
-
-    Args:
-      code: HTTP status code.
-
-    Returns:
-      One of "[OK]", "[REDIRECT]", "[CLIENT ERROR]", or "[SERVER ERROR]".
-    """
-    if code < 300:
-        return "[OK]"
-    if code < 400:
-        return "[REDIRECT]"
-    if code < 500:
-        return "[CLIENT ERROR]"
-
-    return "[SERVER ERROR]"
-
-
 def prompt(label: str, default: str | None = None) -> str:
     """Prompt the user for a required string value.
 
