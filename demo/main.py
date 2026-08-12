@@ -208,23 +208,22 @@ def run_repl() -> None:
 
         if not raw:
             continue
-
-        if raw in ("quit", "exit", "q"):
+        elif raw in ("quit", "exit", "q"):
             _prompt_shutdown()
             break
-
-        if raw in ("help", "h", "?"):
+        elif raw in ("help", "h", "?"):
             _print_help()
             continue
 
-        if raw not in FEATURES:
-            print(f"  Unknown feature '{raw}'. Type 'help' to see available features.")
-            continue
-
-        handler, _ = FEATURES[raw]
-        try:
-            handler()
-        except KeyboardInterrupt:
-            print("\n  (cancelled)")
-        except Exception as e:
-            print(f"\n  ERROR: {e}\n")
+        if command := FEATURES.get(raw):
+            try:
+                handler, _ = command
+                handler()
+            except KeyboardInterrupt:
+                print("\n  (cancelled)")
+            except Exception as e:
+                print(f"\n  ERROR: {e}\n")
+        else:
+            print(
+                f"  Unknown feature '{raw}'. Type 'help' to see available features.\n"
+            )
