@@ -18,7 +18,6 @@
 - [Architecture](#architecture)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
-- [HNSW Configuration](#hnsw-configuration)
 - [Development Process](#development-process)
 - [Known Limitations](#known-limitations)
 - [Related Projects](#related-projects)
@@ -141,8 +140,8 @@ Perfect for building:
 VectorForge uses ChromaDB as its persistent vector database backend:
 - **Automatic Persistence** - All data automatically saved to disk via ChromaDB's PersistentClient
 - **Efficient Storage** - ChromaDB uses SQLite for metadata and optimized storage for embeddings
-- **HNSW Indexing** - Hierarchical Navigable Small World graphs for fast similarity search
-- **Cosine Similarity** - Collection configured with cosine distance metric
+- **HNSW Indexing** - ChromaDB uses Hierarchical Navigable Small World graphs internally for fast approximate nearest neighbor search
+- **Cosine Similarity** - Every collection is fixed to cosine distance, since search scoring is only valid for that metric
 
 **Rationale**: ChromaDB provides production-ready persistence, efficient indexing, and eliminates the need for custom index management.
 
@@ -175,7 +174,7 @@ vectorforge/
 │   ├── documents.py    # Document CRUD
 │   ├── files.py        # File upload
 │   ├── search.py       # Semantic search
-│   ├── index.py        # Stats & HNSW config
+│   ├── index.py        # Index stats
 │   ├── system.py       # Health & metrics
 │   ├── config.py       # Collection metadata config
 │   └── decorators.py   # Error handling & auth decorators
@@ -263,8 +262,7 @@ files:delete                Delete all chunks for a file
 
 search                      Semantic similarity search
 
-index:stats                 Get index statistics and HNSW config
-index:update_hnsw           Migrate HNSW index configuration
+index:stats                 Get index statistics
 
 system:health               Basic health check
 system:health_ready         Readiness probe
@@ -697,118 +695,6 @@ print(response.json())
 
 ---
 
-## HNSW Configuration
-
-VectorForge uses ChromaDB's **Hierarchical Navigable Small World (HNSW)** algorithm for efficient approximate nearest neighbor search. You can tune HNSW parameters to optimize the tradeoff between search accuracy and performance.
-
-### **Getting Current Configuration**
-
-```python
-response = requests.get("http://localhost:3001/collections/vectorforge/stats")
-stats = response.json()
-```
-
-**Response includes:**
-```json
-{
-  "status": "success",
-  "total_documents": 1250,
-  "embedding_dimension": 384,
-  "hnsw_config": {
-    "space": "cosine",
-    "ef_construction": 100,
-    "ef_search": 100,
-    "max_neighbors": 16,
-    "resize_factor": 1.2,
-    "sync_threshold": 1000
-  }
-}
-```
-
-### **Updating HNSW Configuration**
-
-Update HNSW parameters via zero-downtime collection migration:
-
-```python
-response = requests.put(
-    "http://localhost:3001/collections/vectorforge/config/hnsw",
-    params={"confirm": "true"},
-    json={"ef_search": 150, "max_neighbors": 32},
-)
-result = response.json()
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "message": "HNSW configuration updated successfully",
-  "migration": {
-    "documents_migrated": 1250,
-    "time_taken_seconds": 8.47,
-    "old_collection_deleted": true,
-    "temp_verified": true
-  },
-  "config": {
-    "space": "cosine",
-    "ef_construction": 100,
-    "ef_search": 150,
-    "max_neighbors": 32,
-    "resize_factor": 1.2,
-    "sync_threshold": 1000
-  }
-}
-```
-
-### **How HNSW Migration Works**
-
-The migration performs a **non-destructive collection-level blue-green style migration**:
-
-1. Creates a temporary collection with the updated HNSW settings
-2. Migrates all documents + embeddings from the original to the temp collection in batches (1000 docs/batch)
-3. Verifies the temp collection document count matches the original. **The original is preserved until this check passes.**
-4. Deletes the original collection (safe: temp is verified)
-5. Creates the final collection under the original name
-6. Migrates documents from temp to final, then verifies the final count
-7. Deletes the temp collection and swaps the engine reference
-
-**Note:** This is collection-level migration within the same ChromaDB database. All collections share the same Docker volume (`vectorforge-data:/data`).
-
-### **Important Considerations**
-
-- **Disk Space**: Migration temporarily requires up to **3x disk space** (old + temp + new collections)
-
-- **Shared Storage**: All collections use the same persistent volume. This is **not infrastructure-level** blue-green deployment with separate volumes.
-
-- **Single Container**: If running multiple replicas, scale to 1 container before migrating to avoid race conditions.
-
-- **Confirmation Required**: Must include `?confirm=true` query parameter as a safety gate.
-
-### **HNSW Parameters Explained**
-
-| Parameter | Description | Higher Value = | Typical Range |
-|-----------|-------------|----------------|---------------|
-| `space` | Distance metric | N/A (cosine, l2, ip) | - |
-| `ef_construction` | Build-time search depth | Better index quality, slower construction | 100-500 |
-| `ef_search` | Query-time search depth | Higher accuracy, slower queries | 10-500 |
-| `max_neighbors` | Connections per node (M) | Better recall, more memory | 16-64 |
-| `resize_factor` | Index growth multiplier | Less frequent resizing | 1.2-2.0 |
-| `sync_threshold` | Batch size for persistence | Less frequent disk writes | 100-10000 |
-
-### **When to Tune HNSW**
-
-**Good for:**
-- Initial performance tuning after deployment
-- Adjusting search quality vs speed tradeoff
-- Experimenting with distance metrics
-
-**Not recommended for:**
-- Frequent configuration changes (expensive to recreate)
-- Very large datasets (>10M docs) without disk space planning
-- Multi-replica deployments (coordinate manually first)
-
----
-
 ## Development Process
 
 VectorForge went through a significant architectural evolution during development:
@@ -898,18 +784,6 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   (`total_queries`, `docs_added`, etc.) are plain integers with no locking. Concurrent requests
   share a single `VectorEngine` instance and can produce lost updates on these counters.
 
-#### HNSW Migration
-- **Blocks the calling request.** `PUT /index/config/hnsw` runs the migration synchronously in
-  the request handler. Large indexes may time out at the HTTP layer before the migration
-  completes.
-- **Requires up to 3× disk space.** At peak, three copies of the index exist simultaneously
-  (original, temp, and final collections).
-- **Partial rollback window after original deletion.** The original collection is preserved until
-  the temp collection is fully populated and its document count verified. Failures during temp
-  population leave the original intact. However, if a failure occurs after the original is deleted
-  (between the delete and the final collection being verified), that data cannot be automatically
-  restored. Recovery in that window requires a backup or a clean re-index.
-
 #### Configuration
 - **`MODEL_NAME` is hardcoded.** The embedding model (`all-MiniLM-L6-v2`) cannot be changed via
   environment variable. Switching models requires a code change and a full re-index because stored
@@ -917,9 +791,8 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
 - **Chunk size is API-configurable via** `chunk_size` **and** `chunk_overlap` **parameters on the file upload endpoint.** `DEFAULT_CHUNK_SIZE` (500) and `DEFAULT_CHUNK_OVERLAP` (50) are used when omitted.
 
 #### Deployment
-- **Single-process only.** The `migration_in_progress` flag and in-memory metrics state are
-  per-process. Running multiple uvicorn workers or replicas will cause split state. Scale to
-  one replica before running HNSW migrations.
+- **Single-process only.** In-memory metrics state is per-process. Running multiple uvicorn
+  workers or replicas will cause split state.
 - **Docker health check does not verify readiness.** The Dockerfile's `HEALTHCHECK` calls
   `/health/live`, which returns `{"status": "alive"}` unconditionally without verifying that
   ChromaDB is accessible or the model is loaded. Use `/health/ready` for a meaningful readiness

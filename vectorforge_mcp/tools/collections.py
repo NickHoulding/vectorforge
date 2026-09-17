@@ -29,7 +29,7 @@ def list_collections() -> dict[str, Any]:
 
 
 @mcp.tool(
-    description="Get detailed information about a specific collection including document count, HNSW config, and custom metadata."
+    description="Get detailed information about a specific collection including document count and custom metadata."
 )
 @handle_tool_errors
 def get_collection(collection_name: str) -> dict[str, Any]:
@@ -39,7 +39,7 @@ def get_collection(collection_name: str) -> dict[str, Any]:
       collection_name: Name of the collection to retrieve.
 
     Returns:
-      Dictionary with collection details (name, id, document_count, created_at, hnsw_config, metadata).
+      Dictionary with collection details (name, id, document_count, created_at, metadata).
     """
     logger.debug("Getting collection: name=%s", collection_name)
     data = get(f"/collections/{collection_name}")
@@ -48,60 +48,33 @@ def get_collection(collection_name: str) -> dict[str, Any]:
 
 
 @mcp.tool(
-    description="Create a new collection for multi-tenancy or domain separation. Optionally configure HNSW parameters and add custom metadata."
+    description="Create a new collection for multi-tenancy or domain separation. Optionally add custom metadata."
 )
 @handle_tool_errors
 def create_collection(
     collection_name: str,
     description: str | None = None,
-    hnsw_space: str | None = None,
-    hnsw_ef_construction: int | None = None,
-    hnsw_ef_search: int | None = None,
-    hnsw_max_neighbors: int | None = None,
-    hnsw_resize_factor: float | None = None,
-    hnsw_sync_threshold: int | None = None,
     metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Create a new collection with optional HNSW configuration and metadata.
+    """Create a new collection with optional metadata.
 
     Args:
       collection_name: Collection name (alphanumeric, underscores, hyphens only).
       description: Optional collection description.
-      hnsw_space: Distance metric ("cosine", "l2", or "ip"). Default: "cosine".
-      hnsw_ef_construction: HNSW construction parameter. Default: 100.
-      hnsw_ef_search: HNSW search parameter. Default: 100.
-      hnsw_max_neighbors: Max neighbors in HNSW graph. Default: 16.
-      hnsw_resize_factor: Dynamic index growth factor. Default: 1.2.
-      hnsw_sync_threshold: Batch size for persistence. Default: 1000.
       metadata: Optional custom metadata dictionary (max 20 key-value pairs).
 
     Returns:
       Dictionary with created collection details.
     """
     logger.debug(
-        "Creating collection: name=%s, hnsw_space=%s, has_metadata=%s",
+        "Creating collection: name=%s, has_metadata=%s",
         collection_name,
-        hnsw_space,
         metadata is not None,
     )
-
-    hnsw_config: dict[str, Any] = {}
-    for key, value in {
-        "space": hnsw_space,
-        "ef_construction": hnsw_ef_construction,
-        "ef_search": hnsw_ef_search,
-        "max_neighbors": hnsw_max_neighbors,
-        "resize_factor": hnsw_resize_factor,
-        "sync_threshold": hnsw_sync_threshold,
-    }.items():
-        if value is not None:
-            hnsw_config[key] = value
 
     body: dict[str, Any] = {"name": collection_name}
     if description is not None:
         body["description"] = description
-    if hnsw_config:
-        body["hnsw_config"] = hnsw_config
     if metadata is not None:
         body["metadata"] = metadata
 

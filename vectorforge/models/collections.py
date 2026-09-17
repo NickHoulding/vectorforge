@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from vectorforge.config import VFGConfig
 
 from .documents import DocumentDetail
-from .index import HNSWConfig, HNSWConfigUpdate
 
 
 class CollectionCreateRequest(BaseModel):
@@ -16,7 +15,6 @@ class CollectionCreateRequest(BaseModel):
     Attributes:
         name: Collection name (alphanumeric, underscores, hyphens only)
         description: Optional human-readable description
-        hnsw_config: Optional HNSW index configuration (uses defaults if not provided)
         metadata: Optional custom metadata (up to 20 key-value pairs)
     """
 
@@ -32,9 +30,6 @@ class CollectionCreateRequest(BaseModel):
         max_length=VFGConfig.MAX_DESCRIPTION_LENGTH,
         description="Human-readable description",
     )
-    hnsw_config: HNSWConfigUpdate | None = Field(
-        None, description="HNSW index configuration"
-    )
     metadata: dict[str, Any] | None = Field(
         None, description="Custom metadata key-value pairs"
     )
@@ -44,7 +39,6 @@ class CollectionCreateRequest(BaseModel):
             "example": {
                 "name": "customer_docs",
                 "description": "Customer documentation collection",
-                "hnsw_config": {"ef_search": 150, "max_neighbors": 32},
                 "metadata": {"tenant": "acme_corp", "version": "1.0"},
             }
         }
@@ -60,7 +54,6 @@ class CollectionInfo(BaseModel):
         document_count: Number of documents in the collection
         created_at: ISO timestamp when collection was created
         description: Optional human-readable description
-        hnsw_config: HNSW index configuration
         metadata: Custom metadata key-value pairs
     """
 
@@ -69,7 +62,6 @@ class CollectionInfo(BaseModel):
     document_count: int = Field(..., description="Number of documents", ge=0)
     created_at: str = Field(..., description="Creation timestamp (ISO format)")
     description: str | None = Field(None, description="Human-readable description")
-    hnsw_config: HNSWConfig = Field(..., description="HNSW index configuration")
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Custom metadata"
     )
@@ -82,14 +74,6 @@ class CollectionInfo(BaseModel):
                 "document_count": 1500,
                 "created_at": "2026-02-26T12:00:00Z",
                 "description": "Customer documentation collection",
-                "hnsw_config": {
-                    "space": "cosine",
-                    "ef_construction": 100,
-                    "ef_search": 150,
-                    "max_neighbors": 32,
-                    "resize_factor": 1.2,
-                    "sync_threshold": 1000,
-                },
                 "metadata": {"tenant": "acme_corp", "version": "1.0"},
             }
         }
@@ -120,14 +104,6 @@ class CollectionListResponse(BaseModel):
                         "document_count": 1250,
                         "created_at": "2026-01-15T10:00:00Z",
                         "description": "Default collection",
-                        "hnsw_config": {
-                            "space": "cosine",
-                            "ef_construction": 100,
-                            "ef_search": 100,
-                            "max_neighbors": 16,
-                            "resize_factor": 1.2,
-                            "sync_threshold": 1000,
-                        },
                         "metadata": {},
                     },
                     {
@@ -136,14 +112,6 @@ class CollectionListResponse(BaseModel):
                         "document_count": 1500,
                         "created_at": "2026-02-26T12:00:00Z",
                         "description": "Customer documentation",
-                        "hnsw_config": {
-                            "space": "cosine",
-                            "ef_construction": 100,
-                            "ef_search": 150,
-                            "max_neighbors": 32,
-                            "resize_factor": 1.2,
-                            "sync_threshold": 1000,
-                        },
                         "metadata": {"tenant": "acme_corp"},
                     },
                 ],
@@ -249,14 +217,6 @@ class CollectionCreateResponse(BaseModel):
                     "document_count": 0,
                     "created_at": "2026-02-26T12:00:00Z",
                     "description": "Customer documentation",
-                    "hnsw_config": {
-                        "space": "cosine",
-                        "ef_construction": 100,
-                        "ef_search": 150,
-                        "max_neighbors": 32,
-                        "resize_factor": 1.2,
-                        "sync_threshold": 1000,
-                    },
                     "metadata": {"tenant": "acme_corp"},
                 },
             }

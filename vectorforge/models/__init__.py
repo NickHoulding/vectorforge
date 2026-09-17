@@ -18,13 +18,7 @@ from .documents import (
     DocumentResponse,
 )
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
-from .index import (
-    HNSWConfig,
-    HNSWConfigUpdate,
-    HNSWConfigUpdateResponse,
-    IndexStatsResponse,
-    MigrationInfo,
-)
+from .index import IndexStatsResponse
 from .metadata import StandardMetadata, create_metadata
 from .metrics import (
     ChromaDBMetrics,
@@ -62,10 +56,6 @@ __all__: list[str] = [
     "SearchResponse",
     # Index
     "IndexStatsResponse",
-    "HNSWConfig",
-    "HNSWConfigUpdate",
-    "HNSWConfigUpdateResponse",
-    "MigrationInfo",
     # Metadata
     "StandardMetadata",
     "create_metadata",

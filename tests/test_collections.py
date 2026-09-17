@@ -78,7 +78,6 @@ def test_list_collections_response_shape(client: TestClient) -> None:
         "id",
         "document_count",
         "created_at",
-        "hnsw_config",
     ]
 
     for field in expected_fields:
@@ -114,20 +113,6 @@ def test_create_collection_with_description(client: TestClient) -> None:
 
     assert response.status_code == 201
     assert response.json()["collection"]["description"] == "A test collection"
-
-
-def test_create_collection_with_hnsw_config(client: TestClient) -> None:
-    """Custom HNSW config is applied and reflected in the response."""
-    payload = {
-        "name": "hnsw_col",
-        "hnsw_config": {"ef_search": 200, "max_neighbors": 32},
-    }
-    response = client.post("/collections", json=payload)
-
-    assert response.status_code == 201
-    hnsw = response.json()["collection"]["hnsw_config"]
-    assert hnsw["ef_search"] == 200
-    assert hnsw["max_neighbors"] == 32
 
 
 def test_create_collection_with_metadata(client: TestClient) -> None:
@@ -189,7 +174,6 @@ def test_get_collection_response_shape(client: TestClient) -> None:
         "id",
         "document_count",
         "created_at",
-        "hnsw_config",
     ]
 
     for field in expected_fields:
@@ -370,37 +354,6 @@ def test_create_collection_name_with_hyphens_and_underscores(
     assert response.json()["collection"]["collection_name"] == "my-col_1"
 
 
-def test_create_collection_hnsw_defaults_applied_when_not_specified(
-    client: TestClient,
-) -> None:
-    """Default HNSW config is applied when no hnsw_config is supplied."""
-    response = client.post("/collections", json={"name": "default_hnsw_col"})
-
-    hnsw = response.json()["collection"]["hnsw_config"]
-    assert hnsw["space"] == "cosine"
-    assert hnsw["ef_construction"] == 100
-    assert hnsw["ef_search"] == 100
-    assert hnsw["max_neighbors"] == 16
-    assert hnsw["resize_factor"] == 1.2
-    assert hnsw["sync_threshold"] == 1000
-
-
-def test_create_collection_partial_hnsw_config_fills_remaining_defaults(
-    client: TestClient,
-) -> None:
-    """Specifying only some HNSW fields leaves remaining fields at defaults."""
-    payload = {"name": "partial_hnsw_col", "hnsw_config": {"ef_search": 200}}
-    response = client.post("/collections", json=payload)
-
-    hnsw = response.json()["collection"]["hnsw_config"]
-    assert hnsw["ef_search"] == 200
-
-    # Defaults:
-    assert hnsw["ef_construction"] == 100
-    assert hnsw["max_neighbors"] == 16
-    assert hnsw["space"] == "cosine"
-
-
 def test_create_collection_metadata_round_trips(client: TestClient) -> None:
     """Metadata key/value pairs survive the create → response round-trip."""
     payload = {
@@ -509,21 +462,6 @@ def test_get_collection_metadata_round_trips(client: TestClient) -> None:
     assert data["metadata"]["region"] == "us-east"
 
 
-def test_get_collection_hnsw_config_round_trips(client: TestClient) -> None:
-    """HNSW config set at create time is returned unchanged by GET."""
-    client.post(
-        "/collections",
-        json={
-            "name": "get_hnsw_col",
-            "hnsw_config": {"ef_search": 150, "max_neighbors": 24},
-        },
-    )
-
-    data = client.get("/collections/get_hnsw_col").json()
-    assert data["hnsw_config"]["ef_search"] == 150
-    assert data["hnsw_config"]["max_neighbors"] == 24
-
-
 def test_get_collection_description_round_trips(client: TestClient) -> None:
     """Description set at create time is returned unchanged by GET."""
     client.post(
@@ -533,24 +471,6 @@ def test_get_collection_description_round_trips(client: TestClient) -> None:
 
     data = client.get("/collections/get_desc_col").json()
     assert data["description"] == "My test collection"
-
-
-def test_get_collection_hnsw_config_has_all_fields(client: TestClient) -> None:
-    """CollectionInfo.hnsw_config contains all six expected fields."""
-    client.post("/collections", json={"name": "hnsw_fields_col"})
-
-    hnsw = client.get("/collections/hnsw_fields_col").json()["hnsw_config"]
-    expected_fields = [
-        "space",
-        "ef_construction",
-        "ef_search",
-        "max_neighbors",
-        "resize_factor",
-        "sync_threshold",
-    ]
-
-    for field in expected_fields:
-        assert field in hnsw, f"Missing hnsw_config field: {field}"
 
 
 def test_get_collection_id_is_non_empty_string(client: TestClient) -> None:
@@ -687,19 +607,6 @@ def test_file_isolation_between_collections(
     response = client.get(f"/collections/{col_b}/files/list")
     assert response.status_code == 200
     assert "isolation_test.txt" not in response.json()["filenames"]
-
-
-def test_hnsw_config_isolation_between_collections(
-    client: TestClient, col_a: str, col_b: str
-) -> None:
-    """Updating HNSW config on col_a does not change col_b's config."""
-    client.put(
-        f"/collections/{col_a}/config/hnsw?confirm=true",
-        json={"ef_search": 250},
-    )
-
-    col_b_hnsw = client.get(f"/collections/{col_b}").json()["hnsw_config"]
-    assert col_b_hnsw["ef_search"] == 100
 
 
 def test_delete_collection_does_not_bleed_into_sibling(
@@ -873,21 +780,6 @@ def test_create_collection_metadata_null_value_coerced_to_string(
     response = client.post("/collections", json=payload)
     assert response.status_code == 201
     assert response.json()["collection"]["metadata"]["key"] == "None"
-
-
-def test_create_collection_hnsw_space_l2_round_trips(client: TestClient) -> None:
-    """A non-default HNSW space (``l2``) is stored and returned correctly.
-
-    All other HNSW tests use the default ``cosine`` space; this test verifies
-    that the ``space`` field is not hard-coded anywhere in the pipeline.
-    """
-    payload = {"name": "l2_space_col", "hnsw_config": {"space": "l2"}}
-    response = client.post("/collections", json=payload)
-    assert response.status_code == 201
-    assert response.json()["collection"]["hnsw_config"]["space"] == "l2"
-
-    get_data = client.get("/collections/l2_space_col").json()
-    assert get_data["hnsw_config"]["space"] == "l2"
 
 
 def test_create_collection_name_with_dot_returns_422(client: TestClient) -> None:

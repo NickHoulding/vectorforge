@@ -12,9 +12,7 @@ from ..utils import build_success_response
 logger = logging.getLogger(__name__)
 
 
-@mcp.tool(
-    description="Get index health check: document count, embedding dimension, and HNSW configuration."
-)
+@mcp.tool(description="Get index health check: document count and embedding dimension.")
 @handle_tool_errors
 def get_index_stats(
     collection_name: str = MCPConfig.DEFAULT_COLLECTION_NAME,
@@ -25,7 +23,7 @@ def get_index_stats(
       collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
-      Dictionary with index statistics including document count, embedding dimension, and HNSW configuration.
+      Dictionary with index statistics including document count and embedding dimension.
     """
     logger.debug("Getting index stats: collection=%s", collection_name)
     data = get(f"/collections/{collection_name}/stats")

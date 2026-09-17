@@ -76,7 +76,7 @@ Organized into 6 categories:
 **Collections** (4 tools)
 - List all collections
 - Get collection details
-- Create a collection with optional HNSW configuration
+- Create a collection with optional metadata
 - Delete a collection
 
 **Documents** (5 tools)
@@ -92,7 +92,7 @@ Organized into 6 categories:
 - Delete all chunks from a file
 
 **Index** (1 tool)
-- Get index statistics and HNSW configuration
+- Get index statistics
 
 **Search** (1 tool)
 - Semantic search with top-k results and metadata filtering
@@ -307,7 +307,7 @@ Get all collections with their names, IDs, document counts, and metadata.
 ```
 
 #### `get_collection`
-Get detailed information about a specific collection including document count and HNSW config.
+Get detailed information about a specific collection including document count and custom metadata.
 
 **Parameters:**
 - `collection_name` (str) - Name of the collection
@@ -318,17 +318,11 @@ Get detailed information about a specific collection including document count an
 ```
 
 #### `create_collection`
-Create a new collection for multi-tenancy or domain separation. Optionally configure HNSW parameters.
+Create a new collection for multi-tenancy or domain separation.
 
 **Parameters:**
 - `collection_name` (str) - Collection name (alphanumeric, underscores, hyphens)
 - `description` (str, optional) - Collection description
-- `hnsw_space` (str, optional) - Distance metric: `"cosine"`, `"l2"`, or `"ip"` (default: `"cosine"`)
-- `hnsw_ef_construction` (int, optional) - Build-time search depth (default: 100)
-- `hnsw_ef_search` (int, optional) - Query-time search depth (default: 100)
-- `hnsw_max_neighbors` (int, optional) - Connections per node (default: 16)
-- `hnsw_resize_factor` (float, optional) - Index growth multiplier (default: 1.2)
-- `hnsw_sync_threshold` (int, optional) - Batch size for persistence (default: 1000)
 - `metadata` (dict, optional) - Custom metadata (max 20 key-value pairs)
 
 **Example:**
@@ -459,7 +453,7 @@ Delete all document chunks from a specific uploaded file.
 ### **Index**
 
 #### `get_index_stats`
-Get index health check: document count, embedding dimension, and HNSW configuration.
+Get index health check: document count and embedding dimension.
 
 **Parameters:**
 - `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)

@@ -137,9 +137,6 @@ class VFGConfig:
     )
     """Directory for HuggingFace model cache. Configurable via HF_HOME env var."""
 
-    MIGRATION_BATCH_SIZE: int = int(os.getenv("VF_MIGRATION_BATCH_SIZE", "1000"))
-    """Batch size for HNSW configuration migration (collection-level recreation)."""
-
     # =============================================================================
     # Collection Management Configuration
     # =============================================================================

@@ -34,10 +34,10 @@ router: APIRouter = APIRouter()
 @handle_api_errors
 def create_collection(request: CollectionCreateRequest) -> CollectionCreateResponse:
     """
-    Create a new collection with custom HNSW configuration
+    Create a new collection
 
-    Creates a new isolated collection for storing documents and embeddings.
-    Each collection has its own HNSW index configuration and metadata.
+    Creates a new isolated collection for storing documents and embeddings,
+    with its own metadata.
 
     **Use Cases:**
     - Multi-tenancy: Separate collections per customer/user
@@ -45,7 +45,7 @@ def create_collection(request: CollectionCreateRequest) -> CollectionCreateRespo
     - Versioning: Test configurations without affecting production data
 
     Args:
-        request: Collection creation parameters (name, description, HNSW config, metadata)
+        request: Collection creation parameters (name, description, metadata)
 
     Returns:
         CollectionCreateResponse: Information about the created collection
@@ -60,19 +60,13 @@ def create_collection(request: CollectionCreateRequest) -> CollectionCreateRespo
         {
             "name": "customer_docs",
             "description": "Customer documentation",
-            "hnsw_config": {"ef_search": 150},
             "metadata": {"tenant": "acme_corp"}
         }
         ```
     """
     try:
-        hnsw_config = {}
-        if request.hnsw_config:
-            hnsw_config = request.hnsw_config.model_dump(exclude_none=True)
-
         collection_info = manager.create_collection(
             name=request.name,
-            hnsw_config=hnsw_config,
             description=request.description,
             metadata=request.metadata or {},
         )
@@ -100,7 +94,7 @@ def list_collections() -> CollectionListResponse:
     List all collections with metadata and stats
 
     Returns comprehensive information about all collections including
-    document counts, HNSW configuration, and custom metadata.
+    document counts and custom metadata.
 
     Returns:
         CollectionListResponse: List of all collections with details
@@ -296,7 +290,7 @@ def get_collection(collection_name: str) -> CollectionInfo:
     """
     Get detailed information about a specific collection
 
-    Returns comprehensive details including document count, HNSW config,
+    Returns comprehensive details including document count,
     creation timestamp, description, and custom metadata.
 
     Args:

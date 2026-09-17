@@ -62,9 +62,9 @@ def reset_engine() -> Generator[None, Any, None]:
     """Clear the engine state before each test.
 
     Automatically runs before every test to ensure a clean slate.
-    Clears all documents from the ChromaDB collection and resets
-    HNSW configuration to defaults. Also deletes any non-default
-    collections created by prior tests.
+    Clears all documents from the ChromaDB collection and recreates it
+    with default settings. Also deletes any non-default collections
+    created by prior tests.
 
     Also wipes the metrics.db row for the default collection so that
     lifetime-persistent counters start at zero for every test, matching
@@ -137,8 +137,7 @@ def vector_engine(
     """Create a fresh VectorEngine for each test with a pre-loaded model.
 
     Reuses the session-scoped model to avoid expensive model reloading.
-    Creates a new engine instance with clean state and default HNSW
-    configuration for test isolation.
+    Creates a new engine instance with clean state for test isolation.
 
     Tears down by clearing ChromaDB's shared system cache so that the
     PersistentClient's file handles are released promptly. Without this,

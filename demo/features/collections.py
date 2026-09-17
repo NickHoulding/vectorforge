@@ -10,14 +10,11 @@ def create() -> None:
     print("\n-- Create Collection --")
     name = client.prompt("Collection name")
     description = client.prompt_optional("Description")
-    hnsw_config = client.prompt_json("HNSW config")
     metadata = client.prompt_json("Metadata")
 
     body: dict[str, Any] = {"name": name}
     if description:
         body["description"] = description
-    if hnsw_config:
-        body["hnsw_config"] = hnsw_config
     if metadata:
         body["metadata"] = metadata
 

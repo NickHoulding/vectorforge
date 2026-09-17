@@ -17,7 +17,6 @@ from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from vectorforge.config import VFGConfig
 from vectorforge.models.collections import CollectionInfo
-from vectorforge.models.index import HNSWConfig
 from vectorforge.vector_engine import VectorEngine
 
 logger = logging.getLogger(__name__)
@@ -97,7 +96,6 @@ class CollectionManager:
             )
             self.create_collection(
                 name=VFGConfig.DEFAULT_COLLECTION_NAME,
-                hnsw_config={},
                 description="Default VectorForge collection",
                 metadata={},
             )
@@ -219,18 +217,6 @@ class CollectionManager:
         Returns:
             CollectionInfo with all metadata
         """
-        config = collection.configuration
-        hnsw_config_dict: dict[str, Any] = dict(config.get("hnsw") or {})
-
-        hnsw_config = HNSWConfig(
-            space=str(hnsw_config_dict.get("space", "cosine")),
-            ef_construction=int(hnsw_config_dict.get("ef_construction", 100)),
-            ef_search=int(hnsw_config_dict.get("ef_search", 100)),
-            max_neighbors=int(hnsw_config_dict.get("max_neighbors", 16)),
-            resize_factor=float(hnsw_config_dict.get("resize_factor", 1.2)),
-            sync_threshold=int(hnsw_config_dict.get("sync_threshold", 1000)),
-        )
-
         metadata_dict = collection.metadata or {}
         description = metadata_dict.get(self.META_DESCRIPTION_KEY, None)
         created_at = metadata_dict.get(self.META_CREATED_AT_KEY, "unknown")
@@ -247,7 +233,6 @@ class CollectionManager:
             document_count=collection.count(),
             created_at=created_at,
             description=description,
-            hnsw_config=hnsw_config,
             metadata=custom_metadata,
         )
 
@@ -272,15 +257,16 @@ class CollectionManager:
     def create_collection(
         self,
         name: str,
-        hnsw_config: dict[str, Any],
         description: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> CollectionInfo:
-        """Create a new collection with HNSW config and metadata.
+        """Create a new collection with metadata.
+
+        The collection's distance metric is fixed to cosine internally, since
+        search score calculation assumes cosine distance.
 
         Args:
             name: Collection name (validated)
-            hnsw_config: HNSW parameters (uses defaults for missing keys)
             description: Optional human-readable description
             metadata: Optional custom metadata (up to 20 key-value pairs)
 
@@ -301,19 +287,14 @@ class CollectionManager:
                 f"Maximum collections limit ({VFGConfig.MAX_COLLECTIONS}) reached"
             )
 
-        hnsw_metadata = {
-            "hnsw:space": hnsw_config.get("space", "cosine"),
-            "hnsw:construction_ef": hnsw_config.get("ef_construction", 100),
-            "hnsw:search_ef": hnsw_config.get("ef_search", 100),
-            "hnsw:M": hnsw_config.get("max_neighbors", 16),
-            "hnsw:resize_factor": hnsw_config.get("resize_factor", 1.2),
-            "hnsw:sync_threshold": hnsw_config.get("sync_threshold", 1000),
-        }
+        collection_metadata: dict[str, Any] = {"hnsw:space": "cosine"}
 
         if description:
-            hnsw_metadata[self.META_DESCRIPTION_KEY] = description
+            collection_metadata[self.META_DESCRIPTION_KEY] = description
 
-        hnsw_metadata[self.META_CREATED_AT_KEY] = datetime.now(timezone.utc).isoformat()
+        collection_metadata[self.META_CREATED_AT_KEY] = datetime.now(
+            timezone.utc
+        ).isoformat()
 
         if metadata:
             if len(metadata) > VFGConfig.MAX_METADATA_PAIRS:
@@ -321,11 +302,11 @@ class CollectionManager:
                     f"Metadata cannot exceed {VFGConfig.MAX_METADATA_PAIRS} key-value pairs"
                 )
             for key, value in metadata.items():
-                hnsw_metadata[f"{self.META_PREFIX}{key}"] = str(value)
+                collection_metadata[f"{self.META_PREFIX}{key}"] = str(value)
 
         logger.info("Creating collection: %s", name)
         collection = self.chroma_client.create_collection(
-            name=name, metadata=hnsw_metadata
+            name=name, metadata=collection_metadata
         )
 
         logger.info("Collection '%s' created successfully", name)
