@@ -36,75 +36,36 @@ def get_document(
 
 
 @mcp.tool(
-    description="Index text content for semantic search. Generates embeddings automatically. Optionally add metadata for organization and filtering."
+    description="Index one or more text documents for semantic search. Generates embeddings automatically. All documents are embedded and persisted atomically."
 )
 @handle_tool_errors
-def add_document(
-    content: str,
-    metadata: dict[str, Any] | None = None,
-    collection_name: str = MCPConfig.DEFAULT_COLLECTION_NAME,
-) -> dict[str, Any]:
-    """Add a single document to the index.
-
-    Args:
-      content: The document text content to index (required, non-empty).
-      metadata: Optional metadata dictionary (e.g., {"source": "email", "date": "2026-01-20"}).
-      collection_name: Name of the collection (defaults to 'vectorforge').
-
-    Returns:
-      Dictionary with created document ID and status.
-    """
-    logger.debug(
-        "Adding document: content_len=%d, has_metadata=%s, collection=%s",
-        len(content),
-        metadata is not None,
-        collection_name,
-    )
-    body: dict[str, Any] = {"content": content}
-    if metadata is not None:
-        body["metadata"] = metadata
-
-    data = post(f"/collections/{collection_name}/documents", json=body)
-    logger.info(
-        "Added document to collection %s: doc_id=%s",
-        collection_name,
-        data.get("id", "unknown"),
-    )
-    return build_success_response(data)
-
-
-@mcp.tool(
-    description="Index multiple documents in a single batch request. More efficient than adding one at a time. All documents are embedded and persisted atomically."
-)
-@handle_tool_errors
-def batch_add_documents(
+def add_documents(
     documents: list[dict[str, Any]],
     collection_name: str = MCPConfig.DEFAULT_COLLECTION_NAME,
 ) -> dict[str, Any]:
-    """Add multiple documents to the index in one request.
+    """Add one or more documents to the index in one request.
 
     Each entry in documents must have a 'content' key (str). An optional
     'metadata' key (dict) may also be provided per document.
 
     Args:
       documents: List of document objects, each with 'content' and optional 'metadata'.
+        Pass a single-item list to add just one document.
       collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
       Dictionary with list of created document IDs and status.
     """
     logger.debug(
-        "Batch adding documents: count=%d, collection=%s",
+        "Adding documents: count=%d, collection=%s",
         len(documents),
         collection_name,
     )
     data = post(
-        f"/collections/{collection_name}/documents/batch",
+        f"/collections/{collection_name}/documents",
         json={"documents": documents},
     )
-    logger.info(
-        "Batch added %d documents to collection %s", len(documents), collection_name
-    )
+    logger.info("Added %d documents to collection %s", len(documents), collection_name)
     return build_success_response(data)
 
 

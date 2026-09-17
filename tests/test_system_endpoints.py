@@ -260,7 +260,7 @@ def test_metrics_updates_after_operations(client):
 
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "test document", "metadata": {}},
+        json={"documents": [{"content": "test document", "metadata": {}}]},
     )
 
     after_add = client.get("/collections/vectorforge/metrics").json()
@@ -279,8 +279,10 @@ def test_metrics_after_add_delete_cycle(client, sample_doc, multiple_added_docs)
     """Test metrics accuracy after adding and deleting documents."""
     initial_metrics = client.get("/collections/vectorforge/metrics").json()
 
-    add_resp = client.post("/collections/vectorforge/documents", json=sample_doc)
-    doc_id = add_resp.json()["id"]
+    add_resp = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
+    doc_id = add_resp.json()["ids"][0]
 
     after_add = client.get("/collections/vectorforge/metrics").json()
     assert (
@@ -359,7 +361,7 @@ def test_metrics_doc_size_tracking_accuracy(client):
     for _ in range(10):
         client.post(
             "/collections/vectorforge/documents",
-            json={"content": large_content, "metadata": {}},
+            json={"documents": [{"content": large_content, "metadata": {}}]},
         )
 
     after_metrics = client.get("/collections/vectorforge/metrics").json()
@@ -536,7 +538,8 @@ def test_metrics_usage_counters_are_cumulative(client):
     """Test that usage metrics are cumulative and never decrease."""
     metrics1 = client.get("/collections/vectorforge/metrics").json()
     client.post(
-        "/collections/vectorforge/documents", json={"content": "test", "metadata": {}}
+        "/collections/vectorforge/documents",
+        json={"documents": [{"content": "test", "metadata": {}}]},
     )
     metrics2 = client.get("/collections/vectorforge/metrics").json()
 
@@ -655,8 +658,12 @@ def test_chromadb_metrics_disk_size_increases_with_documents(client):
         client.post(
             "/collections/vectorforge/documents",
             json={
-                "content": f"Test document {i} with substantial content " * 20,
-                "metadata": {"test_id": i},
+                "documents": [
+                    {
+                        "content": f"Test document {i} with substantial content " * 20,
+                        "metadata": {"test_id": i},
+                    }
+                ]
             },
         )
 
@@ -721,7 +728,11 @@ def test_peak_document_count_increases_when_documents_added(client):
 
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Test document for peak tracking", "metadata": {"test": 1}},
+        json={
+            "documents": [
+                {"content": "Test document for peak tracking", "metadata": {"test": 1}}
+            ]
+        },
     )
 
     metrics2 = client.get("/collections/vectorforge/metrics").json()
@@ -740,11 +751,15 @@ def test_peak_document_count_stays_same_when_documents_deleted(client):
         resp = client.post(
             "/collections/vectorforge/documents",
             json={
-                "content": f"Test document {i} for peak tracking",
-                "metadata": {"test_id": i},
+                "documents": [
+                    {
+                        "content": f"Test document {i} for peak tracking",
+                        "metadata": {"test_id": i},
+                    }
+                ]
             },
         )
-        doc_ids.append(resp.json()["id"])
+        doc_ids.append(resp.json()["ids"][0])
 
     metrics1 = client.get("/collections/vectorforge/metrics").json()
     peak_after_add = metrics1["index"]["total_documents_peak"]

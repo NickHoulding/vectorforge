@@ -184,18 +184,24 @@ def sample_doc() -> dict[str, Any]:
 def added_doc(client: TestClient) -> Any:
     """Add a sample document and return its metadata.
 
-    Creates a test document about machine learning and returns the API
-    response containing the document ID and status.
+    Creates a test document about machine learning and returns an
+    ``{"id": ..., "status": ...}`` shape for callers that expect a single
+    document, even though the underlying endpoint always returns a list.
     """
     response: Response = client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Machine learning is fascinating",
-            "metadata": {"topic": "AI"},
+            "documents": [
+                {
+                    "content": "Machine learning is fascinating",
+                    "metadata": {"topic": "AI"},
+                }
+            ]
         },
     )
+    data = response.json()
 
-    return response.json()
+    return {"id": data["ids"][0], "status": data["status"]}
 
 
 @pytest.fixture
@@ -231,15 +237,16 @@ def multiple_added_docs(client: TestClient) -> list[str]:
         "Cybersecurity protects computer systems from malicious attacks",
     ]
 
-    doc_ids: list[str] = []
-    for i, content in enumerate(varied_content):
-        response: Response = client.post(
-            "/collections/vectorforge/documents",
-            json={
-                "content": content,
-                "metadata": {"source": f"doc_{i}.txt", "chunk_index": 0},
-            },
-        )
-        doc_ids.append(response.json()["id"])
+    documents = [
+        {
+            "content": content,
+            "metadata": {"source": f"doc_{i}.txt", "chunk_index": 0},
+        }
+        for i, content in enumerate(varied_content)
+    ]
+    response: Response = client.post(
+        "/collections/vectorforge/documents",
+        json={"documents": documents},
+    )
 
-    return doc_ids
+    return response.json()["ids"]

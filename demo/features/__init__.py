@@ -24,9 +24,8 @@ FEATURES: dict[str, tuple[Callable[..., Any], str]] = {
         collections.list_documents,
         "List documents in a collection with pagination",
     ),
-    "documents:add": (documents.add, "Add a single document"),
+    "documents:add": (documents.add, "Add one or more documents"),
     "documents:get": (documents.get, "Fetch a document by ID"),
-    "documents:batch_add": (documents.batch_add, "Add multiple documents"),
     "documents:delete": (documents.delete, "Delete a document by ID"),
     "documents:batch_delete": (
         documents.batch_delete,

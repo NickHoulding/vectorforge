@@ -239,7 +239,11 @@ def test_search_returns_results_regardless_of_relevance(client):
     """Test that search returns top_k results even when poorly matched."""
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Python programming language development", "metadata": {}},
+        json={
+            "documents": [
+                {"content": "Python programming language development", "metadata": {}}
+            ]
+        },
     )
     response = client.post(
         "/collections/vectorforge/search",
@@ -406,7 +410,9 @@ def test_search_with_top_k_exceeding_index_size(client, added_doc):
 def test_search_query_with_mixed_case(client, sample_doc):
     """Test that search is case-insensitive (if applicable)."""
     sample_doc["content"] = "python programming"
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
     response = client.post(
@@ -475,9 +481,10 @@ def test_search_result_content_is_complete(client):
     """Test that returned content matches original document content exactly."""
     content = "This is a specific test document with unique content."
     add_response = client.post(
-        "/collections/vectorforge/documents", json={"content": content, "metadata": {}}
+        "/collections/vectorforge/documents",
+        json={"documents": [{"content": content, "metadata": {}}]},
     )
-    doc_id = add_response.json()["id"]
+    doc_id = add_response.json()["ids"][0]
 
     search_response = client.post(
         "/collections/vectorforge/search", json={"query": content}
@@ -497,7 +504,7 @@ def test_search_preserves_all_metadata_fields(client):
     }
     add_response = client.post(
         "/collections/vectorforge/documents",
-        json={"content": "test content", "metadata": metadata},
+        json={"documents": [{"content": "test content", "metadata": metadata}]},
     )
     assert add_response.status_code == 201
 
@@ -520,15 +527,23 @@ def test_search_with_filters_success(client):
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Python programming tutorial",
-            "metadata": {"source": "python.pdf", "chunk_index": 0},
+            "documents": [
+                {
+                    "content": "Python programming tutorial",
+                    "metadata": {"source": "python.pdf", "chunk_index": 0},
+                }
+            ]
         },
     )
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Java programming tutorial",
-            "metadata": {"source": "java.pdf", "chunk_index": 0},
+            "documents": [
+                {
+                    "content": "Java programming tutorial",
+                    "metadata": {"source": "java.pdf", "chunk_index": 0},
+                }
+            ]
         },
     )
 
@@ -552,8 +567,12 @@ def test_search_with_filters_no_matches(client):
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Test content",
-            "metadata": {"source": "doc.pdf", "chunk_index": 0},
+            "documents": [
+                {
+                    "content": "Test content",
+                    "metadata": {"source": "doc.pdf", "chunk_index": 0},
+                }
+            ]
         },
     )
 
@@ -573,8 +592,12 @@ def test_search_filters_json_format(client):
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Article content",
-            "metadata": {"author": "Alice", "year": 2024},
+            "documents": [
+                {
+                    "content": "Article content",
+                    "metadata": {"author": "Alice", "year": 2024},
+                }
+            ]
         },
     )
 
@@ -612,15 +635,15 @@ def test_search_filter_gte_returns_matching_documents(client):
     """Test that $gte operator returns only documents with field >= threshold."""
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Old article", "metadata": {"year": 2018}},
+        json={"documents": [{"content": "Old article", "metadata": {"year": 2018}}]},
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Recent article", "metadata": {"year": 2022}},
+        json={"documents": [{"content": "Recent article", "metadata": {"year": 2022}}]},
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Newest article", "metadata": {"year": 2024}},
+        json={"documents": [{"content": "Newest article", "metadata": {"year": 2024}}]},
     )
 
     response = client.post(
@@ -639,15 +662,15 @@ def test_search_filter_lte_returns_matching_documents(client):
     """Test that $lte operator returns only documents with field <= threshold."""
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Old article", "metadata": {"year": 2018}},
+        json={"documents": [{"content": "Old article", "metadata": {"year": 2018}}]},
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Recent article", "metadata": {"year": 2022}},
+        json={"documents": [{"content": "Recent article", "metadata": {"year": 2022}}]},
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Newest article", "metadata": {"year": 2024}},
+        json={"documents": [{"content": "Newest article", "metadata": {"year": 2024}}]},
     )
 
     response = client.post(
@@ -666,15 +689,25 @@ def test_search_filter_ne_excludes_matching_document(client):
     """Test that $ne operator excludes documents where the field equals the value."""
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Python tutorial", "metadata": {"language": "python"}},
+        json={
+            "documents": [
+                {"content": "Python tutorial", "metadata": {"language": "python"}}
+            ]
+        },
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Java tutorial", "metadata": {"language": "java"}},
+        json={
+            "documents": [
+                {"content": "Java tutorial", "metadata": {"language": "java"}}
+            ]
+        },
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Go tutorial", "metadata": {"language": "go"}},
+        json={
+            "documents": [{"content": "Go tutorial", "metadata": {"language": "go"}}]
+        },
     )
 
     response = client.post(
@@ -698,15 +731,25 @@ def test_search_filter_in_returns_only_listed_values(client):
     """Test that $in operator returns only documents whose field is in the list."""
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Python tutorial", "metadata": {"language": "python"}},
+        json={
+            "documents": [
+                {"content": "Python tutorial", "metadata": {"language": "python"}}
+            ]
+        },
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Java tutorial", "metadata": {"language": "java"}},
+        json={
+            "documents": [
+                {"content": "Java tutorial", "metadata": {"language": "java"}}
+            ]
+        },
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Go tutorial", "metadata": {"language": "go"}},
+        json={
+            "documents": [{"content": "Go tutorial", "metadata": {"language": "go"}}]
+        },
     )
 
     response = client.post(
@@ -729,15 +772,15 @@ def test_search_filter_contains_matches_substring(client):
     """Test that $contains document_filter returns documents whose text contains the substring."""
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Introduction to Python programming"},
+        json={"documents": [{"content": "Introduction to Python programming"}]},
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Advanced Python techniques"},
+        json={"documents": [{"content": "Advanced Python techniques"}]},
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Introduction to Java programming"},
+        json={"documents": [{"content": "Introduction to Java programming"}]},
     )
 
     response = client.post(
@@ -760,22 +803,34 @@ def test_search_filter_operators_combine_with_exact_match(client):
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Article one",
-            "metadata": {"category": "AI", "year": 2021},
+            "documents": [
+                {
+                    "content": "Article one",
+                    "metadata": {"category": "AI", "year": 2021},
+                }
+            ]
         },
     )
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Article two",
-            "metadata": {"category": "AI", "year": 2024},
+            "documents": [
+                {
+                    "content": "Article two",
+                    "metadata": {"category": "AI", "year": 2024},
+                }
+            ]
         },
     )
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Article three",
-            "metadata": {"category": "databases", "year": 2024},
+            "documents": [
+                {
+                    "content": "Article three",
+                    "metadata": {"category": "databases", "year": 2024},
+                }
+            ]
         },
     )
 
@@ -800,7 +855,11 @@ def test_search_filter_in_with_no_match_returns_empty(client):
     """Test that $in with a value not present in the index returns zero results."""
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Python tutorial", "metadata": {"language": "python"}},
+        json={
+            "documents": [
+                {"content": "Python tutorial", "metadata": {"language": "python"}}
+            ]
+        },
     )
 
     response = client.post(
@@ -998,20 +1057,32 @@ def test_search_with_rerank_and_filters_returns_only_filtered_documents(client):
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Python is a programming language",
-            "metadata": {"lang": "python"},
+            "documents": [
+                {
+                    "content": "Python is a programming language",
+                    "metadata": {"lang": "python"},
+                }
+            ]
         },
     )
     client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Java is a programming language",
-            "metadata": {"lang": "java"},
+            "documents": [
+                {
+                    "content": "Java is a programming language",
+                    "metadata": {"lang": "java"},
+                }
+            ]
         },
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Go is a programming language", "metadata": {"lang": "go"}},
+        json={
+            "documents": [
+                {"content": "Go is a programming language", "metadata": {"lang": "go"}}
+            ]
+        },
     )
 
     response = client.post(

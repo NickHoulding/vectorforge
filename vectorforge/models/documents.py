@@ -8,11 +8,11 @@ from vectorforge.config import VFGConfig
 
 
 class DocumentInput(BaseModel):
-    """Input model for adding a new document to the vector index.
+    """Input model for a single document to be indexed.
 
-    Represents a document to be indexed with its text content and optional
-    metadata. This is used when adding individual documents directly via the
-    API rather than uploading files.
+    Represents one document's text content and optional metadata. Used as the
+    element type of a document-add request (one or more documents at a time)
+    rather than uploading files.
 
     Attributes:
         content: The text content to be indexed and searched.
@@ -80,10 +80,10 @@ class BatchDocumentResponse(BaseModel):
 
 
 class BatchDocumentInput(BaseModel):
-    """Input model for adding multiple documents in a single batch request.
+    """Input model for adding one or more documents in a single request.
 
     Accepts a list of document inputs (content + optional metadata) and indexes
-    them all in one operation.
+    them all in one operation. Always a list, even for a single document.
 
     Attributes:
         documents: List of documents to add; must contain between 1 and

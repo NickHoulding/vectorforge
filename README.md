@@ -98,8 +98,7 @@ Perfect for building:
 - Query performance tracking with percentile metrics (p50, p95, p99)
 
 ### **Document Management**
-- Add individual documents with custom metadata
-- Add multiple documents in a single batch request (up to 100 per call)
+- Add one or more documents (with custom metadata) in a single request, up to 100 per call
 - Retrieve documents by ID
 - Delete one or multiple documents in a single batch request
 - Automatic embedding generation and normalization
@@ -251,9 +250,8 @@ collections:list            List all collections
 collections:get             Get details for one collection
 collections:delete          Delete a collection
 
-documents:add               Add a single document
+documents:add               Add one or more documents
 documents:get               Fetch a document by ID
-documents:batch_add         Add multiple documents
 documents:delete            Delete a document by ID
 documents:batch_delete      Batch-delete documents by ID list
 
@@ -359,32 +357,65 @@ open htmlcov/index.html      # macOS
 
 ## Usage
 
-### **1. Add a Document**
+### **1. Add Documents**
+
+`POST /documents` always takes a `documents` list. Pass a single-item list to add just one
+document, or multiple items to add many in one request (embeddings are batch-encoded in a single
+`model.encode()` call for efficiency).
 
 ```python
 import requests
 
+# Add a single document (a one-item list)
 response = requests.post(
     "http://localhost:3001/collections/vectorforge/documents",
     json={
-        "content": "Machine learning is a subset of artificial intelligence",
-        "metadata": {
-            "source": "ml_intro.txt",
-            "chunk_index": 0,
-            "author": "John Doe",
-        },
+        "documents": [
+            {
+                "content": "Machine learning is a subset of artificial intelligence",
+                "metadata": {
+                    "source": "ml_intro.txt",
+                    "chunk_index": 0,
+                    "author": "John Doe",
+                },
+            }
+        ]
     },
 )
-doc_id = response.json()["id"]
+doc_id = response.json()["ids"][0]
+
+# Add multiple documents in one request
+response = requests.post(
+    "http://localhost:3001/collections/vectorforge/documents",
+    json={
+        "documents": [
+            {
+                "content": "Machine learning is a subset of artificial intelligence",
+                "metadata": {"source": "ml_intro.txt", "chunk_index": 0},
+            },
+            {
+                "content": "Deep learning uses multi-layered neural networks",
+                "metadata": {"source": "ml_intro.txt", "chunk_index": 1},
+            },
+        ]
+    },
+)
+doc_ids = response.json()["ids"]
 ```
 
 **Response:**
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "ids": [
+    "550e8400-e29b-41d4-a716-446655440000",
+    "661f9511-f30c-52e5-b827-557766551111"
+  ],
   "status": "indexed"
 }
 ```
+
+Requests are capped at `MAX_BATCH_SIZE` (default 100) documents. Requests exceeding this limit,
+or with an empty `documents` list, return HTTP 422.
 
 ### **2. Search Documents**
 
@@ -601,41 +632,7 @@ response = requests.delete(
 )
 ```
 
-### **6a. Batch Add Documents**
-
-```python
-response = requests.post(
-    "http://localhost:3001/collections/vectorforge/documents/batch",
-    json={
-        "documents": [
-            {
-                "content": "Machine learning is a subset of artificial intelligence",
-                "metadata": {"source": "ml_intro.txt", "chunk_index": 0},
-            },
-            {
-                "content": "Deep learning uses multi-layered neural networks",
-                "metadata": {"source": "ml_intro.txt", "chunk_index": 1},
-            },
-        ]
-    },
-)
-doc_ids = response.json()["ids"]
-```
-
-**Response:**
-```json
-{
-  "ids": [
-    "550e8400-e29b-41d4-a716-446655440000",
-    "661f9511-f30c-52e5-b827-557766551111"
-  ],
-  "status": "indexed"
-}
-```
-
-Batches are capped at `MAX_BATCH_SIZE` (default 100). Requests exceeding this limit return HTTP 422.
-
-### **6b. Batch Delete Documents**
+### **6a. Batch Delete Documents**
 
 ```python
 response = requests.delete(
