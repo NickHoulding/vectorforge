@@ -20,7 +20,9 @@ htmlcov/
 
 # Benchmark results (keep baseline, ignore new runs)
 benchmarks/results/*
-!benchmarks/results/0001_baseline.json
+!benchmarks/results/*/
+benchmarks/results/*/*
+!benchmarks/results/*/0001_baseline.json
 .benchmarks/
 
 # Personal

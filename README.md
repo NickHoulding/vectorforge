@@ -20,6 +20,7 @@
 - [Usage](#usage)
 - [Development Process](#development-process)
 - [Known Limitations](#known-limitations)
+- [Performance](#performance)
 - [Related Projects](#related-projects)
 - [License](#license)
 
@@ -797,6 +798,31 @@ After evaluating the tradeoffs, the project pivoted to ChromaDB as the core vect
   `/health/live`, which returns `{"status": "alive"}` unconditionally without verifying that
   ChromaDB is accessible or the model is loaded. Use `/health/ready` for a meaningful readiness
   check.
+
+---
+
+## Performance
+
+Measured locally with the [`benchmarks/`](benchmarks/) pytest-benchmark suite, using ChromaDB's
+in-memory `EphemeralClient` (no disk I/O) and a pre-warmed `all-MiniLM-L6-v2` embedding model.
+Results will vary by hardware; treat these as relative indicators, not guarantees. Median is used
+below since indexing and search timings are right-skewed (occasional slow outlier rounds).
+
+| Benchmark | Scale | Median | Throughput |
+|-----------|-------|--------|------------|
+| Search latency | 100 docs | 16.55 ms | ~60 queries/sec |
+| Search latency | 1,000 docs | 18.26 ms | ~54 queries/sec |
+| Search latency | 10,000 docs | 19.84 ms | ~50 queries/sec |
+| Single document insert | 1 doc (embed + index) | 10.30 ms | ~33 inserts/sec |
+| Sequential batch insert | 100 docs | 954.62 ms total | ~9.55 ms/doc |
+| Text chunking | ~1,000-word document | 0.37 ms | ~2,670 ops/sec |
+| PDF text extraction | 5-page synthetic PDF | 2.47 ms | ~404 ops/sec |
+
+Search latency scales sub-linearly with index size (100 → 10,000 docs is only a ~20% latency
+increase), consistent with ChromaDB's HNSW approximate nearest-neighbor search. A committed
+baseline (`benchmarks/results/`) lets future runs detect regressions with
+`pytest --benchmark-compare`. See [`benchmarks/README.md`](benchmarks/README.md) for how to
+reproduce these numbers or add new benchmarks.
 
 ---
 

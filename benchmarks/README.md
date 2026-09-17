@@ -135,18 +135,27 @@ uv run pytest benchmarks/ --benchmark-only
 
 ### Saving and Comparing Results
 
+The committed baseline lives at `benchmarks/results/<platform>/0001_baseline.json` (kept in git;
+everything else under `benchmarks/results/` is gitignored). Point `--benchmark-storage` there to
+save or compare against it:
+
 ```bash
-# Save a baseline
-uv run pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-save=baseline
+# Save a new baseline (overwrites the committed one)
+uv run pytest benchmarks/ --benchmark-only \
+  --benchmark-storage=file://./benchmarks/results --benchmark-save=baseline
 
 # Compare after changes
-uv run pytest benchmarks/ -m "not slow" --benchmark-only --benchmark-compare=baseline
+uv run pytest benchmarks/ --benchmark-only \
+  --benchmark-storage=file://./benchmarks/results --benchmark-compare=0001
 
-# Fail CI if mean regresses more than 20%
-uv run pytest benchmarks/ -m "not slow" --benchmark-only \
-  --benchmark-compare=baseline \
+# Fail if mean regresses more than 20%
+uv run pytest benchmarks/ --benchmark-only \
+  --benchmark-storage=file://./benchmarks/results --benchmark-compare=0001 \
   --benchmark-compare-fail=mean:20%
 ```
+
+The numbers in the main [README's Performance section](../README.md#performance) come from this
+baseline.
 
 ---
 
