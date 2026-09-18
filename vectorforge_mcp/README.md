@@ -70,7 +70,7 @@ The Model Context Protocol (MCP) is an open standard that enables AI assistants 
 
 ## Key Features
 
-### **16 MCP Tools**
+### **15 MCP Tools**
 Organized into 6 categories:
 
 **Collections** (4 tools)
@@ -79,10 +79,9 @@ Organized into 6 categories:
 - Create a collection with optional metadata
 - Delete a collection
 
-**Documents** (5 tools)
+**Documents** (4 tools)
 - Get document by ID
-- Add document with metadata
-- Batch add documents
+- Add one or more documents with metadata
 - Delete document
 - Batch delete documents
 
@@ -127,7 +126,7 @@ All tools (except `check_health`) accept a `collection_name` parameter, defaulti
 │  VectorForge    │ ← You are here
 │  MCP Server     │
 ├─────────────────┤
-│ • 16 MCP Tools  │
+│ • 15 MCP Tools  │
 │ • Error Handler │
 │ • Logging       │
 └────────┬────────┘
@@ -285,7 +284,7 @@ Replace `/absolute/path/to/vectorforge` with the absolute path to your VectorFor
 
 In Claude, ask: "What VectorForge tools are available?"
 
-Claude should list all 16 MCP tools. `vectorforge` should appear as listed and enabled under the MCP connections menu.
+Claude should list all 15 MCP tools. `vectorforge` should appear as listed and enabled under the MCP connections menu.
 
 ### **Connecting from Other MCP Clients**
 
@@ -358,17 +357,18 @@ Fetch document content and metadata by ID.
 "Get document 550e8400-e29b-41d4-a716-446655440000"
 ```
 
-#### `add_document`
-Index text content for semantic search. Generates embeddings automatically.
+#### `add_documents`
+Index one or more text documents for semantic search. Generates embeddings automatically. All documents are embedded and persisted atomically.
 
 **Parameters:**
-- `content` (str) - Document text content (required, non-empty)
-- `metadata` (dict, optional) - Custom metadata
+- `documents` (list) - List of document objects, each with a `content` key (str, required, non-empty) and optional `metadata` key (dict). Pass a single-item list to add just one document.
 - `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Example:**
 ```
 "Add a document with content 'Python is a programming language' and metadata {\"topic\": \"tech\"}"
+
+"Add these three documents to the index: ..."
 ```
 
 #### `delete_document`
@@ -381,18 +381,6 @@ Permanently remove a document and its embeddings.
 **Example:**
 ```
 "Delete document 550e8400-e29b-41d4-a716-446655440000"
-```
-
-#### `batch_add_documents`
-Index multiple documents in a single request. More efficient than adding one at a time; all documents are embedded and persisted atomically.
-
-**Parameters:**
-- `documents` (list) - List of document objects, each with a `content` key (str) and optional `metadata` key (dict)
-- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
-
-**Example:**
-```
-"Add these three documents to the index: ..."
 ```
 
 #### `batch_delete_documents`
@@ -575,7 +563,7 @@ Configuration is validated on server startup via `MCPConfig.validate()`.
 You: Index this document: "VectorForge is a high-performance vector database"
 
 Claude: I'll add that document to the index.
-[Calls add_document tool]
+[Calls add_documents tool]
 Document indexed with ID: abc-123
 
 You: Search for "vector database"

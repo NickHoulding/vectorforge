@@ -11,7 +11,6 @@ from vectorforge.models import (
     BatchDocumentInput,
     BatchDocumentResponse,
     DocumentDetail,
-    DocumentInput,
     DocumentResponse,
 )
 
@@ -58,61 +57,23 @@ def get_doc(collection_name: str, doc_id: str) -> DocumentDetail:
 @router.post(
     "/collections/{collection_name}/documents",
     status_code=status.HTTP_201_CREATED,
-    response_model=DocumentResponse,
-)
-@require_collection
-@handle_api_errors
-def add_doc(collection_name: str, doc: DocumentInput) -> DocumentResponse:
-    """
-    Add a single pre-extracted document to a collection
-
-    Indexes a document that has already been extracted and chunked externally.
-    Useful for adding custom content without file upload.
-
-    Args:
-        collection_name: Name of the collection
-        doc: Document with content and optional metadata
-
-    Returns:
-        DocumentResponse: Created document ID and status
-
-    Raises:
-        HTTPException: 404 if collection not found
-        HTTPException: 500 if indexing fails
-
-    Example:
-        POST /collections/customer_docs/documents
-        {"content": "Vector databases enable semantic search",
-         "metadata": {"source": "manual", "category": "tech"}}
-    """
-    engine = manager.get_engine(collection_name)
-    doc_id: str = engine.add_docs([{"content": doc.content, "metadata": doc.metadata}])[
-        0
-    ]
-
-    return DocumentResponse(id=doc_id, status="indexed")
-
-
-@router.post(
-    "/collections/{collection_name}/documents/batch",
-    status_code=status.HTTP_201_CREATED,
     response_model=BatchDocumentResponse,
 )
 @require_collection
 @handle_api_errors
-def add_docs_batch(
-    collection_name: str, body: BatchDocumentInput
-) -> BatchDocumentResponse:
+def add_docs(collection_name: str, body: BatchDocumentInput) -> BatchDocumentResponse:
     """
-    Add multiple documents to a collection in a single batch request
+    Add one or more pre-extracted documents to a collection
 
-    Batch-encodes all document embeddings in a single model.encode() call, then
-    persists all documents atomically. Documents are validated before any are
-    persisted; if any document fails validation the entire request returns an error.
+    Indexes documents that have already been extracted and chunked externally.
+    Useful for adding custom content without file upload. Batch-encodes all
+    document embeddings in a single model.encode() call, then persists all
+    documents atomically. Documents are validated before any are persisted; if
+    any document fails validation the entire request returns an error.
 
     Args:
         collection_name: Name of the collection
-        body: Batch of documents (1–MAX_BATCH_SIZE entries)
+        body: Documents to add (1-MAX_BATCH_SIZE entries)
 
     Returns:
         BatchDocumentResponse: List of created document IDs and status
@@ -122,9 +83,9 @@ def add_docs_batch(
         HTTPException: 422 if any document fails validation
 
     Example:
-        POST /collections/customer_docs/documents/batch
-        {"documents": [{"content": "First doc", "metadata": {"author": "Alice"}},
-                       {"content": "Second doc", "metadata": {"author": "Bob"}}]}
+        POST /collections/customer_docs/documents
+        {"documents": [{"content": "Vector databases enable semantic search",
+                        "metadata": {"source": "manual", "category": "tech"}}]}
     """
     engine = manager.get_engine(collection_name)
     docs: list[dict[str, Any]] = [doc.model_dump() for doc in body.documents]

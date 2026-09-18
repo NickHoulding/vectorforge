@@ -284,11 +284,11 @@ def test_list_collections_document_count_reflects_added_docs(
     client.post("/collections", json={"name": "count_docs_col"})
     client.post(
         "/collections/count_docs_col/documents",
-        json={"content": "first doc", "metadata": {}},
+        json={"documents": [{"content": "first doc", "metadata": {}}]},
     )
     client.post(
         "/collections/count_docs_col/documents",
-        json={"content": "second doc", "metadata": {}},
+        json={"documents": [{"content": "second doc", "metadata": {}}]},
     )
 
     data = client.get("/collections").json()
@@ -430,7 +430,7 @@ def test_get_collection_document_count_updates_after_add(
     client.post("/collections", json={"name": "live_count_col"})
     client.post(
         "/collections/live_count_col/documents",
-        json={"content": "hello world", "metadata": {}},
+        json={"documents": [{"content": "hello world", "metadata": {}}]},
     )
 
     data = client.get("/collections/live_count_col").json()
@@ -513,7 +513,7 @@ def test_delete_one_collection_does_not_affect_another(
     client.post("/collections", json={"name": "victim_col"})
     client.post(
         "/collections/survivor_col/documents",
-        json={"content": "I should survive", "metadata": {}},
+        json={"documents": [{"content": "I should survive", "metadata": {}}]},
     )
 
     client.delete("/collections/victim_col?confirm=true")
@@ -534,7 +534,7 @@ def test_document_isolation_between_collections(
     """Documents added to col_a are not visible in col_b's document count."""
     client.post(
         f"/collections/{col_a}/documents",
-        json={"content": "exclusive to col_a", "metadata": {}},
+        json={"documents": [{"content": "exclusive to col_a", "metadata": {}}]},
     )
 
     col_b_info = client.get(f"/collections/{col_b}").json()
@@ -547,7 +547,11 @@ def test_search_isolation_between_collections(
     """Search in col_b returns no results when only col_a has documents."""
     client.post(
         f"/collections/{col_a}/documents",
-        json={"content": "machine learning and neural networks", "metadata": {}},
+        json={
+            "documents": [
+                {"content": "machine learning and neural networks", "metadata": {}}
+            ]
+        },
     )
 
     response = client.post(
@@ -567,7 +571,7 @@ def test_stats_isolation_between_collections(
     for i in range(3):
         client.post(
             f"/collections/{col_a}/documents",
-            json={"content": f"col_a document {i}", "metadata": {}},
+            json={"documents": [{"content": f"col_a document {i}", "metadata": {}}]},
         )
 
     stats_a = client.get(f"/collections/{col_a}/stats").json()
@@ -584,7 +588,7 @@ def test_metrics_isolation_between_collections(
     for i in range(2):
         client.post(
             f"/collections/{col_a}/documents",
-            json={"content": f"col_a metrics doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"col_a metrics doc {i}", "metadata": {}}]},
         )
 
     metrics_a = client.get(f"/collections/{col_a}/metrics").json()
@@ -616,12 +620,14 @@ def test_delete_collection_does_not_bleed_into_sibling(
     for i in range(5):
         client.post(
             f"/collections/{col_a}/documents",
-            json={"content": f"col_a survivor doc {i}", "metadata": {}},
+            json={
+                "documents": [{"content": f"col_a survivor doc {i}", "metadata": {}}]
+            },
         )
     for i in range(5):
         client.post(
             f"/collections/{col_b}/documents",
-            json={"content": f"col_b doomed doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"col_b doomed doc {i}", "metadata": {}}]},
         )
 
     client.delete(f"/collections/{col_b}?confirm=true")
@@ -652,13 +658,13 @@ def test_get_collection_document_count_decreases_after_delete(
 
     client.post(
         "/collections/shrink_col/documents",
-        json={"content": "doc to keep", "metadata": {}},
+        json={"documents": [{"content": "doc to keep", "metadata": {}}]},
     )
     r2 = client.post(
         "/collections/shrink_col/documents",
-        json={"content": "doc to delete", "metadata": {}},
+        json={"documents": [{"content": "doc to delete", "metadata": {}}]},
     )
-    doc_id = r2.json()["id"]
+    doc_id = r2.json()["ids"][0]
 
     assert client.get("/collections/shrink_col").json()["document_count"] == 2
     client.delete(f"/collections/shrink_col/documents/{doc_id}")
@@ -671,11 +677,19 @@ def test_search_returns_result_from_correct_collection(
     """Search in col_a returns col_a's doc; search in col_b returns col_b's doc."""
     client.post(
         f"/collections/{col_a}/documents",
-        json={"content": "quantum physics and particle accelerators", "metadata": {}},
+        json={
+            "documents": [
+                {"content": "quantum physics and particle accelerators", "metadata": {}}
+            ]
+        },
     )
     client.post(
         f"/collections/{col_b}/documents",
-        json={"content": "ancient roman history and the colosseum", "metadata": {}},
+        json={
+            "documents": [
+                {"content": "ancient roman history and the colosseum", "metadata": {}}
+            ]
+        },
     )
 
     resp_a = client.post(
@@ -742,7 +756,7 @@ def test_delete_and_recreate_same_name_starts_empty(client: TestClient) -> None:
     for i in range(3):
         client.post(
             "/collections/recycle_col/documents",
-            json={"content": f"leftover doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"leftover doc {i}", "metadata": {}}]},
         )
     assert client.get("/collections/recycle_col").json()["document_count"] == 3
 
@@ -894,8 +908,12 @@ def test_list_documents_document_shape(client: TestClient) -> None:
     client.post(
         f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
         json={
-            "content": "shape check doc",
-            "metadata": {"source": "shape.txt", "chunk_index": 0},
+            "documents": [
+                {
+                    "content": "shape check doc",
+                    "metadata": {"source": "shape.txt", "chunk_index": 0},
+                }
+            ]
         },
     )
 
@@ -914,11 +932,11 @@ def test_list_documents_returns_added_documents(client: TestClient) -> None:
     client.post("/collections", json={"name": "list_docs_col"})
     client.post(
         "/collections/list_docs_col/documents",
-        json={"content": "first document", "metadata": {}},
+        json={"documents": [{"content": "first document", "metadata": {}}]},
     )
     client.post(
         "/collections/list_docs_col/documents",
-        json={"content": "second document", "metadata": {}},
+        json={"documents": [{"content": "second document", "metadata": {}}]},
     )
 
     data = client.get("/collections/list_docs_col/documents").json()
@@ -933,7 +951,7 @@ def test_list_documents_total_matches_documents_length(client: TestClient) -> No
     for i in range(5):
         client.post(
             "/collections/total_match_col/documents",
-            json={"content": f"doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"doc {i}", "metadata": {}}]},
         )
 
     data = client.get("/collections/total_match_col/documents").json()
@@ -945,7 +963,7 @@ def test_list_documents_content_round_trips(client: TestClient) -> None:
     content = "The quick brown fox jumps over the lazy dog"
     client.post(
         f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
-        json={"content": content, "metadata": {}},
+        json={"documents": [{"content": content, "metadata": {}}]},
     )
 
     data = client.get(
@@ -960,8 +978,12 @@ def test_list_documents_metadata_round_trips(client: TestClient) -> None:
     client.post(
         f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
         json={
-            "content": "meta round-trip doc",
-            "metadata": {"source": "test.txt", "chunk_index": 3},
+            "documents": [
+                {
+                    "content": "meta round-trip doc",
+                    "metadata": {"source": "test.txt", "chunk_index": 3},
+                }
+            ]
         },
     )
 
@@ -980,7 +1002,7 @@ def test_list_documents_limit_restricts_count(client: TestClient) -> None:
     for i in range(10):
         client.post(
             "/collections/limit_col/documents",
-            json={"content": f"doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"doc {i}", "metadata": {}}]},
         )
 
     data = client.get("/collections/limit_col/documents", params={"limit": 3}).json()
@@ -995,7 +1017,7 @@ def test_list_documents_offset_skips_documents(client: TestClient) -> None:
     for i in range(5):
         client.post(
             "/collections/offset_col/documents",
-            json={"content": f"doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"doc {i}", "metadata": {}}]},
         )
 
     all_data = client.get("/collections/offset_col/documents").json()
@@ -1017,7 +1039,7 @@ def test_list_documents_limit_and_offset_together(client: TestClient) -> None:
     for i in range(8):
         client.post(
             "/collections/page_col/documents",
-            json={"content": f"doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"doc {i}", "metadata": {}}]},
         )
 
     all_data = client.get("/collections/page_col/documents").json()
@@ -1037,7 +1059,7 @@ def test_list_documents_offset_beyond_total_returns_empty(client: TestClient) ->
     client.post("/collections", json={"name": "big_offset_col"})
     client.post(
         "/collections/big_offset_col/documents",
-        json={"content": "only doc", "metadata": {}},
+        json={"documents": [{"content": "only doc", "metadata": {}}]},
     )
 
     data = client.get(
@@ -1086,7 +1108,7 @@ def test_list_documents_default_collection_works(client: TestClient) -> None:
     """The default collection's documents endpoint is accessible."""
     client.post(
         f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
-        json={"content": "default collection doc", "metadata": {}},
+        json={"documents": [{"content": "default collection doc", "metadata": {}}]},
     )
 
     response = client.get(f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents")
@@ -1099,7 +1121,7 @@ def test_list_documents_id_is_non_empty_string(client: TestClient) -> None:
     """Each document entry has a non-empty string id."""
     client.post(
         f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
-        json={"content": "id check doc", "metadata": {}},
+        json={"documents": [{"content": "id check doc", "metadata": {}}]},
     )
 
     data = client.get(
@@ -1117,7 +1139,7 @@ def test_list_documents_isolated_from_other_collections(
     """Documents listed for col_a do not include documents from col_b."""
     client.post(
         f"/collections/{col_a}/documents",
-        json={"content": "exclusive to col_a", "metadata": {}},
+        json={"documents": [{"content": "exclusive to col_a", "metadata": {}}]},
     )
 
     data = client.get(f"/collections/{col_b}/documents").json()
@@ -1130,7 +1152,7 @@ def test_list_documents_status_is_success_when_docs_present(client: TestClient) 
     """status field is 'success' when the collection contains documents."""
     client.post(
         f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
-        json={"content": "status check doc", "metadata": {}},
+        json={"documents": [{"content": "status check doc", "metadata": {}}]},
     )
 
     data = client.get(
@@ -1146,7 +1168,7 @@ def test_list_documents_limit_one_returns_single_doc(client: TestClient) -> None
     for i in range(3):
         client.post(
             "/collections/min_limit_col/documents",
-            json={"content": f"doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"doc {i}", "metadata": {}}]},
         )
 
     data = client.get(
@@ -1168,7 +1190,7 @@ def test_list_documents_default_limit_applied_when_omitted(client: TestClient) -
     for i in range(doc_count):
         client.post(
             "/collections/default_limit_col/documents",
-            json={"content": f"doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"doc {i}", "metadata": {}}]},
         )
 
     data = client.get("/collections/default_limit_col/documents").json()
@@ -1188,7 +1210,7 @@ def test_list_documents_total_reflects_page_size_not_collection_size(
     for i in range(10):
         client.post(
             "/collections/page_total_col/documents",
-            json={"content": f"doc {i}", "metadata": {}},
+            json={"documents": [{"content": f"doc {i}", "metadata": {}}]},
         )
 
     data = client.get(
@@ -1203,7 +1225,7 @@ def test_list_documents_null_metadata_returned_as_none(client: TestClient) -> No
     """A document stored with metadata=null has metadata returned as null."""
     client.post(
         f"/collections/{VFGConfig.DEFAULT_COLLECTION_NAME}/documents",
-        json={"content": "no metadata doc", "metadata": None},
+        json={"documents": [{"content": "no metadata doc", "metadata": None}]},
     )
 
     data = client.get(
@@ -1226,15 +1248,23 @@ def test_list_documents_filter_by_exact_metadata_value(client: TestClient) -> No
     client.post(
         "/collections/filter_exact_col/documents",
         json={
-            "content": "doc from notes",
-            "metadata": {"source": "notes.txt", "chunk_index": 0},
+            "documents": [
+                {
+                    "content": "doc from notes",
+                    "metadata": {"source": "notes.txt", "chunk_index": 0},
+                }
+            ]
         },
     )
     client.post(
         "/collections/filter_exact_col/documents",
         json={
-            "content": "doc from report",
-            "metadata": {"source": "report.txt", "chunk_index": 0},
+            "documents": [
+                {
+                    "content": "doc from report",
+                    "metadata": {"source": "report.txt", "chunk_index": 0},
+                }
+            ]
         },
     )
 
@@ -1254,7 +1284,14 @@ def test_list_documents_filter_no_matches_returns_empty(client: TestClient) -> N
     client.post("/collections", json={"name": "filter_no_match_col"})
     client.post(
         "/collections/filter_no_match_col/documents",
-        json={"content": "some doc", "metadata": {"source": "a.txt", "chunk_index": 0}},
+        json={
+            "documents": [
+                {
+                    "content": "some doc",
+                    "metadata": {"source": "a.txt", "chunk_index": 0},
+                }
+            ]
+        },
     )
 
     data = client.get(
@@ -1274,22 +1311,34 @@ def test_list_documents_filter_multiple_keys_and_logic(client: TestClient) -> No
     client.post(
         "/collections/filter_and_col/documents",
         json={
-            "content": "matches both",
-            "metadata": {"source": "a.txt", "chunk_index": 0},
+            "documents": [
+                {
+                    "content": "matches both",
+                    "metadata": {"source": "a.txt", "chunk_index": 0},
+                }
+            ]
         },
     )
     client.post(
         "/collections/filter_and_col/documents",
         json={
-            "content": "matches source only",
-            "metadata": {"source": "a.txt", "chunk_index": 1},
+            "documents": [
+                {
+                    "content": "matches source only",
+                    "metadata": {"source": "a.txt", "chunk_index": 1},
+                }
+            ]
         },
     )
     client.post(
         "/collections/filter_and_col/documents",
         json={
-            "content": "matches neither",
-            "metadata": {"source": "b.txt", "chunk_index": 0},
+            "documents": [
+                {
+                    "content": "matches neither",
+                    "metadata": {"source": "b.txt", "chunk_index": 0},
+                }
+            ]
         },
     )
 
@@ -1311,8 +1360,12 @@ def test_list_documents_filter_with_gte_operator(client: TestClient) -> None:
         client.post(
             "/collections/filter_gte_col/documents",
             json={
-                "content": f"doc {i}",
-                "metadata": {"chunk_index": i, "source": "f.txt"},
+                "documents": [
+                    {
+                        "content": f"doc {i}",
+                        "metadata": {"chunk_index": i, "source": "f.txt"},
+                    }
+                ]
             },
         )
 
@@ -1334,8 +1387,12 @@ def test_list_documents_filter_with_in_operator(client: TestClient) -> None:
         client.post(
             "/collections/filter_in_col/documents",
             json={
-                "content": f"doc from {name}",
-                "metadata": {"source": name, "chunk_index": 0},
+                "documents": [
+                    {
+                        "content": f"doc from {name}",
+                        "metadata": {"source": name, "chunk_index": 0},
+                    }
+                ]
             },
         )
 
@@ -1413,8 +1470,12 @@ def test_list_documents_filter_respects_limit_and_offset(client: TestClient) -> 
         client.post(
             "/collections/filter_page_col/documents",
             json={
-                "content": f"doc {i}",
-                "metadata": {"source": "same.txt", "chunk_index": i},
+                "documents": [
+                    {
+                        "content": f"doc {i}",
+                        "metadata": {"source": "same.txt", "chunk_index": i},
+                    }
+                ]
             },
         )
 

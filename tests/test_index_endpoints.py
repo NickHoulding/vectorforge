@@ -67,11 +67,11 @@ def test_index_stats_after_adding_documents(client):
     """Test that stats update correctly after adding documents."""
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "test doc 1", "metadata": {}},
+        json={"documents": [{"content": "test doc 1", "metadata": {}}]},
     )
     client.post(
         "/collections/vectorforge/documents",
-        json={"content": "test doc 2", "metadata": {}},
+        json={"documents": [{"content": "test doc 2", "metadata": {}}]},
     )
 
     stats = client.get("/collections/vectorforge/stats").json()

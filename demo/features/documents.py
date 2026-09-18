@@ -6,32 +6,8 @@ from demo import client
 
 
 def add() -> None:
-    """Prompt for content and metadata, then add a single document to a collection."""
-    print("\n-- Add Document --")
-    collection_name = client.prompt_collection()
-    content = client.prompt("Content (text to embed)")
-    metadata = client.prompt_json("Metadata")
-
-    body: dict[str, Any] = {"content": content}
-    if metadata:
-        body["metadata"] = metadata
-
-    resp = client.post(f"/collections/{collection_name}/documents", body=body)
-    client.print_response(resp)
-
-
-def get() -> None:
-    """Prompt for a document ID and display the matching document."""
-    print("\n-- Get Document --")
-    collection_name = client.prompt_collection()
-    doc_id = client.prompt("Document ID")
-    resp = client.get(f"/collections/{collection_name}/documents/{doc_id}")
-    client.print_response(resp)
-
-
-def batch_add() -> None:
-    """Interactively collect multiple documents and add them in a single batch request."""
-    print("\n-- Batch Add Documents --")
+    """Interactively collect one or more documents and add them in a single request."""
+    print("\n-- Add Documents --")
     collection_name = client.prompt_collection()
     print("  Enter documents one at a time. Leave content blank to stop.")
     documents = []
@@ -57,8 +33,17 @@ def batch_add() -> None:
         return
 
     resp = client.post(
-        f"/collections/{collection_name}/documents/batch", body={"documents": documents}
+        f"/collections/{collection_name}/documents", body={"documents": documents}
     )
+    client.print_response(resp)
+
+
+def get() -> None:
+    """Prompt for a document ID and display the matching document."""
+    print("\n-- Get Document --")
+    collection_name = client.prompt_collection()
+    doc_id = client.prompt("Document ID")
+    resp = client.get(f"/collections/{collection_name}/documents/{doc_id}")
     client.print_response(resp)
 
 

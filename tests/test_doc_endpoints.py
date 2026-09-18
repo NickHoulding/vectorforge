@@ -2,7 +2,6 @@
 
 Covers:
     POST   /collections/{collection_name}/documents
-    POST   /collections/{collection_name}/documents/batch
     GET    /collections/{collection_name}/documents/{doc_id}
     DELETE /collections/{collection_name}/documents/{doc_id}
     DELETE /collections/{collection_name}/documents
@@ -17,11 +16,15 @@ from vectorforge.config import VFGConfig
 
 def test_doc_add_returns_unique_ids_for_multiple_docs(client, sample_doc):
     """Test that adding multiple documents generates unique IDs for each."""
-    first_response = client.post("/collections/vectorforge/documents", json=sample_doc)
-    first_id = first_response.json()["id"]
+    first_response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
+    first_id = first_response.json()["ids"][0]
 
-    second_response = client.post("/collections/vectorforge/documents", json=sample_doc)
-    second_id = second_response.json()["id"]
+    second_response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
+    second_id = second_response.json()["ids"][0]
 
     assert first_id != second_id
 
@@ -29,32 +32,41 @@ def test_doc_add_returns_unique_ids_for_multiple_docs(client, sample_doc):
 def test_doc_add_null_metadata(client, sample_doc):
     """Test that adding a document with null metadata returns 400."""
     sample_doc["metadata"] = None
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
 def test_doc_add_empty_metadata(client, sample_doc):
     """Test that adding a document with empty metadata dict succeeds."""
     sample_doc["metadata"] = {}
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
     response_data = response.json()
-    assert "id" in response_data
+    assert "ids" in response_data
+    assert len(response_data["ids"]) == 1
     assert response_data["status"] == "indexed"
 
 
 def test_doc_add_large_content(client, sample_doc):
     """Test that adding a document exceeding max content length returns 422."""
     sample_doc["content"] = "a" * (VFGConfig.MAX_CONTENT_LENGTH + 1)
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 422
 
 
 def test_doc_add_empty_content(client, sample_doc):
-    """Test that adding a document with empty content returns 400."""
+    """Test that adding a document with empty content returns 422."""
     sample_doc["content"] = ""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 422
 
 
@@ -73,8 +85,10 @@ def test_doc_get_returns_correct_id(client, added_doc):
 
 def test_doc_get_returns_matching_content(client, sample_doc):
     """Test that retrieved document content matches original."""
-    add_response = client.post("/collections/vectorforge/documents", json=sample_doc)
-    doc_id = add_response.json()["id"]
+    add_response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
+    doc_id = add_response.json()["ids"][0]
 
     get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
     data = get_response.json()
@@ -83,8 +97,10 @@ def test_doc_get_returns_matching_content(client, sample_doc):
 
 def test_doc_get_preserves_metadata(client, sample_doc):
     """Test that retrieved document preserves metadata."""
-    add_response = client.post("/collections/vectorforge/documents", json=sample_doc)
-    doc_id = add_response.json()["id"]
+    add_response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
+    doc_id = add_response.json()["ids"][0]
     get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
 
     metadata = get_response.json()["metadata"]
@@ -100,22 +116,30 @@ def test_doc_get_returns_404_when_not_found(client):
 
 def test_doc_add_returns_201(client, sample_doc):
     """Test that POST /collections/vectorforge/documents returns 201 status."""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
 def test_doc_add_returns_document_id(client, sample_doc):
     """Test that POST /collections/vectorforge/documents returns a document ID."""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     data = response.json()
-    assert "id" in data
-    assert isinstance(data["id"], str)
-    assert len(data["id"]) > 0
+    assert "ids" in data
+    assert isinstance(data["ids"], list)
+    assert len(data["ids"]) == 1
+    assert isinstance(data["ids"][0], str)
+    assert len(data["ids"][0]) > 0
 
 
 def test_doc_add_creates_document_with_id(client, sample_doc):
     """Test that POST /collections/vectorforge/documents returns indexed status."""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     data = response.json()
     assert data["status"] == "indexed"
 
@@ -151,14 +175,18 @@ def test_doc_delete_returns_404_when_not_found(client):
 def test_doc_add_metadata_with_only_source(client, sample_doc):
     """Test that metadata with only 'source' (missing 'chunk_index') returns 400."""
     del sample_doc["metadata"]["chunk_index"]
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 400
 
 
 def test_doc_add_metadata_with_only_chunk_index(client, sample_doc):
     """Test that metadata with only 'chunk_index' (missing 'source') returns 400."""
     del sample_doc["metadata"]["source"]
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 400
 
 
@@ -166,7 +194,7 @@ def test_doc_add_metadata_none_value_returns_422(client):
     """Test that a None metadata value is rejected with 422."""
     response = client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Some content", "metadata": {"author": None}},
+        json={"documents": [{"content": "Some content", "metadata": {"author": None}}]},
     )
     assert response.status_code == 422
 
@@ -175,7 +203,11 @@ def test_doc_add_metadata_list_value_returns_422(client):
     """Test that a list metadata value is rejected with 422."""
     response = client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Some content", "metadata": {"tags": ["python", "ml"]}},
+        json={
+            "documents": [
+                {"content": "Some content", "metadata": {"tags": ["python", "ml"]}}
+            ]
+        },
     )
     assert response.status_code == 422
 
@@ -184,7 +216,11 @@ def test_doc_add_metadata_nested_dict_value_returns_422(client):
     """Test that a nested dict metadata value is rejected with 422."""
     response = client.post(
         "/collections/vectorforge/documents",
-        json={"content": "Some content", "metadata": {"nested": {"key": "val"}}},
+        json={
+            "documents": [
+                {"content": "Some content", "metadata": {"nested": {"key": "val"}}}
+            ]
+        },
     )
     assert response.status_code == 422
 
@@ -194,13 +230,17 @@ def test_doc_add_metadata_valid_types_all_accepted(client):
     response = client.post(
         "/collections/vectorforge/documents",
         json={
-            "content": "Some content",
-            "metadata": {
-                "str_field": "hello",
-                "int_field": 42,
-                "float_field": 3.14,
-                "bool_field": True,
-            },
+            "documents": [
+                {
+                    "content": "Some content",
+                    "metadata": {
+                        "str_field": "hello",
+                        "int_field": 42,
+                        "float_field": 3.14,
+                        "bool_field": True,
+                    },
+                }
+            ]
         },
     )
     assert response.status_code == 201
@@ -209,7 +249,9 @@ def test_doc_add_metadata_valid_types_all_accepted(client):
 def test_doc_add_with_special_characters_in_content(client, sample_doc):
     """Test that documents with special characters in content are accepted."""
     sample_doc["metadata"]["content"] = "!@#$%^&*()_~-=+,.<>/?;:\"'[]|\\"
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
@@ -227,10 +269,12 @@ def test_doc_add_with_unicode_content(client, sample_doc):
         "🎉🚀💻🔥"  # Emojis
     )
 
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
-    doc_id = response.json()["id"]
+    doc_id = response.json()["ids"][0]
     get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
     assert get_response.json()["content"] == sample_doc["content"]
 
@@ -257,23 +301,29 @@ def test_doc_add_invalid_json_structure(client):
     """Test that POST /collections/vectorforge/documents with invalid JSON structure (missing 'content') returns 422."""
     invalid_doc = {"metadata": {"source": "test.txt", "chunk_index": 0}}
 
-    response = client.post("/collections/vectorforge/documents", json=invalid_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [invalid_doc]}
+    )
     assert response.status_code == 422
 
 
 def test_doc_add_content_not_string(client, sample_doc):
     """Test that content field must be a string, not another type (e.g., number)."""
     sample_doc["content"] = 123
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 422
 
 
 def test_doc_add_preserves_metadata_fields(client, sample_doc):
     """Test that all metadata fields are preserved after adding a document."""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
-    doc_id = response.json()["id"]
+    doc_id = response.json()["ids"][0]
     get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
     assert get_response.status_code == 200
 
@@ -293,15 +343,15 @@ def test_doc_deletion_does_not_affect_other_documents(client, sample_doc):
     doc2_data = {**sample_doc, "content": "Doc 2 content"}
     doc3_data = {**sample_doc, "content": "Doc 3 content"}
 
-    doc1_id = client.post("/collections/vectorforge/documents", json=doc1_data).json()[
-        "id"
-    ]
-    doc2_id = client.post("/collections/vectorforge/documents", json=doc2_data).json()[
-        "id"
-    ]
-    doc3_id = client.post("/collections/vectorforge/documents", json=doc3_data).json()[
-        "id"
-    ]
+    doc1_id = client.post(
+        "/collections/vectorforge/documents", json={"documents": [doc1_data]}
+    ).json()["ids"][0]
+    doc2_id = client.post(
+        "/collections/vectorforge/documents", json={"documents": [doc2_data]}
+    ).json()["ids"][0]
+    doc3_id = client.post(
+        "/collections/vectorforge/documents", json={"documents": [doc3_data]}
+    ).json()["ids"][0]
 
     delete_response = client.delete(f"/collections/vectorforge/documents/{doc1_id}")
     assert delete_response.status_code == 200
@@ -321,30 +371,38 @@ def test_doc_deletion_does_not_affect_other_documents(client, sample_doc):
 def test_doc_add_at_exact_length_limit(client, sample_doc):
     """Test that content at exactly MAX_CONTENT_LENGTH characters is accepted."""
     sample_doc["content"] = "a" * VFGConfig.MAX_CONTENT_LENGTH
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
 def test_doc_add_one_char_over_length_limit(client, sample_doc):
     """Test that content at MAX_CONTENT_LENGTH + 1 characters is rejected."""
     sample_doc["content"] = "a" * (VFGConfig.MAX_CONTENT_LENGTH + 1)
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 422
 
 
 def test_doc_add_with_length_9999(client, sample_doc):
     """Test that content at MAX_CONTENT_LENGTH - 1 characters is accepted."""
     sample_doc["content"] = "a" * (VFGConfig.MAX_CONTENT_LENGTH - 1)
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
 def test_doc_full_lifecycle(client, sample_doc):
     """Test complete document lifecycle: add -> get -> delete -> verify deletion."""
-    add_response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    add_response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert add_response.status_code == 201
 
-    doc_id = add_response.json()["id"]
+    doc_id = add_response.json()["ids"][0]
     get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
     assert get_response.status_code == 200
 
@@ -359,17 +417,21 @@ def test_doc_full_lifecycle(client, sample_doc):
 def test_doc_add_with_whitespace_only_content(client, sample_doc):
     """Test that content with only whitespace characters is handled appropriately."""
     sample_doc["content"] = ""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 422
 
 
 def test_doc_add_response_contains_all_required_fields(client, sample_doc):
-    """Test that successful add response contains id and status fields."""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    """Test that successful add response contains ids and status fields."""
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
     response_data = response.json()
-    assert "id" in response_data
+    assert "ids" in response_data
     assert "status" in response_data
 
 
@@ -399,7 +461,9 @@ def test_doc_add_with_valid_chunk_metadata(client, sample_doc):
     assert "source" in sample_doc["metadata"]
     assert "chunk_index" in sample_doc["metadata"]
 
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
@@ -416,17 +480,21 @@ def test_doc_delete_with_invalid_uuid_format(client):
 
 
 def test_doc_add_returns_id_field(client, sample_doc):
-    """Test that add response contains 'id' field."""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    """Test that add response contains 'ids' field."""
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
     response_data = response.json()
-    assert "id" in response_data
+    assert "ids" in response_data
 
 
 def test_doc_add_returns_status_field(client, sample_doc):
     """Test that add response contains 'status' field."""
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
     response_data = response.json()
@@ -448,11 +516,11 @@ def test_doc_get_after_multiple_adds(client, sample_doc):
     doc2_data = {**sample_doc, "content": "Doc 2 content"}
     doc3_data = {**sample_doc, "content": "Doc 3 content"}
 
-    doc1_id = client.post("/collections/vectorforge/documents", json=doc1_data).json()[
-        "id"
-    ]
-    client.post("/collections/vectorforge/documents", json=doc2_data)
-    client.post("/collections/vectorforge/documents", json=doc3_data)
+    doc1_id = client.post(
+        "/collections/vectorforge/documents", json={"documents": [doc1_data]}
+    ).json()["ids"][0]
+    client.post("/collections/vectorforge/documents", json={"documents": [doc2_data]})
+    client.post("/collections/vectorforge/documents", json={"documents": [doc3_data]})
 
     response = client.get(f"/collections/vectorforge/documents/{doc1_id}")
     assert response.status_code == 200
@@ -466,7 +534,9 @@ def test_doc_add_increments_docs_added_metric(client, sample_doc):
     initial_metrics = client.get("/collections/vectorforge/stats").json()
     initial_count = initial_metrics["total_documents"]
 
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
     updated_metrics = client.get("/collections/vectorforge/stats").json()
@@ -492,24 +562,30 @@ def test_doc_delete_increments_docs_deleted_metric(client, added_doc):
 def test_doc_add_metadata_with_boolean_values(client, sample_doc):
     """Test that metadata can contain boolean values."""
     sample_doc["metadata"]["is_active"] = True
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
 def test_doc_add_with_very_large_metadata(client, sample_doc):
     """Test document with extremely large metadata object."""
     sample_doc["metadata"]["large_field"] = "x" * 100_000
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
 def test_doc_add_with_newlines_and_tabs(client, sample_doc):
     """Test content with newlines, tabs, and other whitespace."""
     sample_doc["content"] = "Line 1\nLine 2\tTabbed\r\nWindows newline"
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
-    doc_id = response.json()["id"]
+    doc_id = response.json()["ids"][0]
     get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
     assert get_response.json()["content"] == sample_doc["content"]
 
@@ -517,14 +593,18 @@ def test_doc_add_with_newlines_and_tabs(client, sample_doc):
 def test_doc_add_with_only_spaces(client, sample_doc):
     """Test content with only space characters (not empty string)."""
     sample_doc["content"] = "     "
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 400
 
 
 def test_doc_add_with_control_characters(client, sample_doc):
     """Test content with control characters."""
     sample_doc["content"] = "Hello\x00World\x01Test"
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
@@ -552,7 +632,8 @@ def test_doc_add_with_missing_metadata_field(client):
     """Test that request without 'metadata' field entirely is handled."""
     doc_without_metadata = {"content": "Test content"}
     response = client.post(
-        "/collections/vectorforge/documents", json=doc_without_metadata
+        "/collections/vectorforge/documents",
+        json={"documents": [doc_without_metadata]},
     )
     assert response.status_code == 201
 
@@ -560,7 +641,9 @@ def test_doc_add_with_missing_metadata_field(client):
 def test_doc_add_with_extra_unknown_fields(client, sample_doc):
     """Test that extra fields in request are ignored or rejected."""
     sample_doc["unknown_field"] = "should be ignored"
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
@@ -570,9 +653,9 @@ def test_doc_get_after_index_compaction(client, sample_doc):
     for i in range(10):
         resp = client.post(
             "/collections/vectorforge/documents",
-            json={**sample_doc, "content": f"Doc {i}"},
+            json={"documents": [{**sample_doc, "content": f"Doc {i}"}]},
         )
-        doc_ids.append(resp.json()["id"])
+        doc_ids.append(resp.json()["ids"][0])
 
     for doc_id in doc_ids[:3]:
         client.delete(f"/collections/vectorforge/documents/{doc_id}")
@@ -585,8 +668,10 @@ def test_doc_get_after_index_compaction(client, sample_doc):
 def test_doc_operations_update_all_relevant_metrics(client, sample_doc):
     """Test that doc operations update metrics comprehensively."""
     initial_metrics = client.get("/collections/vectorforge/metrics").json()
-    add_resp = client.post("/collections/vectorforge/documents", json=sample_doc)
-    doc_id = add_resp.json()["id"]
+    add_resp = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
+    doc_id = add_resp.json()["ids"][0]
 
     after_add = client.get("/collections/vectorforge/metrics").json()
     assert (
@@ -609,7 +694,9 @@ def test_doc_operations_update_all_relevant_metrics(client, sample_doc):
 def test_doc_add_metadata_with_array_values(client, sample_doc):
     """Test that metadata cannot contain array values."""
     sample_doc["metadata"]["tags"] = ["python", "api", "testing"]
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 422
 
 
@@ -617,7 +704,9 @@ def test_doc_add_metadata_with_numeric_values(client, sample_doc):
     """Test that metadata can contain integers and floats."""
     sample_doc["metadata"]["count"] = 42
     sample_doc["metadata"]["score"] = 3.14
-    response = client.post("/collections/vectorforge/documents", json=sample_doc)
+    response = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
     assert response.status_code == 201
 
 
@@ -639,21 +728,21 @@ def test_doc_get_with_numeric_id(client):
 
 
 # =============================================================================
-# Batch Add Endpoint Tests (POST /documents/batch)
+# Multi-Document Add Tests (POST /documents with 2+ items)
 # =============================================================================
 
 
 def test_batch_add_returns_201(client, sample_doc):
-    """Test that POST /documents/batch returns 201 status."""
+    """Test that adding multiple documents in one request returns 201 status."""
     payload = {"documents": [sample_doc, {**sample_doc, "content": "Second doc"}]}
-    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    response = client.post("/collections/vectorforge/documents", json=payload)
     assert response.status_code == 201
 
 
 def test_batch_add_returns_ids_list(client, sample_doc):
-    """Test that batch add response contains a list of IDs."""
+    """Test that a multi-document add response contains a list of IDs."""
     payload = {"documents": [sample_doc, {**sample_doc, "content": "Second doc"}]}
-    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    response = client.post("/collections/vectorforge/documents", json=payload)
     data = response.json()
     assert "ids" in data
     assert isinstance(data["ids"], list)
@@ -661,29 +750,29 @@ def test_batch_add_returns_ids_list(client, sample_doc):
 
 
 def test_batch_add_returns_indexed_status(client, sample_doc):
-    """Test that batch add response contains 'indexed' status."""
+    """Test that add response contains 'indexed' status."""
     payload = {"documents": [sample_doc]}
-    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    response = client.post("/collections/vectorforge/documents", json=payload)
     assert response.json()["status"] == "indexed"
 
 
 def test_batch_add_ids_are_unique(client, sample_doc):
-    """Test that batch add assigns unique IDs to each document."""
+    """Test that adding multiple documents assigns unique IDs to each."""
     payload = {"documents": [sample_doc, {**sample_doc, "content": "Second doc"}]}
-    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    response = client.post("/collections/vectorforge/documents", json=payload)
     ids = response.json()["ids"]
     assert len(ids) == len(set(ids))
 
 
 def test_batch_add_documents_are_retrievable(client, sample_doc):
-    """Test that all documents added via batch are individually retrievable."""
+    """Test that all documents added in one request are individually retrievable."""
     payload = {
         "documents": [
             {**sample_doc, "content": "Batch doc A"},
             {**sample_doc, "content": "Batch doc B"},
         ]
     }
-    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    response = client.post("/collections/vectorforge/documents", json=payload)
     ids = response.json()["ids"]
 
     for doc_id in ids:
@@ -692,44 +781,40 @@ def test_batch_add_documents_are_retrievable(client, sample_doc):
 
 
 def test_batch_add_single_document_returns_one_id(client, sample_doc):
-    """Test that batch add with one document returns a single-element list."""
+    """Test that a single-item documents list returns a single-element ID list."""
     payload = {"documents": [sample_doc]}
-    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    response = client.post("/collections/vectorforge/documents", json=payload)
     assert len(response.json()["ids"]) == 1
 
 
 def test_batch_add_empty_list_returns_422(client):
-    """Test that batch add with an empty documents list returns 422."""
-    response = client.post(
-        "/collections/vectorforge/documents/batch", json={"documents": []}
-    )
+    """Test that an empty documents list returns 422."""
+    response = client.post("/collections/vectorforge/documents", json={"documents": []})
     assert response.status_code == 422
 
 
 def test_batch_add_exceeds_max_batch_size_returns_422(client, sample_doc):
-    """Test that batch add exceeding MAX_BATCH_SIZE returns 422."""
-    from vectorforge.config import VFGConfig
-
+    """Test that exceeding MAX_BATCH_SIZE returns 422."""
     payload = {"documents": [sample_doc] * (VFGConfig.MAX_BATCH_SIZE + 1)}
-    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    response = client.post("/collections/vectorforge/documents", json=payload)
     assert response.status_code == 422
 
 
 def test_batch_add_invalid_document_returns_422(client, sample_doc):
-    """Test that batch add with an invalid document (missing content) returns 422."""
+    """Test that a request with an invalid document (missing content) returns 422."""
     payload = {
         "documents": [
             sample_doc,
             {"metadata": {"source": "x.txt", "chunk_index": 0}},
         ]
     }
-    response = client.post("/collections/vectorforge/documents/batch", json=payload)
+    response = client.post("/collections/vectorforge/documents", json=payload)
     assert response.status_code == 422
 
 
 def test_batch_add_missing_documents_field_returns_422(client):
-    """Test that batch add request without 'documents' field returns 422."""
-    response = client.post("/collections/vectorforge/documents/batch", json={})
+    """Test that a request without 'documents' field returns 422."""
+    response = client.post("/collections/vectorforge/documents", json={})
     assert response.status_code == 422
 
 
@@ -740,8 +825,10 @@ def test_batch_add_missing_documents_field_returns_422(client):
 
 def test_batch_delete_returns_200(client, sample_doc):
     """Test that DELETE /documents returns 200 status."""
-    add_resp = client.post("/collections/vectorforge/documents", json=sample_doc)
-    doc_id = add_resp.json()["id"]
+    add_resp = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    )
+    doc_id = add_resp.json()["ids"][0]
 
     response = client.request(
         "DELETE",
@@ -756,8 +843,8 @@ def test_batch_delete_returns_deleted_ids(client, sample_doc):
     ids = [
         client.post(
             "/collections/vectorforge/documents",
-            json={**sample_doc, "content": f"Doc {i}"},
-        ).json()["id"]
+            json={"documents": [{**sample_doc, "content": f"Doc {i}"}]},
+        ).json()["ids"][0]
         for i in range(3)
     ]
 
@@ -772,9 +859,9 @@ def test_batch_delete_returns_deleted_ids(client, sample_doc):
 
 def test_batch_delete_returns_deleted_status(client, sample_doc):
     """Test that batch delete response contains 'deleted' status."""
-    doc_id = client.post("/collections/vectorforge/documents", json=sample_doc).json()[
-        "id"
-    ]
+    doc_id = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    ).json()["ids"][0]
 
     response = client.request(
         "DELETE",
@@ -789,8 +876,8 @@ def test_batch_delete_removes_documents_from_index(client, sample_doc):
     ids = [
         client.post(
             "/collections/vectorforge/documents",
-            json={**sample_doc, "content": f"Doc {i}"},
-        ).json()["id"]
+            json={"documents": [{**sample_doc, "content": f"Doc {i}"}]},
+        ).json()["ids"][0]
         for i in range(2)
     ]
 
@@ -819,9 +906,9 @@ def test_batch_delete_all_nonexistent_returns_404(client):
 
 def test_batch_delete_partial_match_returns_only_deleted_ids(client, sample_doc):
     """Test that batch delete with a mix of valid and invalid IDs returns only deleted ones."""
-    doc_id = client.post("/collections/vectorforge/documents", json=sample_doc).json()[
-        "id"
-    ]
+    doc_id = client.post(
+        "/collections/vectorforge/documents", json={"documents": [sample_doc]}
+    ).json()["ids"][0]
 
     response = client.request(
         "DELETE",
@@ -868,8 +955,8 @@ def test_batch_delete_updates_docs_deleted_metric(client, sample_doc):
     ids = [
         client.post(
             "/collections/vectorforge/documents",
-            json={**sample_doc, "content": f"Doc {i}"},
-        ).json()["id"]
+            json={"documents": [{**sample_doc, "content": f"Doc {i}"}]},
+        ).json()["ids"][0]
         for i in range(3)
     ]
 
