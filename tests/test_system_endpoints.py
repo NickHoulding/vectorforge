@@ -562,10 +562,13 @@ def test_metrics_model_name_is_correct(client):
     assert metrics["system"]["reranking_model_name"] == VFGConfig.RERANKING_MODEL_NAME
 
 
-def test_metrics_model_dimension_is_correct(client):
-    """Test that embedding_dimension matches the configured dimension."""
+def test_metrics_model_dimension_is_correct(client, shared_model):
+    """Test that embedding_dimension matches the loaded model's actual dimension."""
     metrics = client.get("/collections/vectorforge/metrics").json()
-    assert metrics["system"]["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
+    assert (
+        metrics["system"]["embedding_dimension"]
+        == shared_model.get_sentence_embedding_dimension()
+    )
 
 
 # =============================================================================

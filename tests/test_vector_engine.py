@@ -29,10 +29,7 @@ def test_vector_engine_loads_model(vector_engine):
     """Test that VectorEngine loads the sentence transformer model."""
     assert vector_engine.embedding_model is not None
 
-    assert (
-        vector_engine.embedding_model.get_sentence_embedding_dimension()
-        == VFGConfig.EMBEDDING_DIMENSION
-    )
+    assert vector_engine.embedding_model.get_sentence_embedding_dimension() == 384
 
 
 def test_vector_engine_initializes_empty_collections(vector_engine):
@@ -93,7 +90,10 @@ def test_add_doc_creates_embedding(vector_engine):
 
     embedding = result["embeddings"][0]
     assert isinstance(embedding, (list, np.ndarray))
-    assert len(embedding) == VFGConfig.EMBEDDING_DIMENSION
+    assert (
+        len(embedding)
+        == vector_engine.embedding_model.get_sentence_embedding_dimension()
+    )
 
 
 def test_add_doc_normalizes_embedding(vector_engine):
@@ -1376,7 +1376,10 @@ def test_get_index_stats_includes_embedding_dimension(vector_engine):
     stats = vector_engine.get_index_stats()
 
     assert "embedding_dimension" in stats
-    assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
+    assert (
+        stats["embedding_dimension"]
+        == vector_engine.embedding_model.get_sentence_embedding_dimension()
+    )
 
 
 # =============================================================================

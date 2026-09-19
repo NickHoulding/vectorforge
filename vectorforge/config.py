@@ -17,9 +17,6 @@ class VFGConfig:
     EMBEDDING_MODEL_NAME: str = os.getenv("VF_MODEL_NAME", "all-MiniLM-L6-v2")
     """Sentence transformer model for generating embeddings."""
 
-    EMBEDDING_DIMENSION: int = int(os.getenv("VF_EMBEDDING_DIMENSION", "384"))
-    """Dimension of the embedding vectors (specific to all-MiniLM-L6-v2)."""
-
     RERANKING_MODEL_NAME: str = os.getenv(
         "VF_RERANKING_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2"
     )
@@ -31,9 +28,6 @@ class VFGConfig:
     # =============================================================================
     # Storage Configuration
     # =============================================================================
-
-    MAX_PATH_LEN: int = int(os.getenv("VF_MAX_PATH_LEN", "4096"))
-    """Maximum valid path length for save/load functionality."""
 
     MAX_FILENAME_LENGTH: int = int(os.getenv("VF_MAX_FILENAME_LENGTH", "255"))
     """Maximum filename length (including extension)."""
@@ -132,11 +126,6 @@ class VFGConfig:
     )
     """Directory for ChromaDB persistent storage. Configurable via CHROMA_DATA_DIR env var."""
 
-    MODEL_CACHE_DIR: str = os.getenv(
-        "HF_HOME", os.path.expanduser("~/.cache/huggingface")
-    )
-    """Directory for HuggingFace model cache. Configurable via HF_HOME env var."""
-
     # =============================================================================
     # Collection Management Configuration
     # =============================================================================
@@ -220,11 +209,6 @@ class VFGConfig:
         if len(cls.EMBEDDING_MODEL_NAME) == 0:
             raise ValueError("MODEL_NAME cannot be empty")
 
-        if not isinstance(cls.EMBEDDING_DIMENSION, int):
-            raise ValueError("EMBEDDING_DIMENSION must be an int")
-        if cls.EMBEDDING_DIMENSION <= 0:
-            raise ValueError("EMBEDDING_DIMENSION must be > 0")
-
         if not isinstance(cls.RERANKING_MODEL_NAME, str):
             raise ValueError("RERANKING_MODEL_NAME must be a string")
         if len(cls.RERANKING_MODEL_NAME) == 0:
@@ -233,17 +217,10 @@ class VFGConfig:
         if not isinstance(cls.SHOULD_RERANK, bool):
             raise ValueError("SHOULD_RERANK must be a bool")
 
-        if not isinstance(cls.MAX_PATH_LEN, int):
-            raise ValueError("MAX_PATH_LEN must be an int")
-        if cls.MAX_PATH_LEN <= 0:
-            raise ValueError("MAX_PATH_LEN must be > 0")
-
         if not isinstance(cls.MAX_FILENAME_LENGTH, int):
             raise ValueError("MAX_FILENAME_LENGTH must be an int")
         if cls.MAX_FILENAME_LENGTH <= 0:
             raise ValueError("MAX_FILENAME_LENGTH must be > 0")
-        if cls.MAX_FILENAME_LENGTH > cls.MAX_PATH_LEN:
-            raise ValueError("MAX_FILENAME_LENGTH must be <= MAX_PATH_LEN")
 
         if not isinstance(cls.MIN_CONTENT_LENGTH, int):
             raise ValueError("MIN_CONTENT_LENGTH must be an int")

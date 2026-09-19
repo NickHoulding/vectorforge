@@ -8,8 +8,6 @@ import os
 
 import pytest
 
-from vectorforge.config import VFGConfig
-
 TEST_DATA_PATH = os.path.join(os.path.dirname(__file__), "data")
 
 
@@ -55,12 +53,14 @@ def test_index_stats_returns_embedding_dimension(stats):
     assert isinstance(stats["embedding_dimension"], int)
 
 
-def test_index_stats_with_empty_index(client):
+def test_index_stats_with_empty_index(client, shared_model):
     """Test index stats when index is empty."""
     stats = client.get("/collections/vectorforge/stats").json()
 
     assert stats["total_documents"] == 0
-    assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
+    assert (
+        stats["embedding_dimension"] == shared_model.get_sentence_embedding_dimension()
+    )
 
 
 def test_index_stats_after_adding_documents(client):
@@ -92,9 +92,9 @@ def test_index_stats_after_document_deletion(client, multiple_added_docs):
 
 
 def test_index_stats_embedding_dimension_is_384(client):
-    """Test that embedding_dimension matches configured model dimension."""
+    """Test that embedding_dimension matches the default model's known dimension."""
     stats = client.get("/collections/vectorforge/stats").json()
-    assert stats["embedding_dimension"] == VFGConfig.EMBEDDING_DIMENSION
+    assert stats["embedding_dimension"] == 384
 
 
 def test_index_stats_multiple_deletions_immediate_removal(client, multiple_added_docs):
