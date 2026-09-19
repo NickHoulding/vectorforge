@@ -42,22 +42,6 @@ def post(
     return _session.post(f"{BASE_URL}{path}", json=body, params=params)
 
 
-def put(
-    path: str, body: dict[str, Any] | None = None, params: dict[str, Any] | None = None
-) -> requests.Response:
-    """Send a PUT request with a JSON body to the API.
-
-    Args:
-      path: URL path relative to BASE_URL.
-      body: Optional dict serialised as JSON.
-      params: Optional query parameters passed to requests as a dict.
-
-    Returns:
-      The raw requests.Response object.
-    """
-    return _session.put(f"{BASE_URL}{path}", json=body, params=params)
-
-
 def delete(
     path: str, body: dict[str, Any] | None = None, params: dict[str, Any] | None = None
 ) -> requests.Response:
@@ -65,7 +49,7 @@ def delete(
 
     Args:
       path: URL path relative to BASE_URL.
-      body: Optional dict serialised as JSON (used for batch deletes).
+      body: Optional dict serialised as JSON (used for deletes with a body, e.g. by ID list).
       params: Optional query parameters passed to requests as a dict.
 
     Returns:
