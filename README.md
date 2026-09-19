@@ -346,7 +346,7 @@ open htmlcov/index.html      # macOS
 |----------|---------|-------------|
 | `API_PORT` | `3001` | Port for FastAPI server |
 | `API_HOST` | `0.0.0.0` | Network interface the API binds to |
-| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
+| `VF_LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
 | `CHROMA_DATA_DIR` | `./data/chroma` | Directory for ChromaDB persistent storage |
 | `HF_HOME` | `~/.cache/huggingface` | HuggingFace model cache directory |
 | `MAX_COLLECTIONS` | `100` | Maximum number of collections allowed |

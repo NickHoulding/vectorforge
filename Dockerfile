@@ -41,7 +41,7 @@ ENV CHROMA_DATA_DIR=/data/chroma \
     HF_HOME=/home/vectorforge/.cache/huggingface \
     API_PORT=3001 \
     API_HOST=0.0.0.0 \
-    LOG_LEVEL=INFO \
+    VF_LOG_LEVEL=INFO \
     PATH="/app/.venv/bin:$PATH"
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 CMD curl -f http://localhost:3001/health/live || exit 1

@@ -20,9 +20,6 @@ class APIConfig:
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
     """Default host binding for the FastAPI server."""
 
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
-    """Logging level (DEBUG, INFO, WARNING, ERROR). Configurable via LOG_LEVEL env var."""
-
     # =============================================================================
     # Configuration Class Validator
     # =============================================================================

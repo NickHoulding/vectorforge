@@ -5,7 +5,11 @@
 
 Worth fixing soon (real correctness risk):
 - [x] `vectorforge_mcp/tools/files.py`'s `list_files` reads `data.get("files", [])` for its log line, but the REST response field is actually `filenames` (`FileListResponse.filenames`) — log always reports 0 files; caller payload is unaffected. Fixed: now reads `data.get("filenames", [])`.
-- [] `LOG_LEVEL` name collision across config classes: `VFGConfig.LOG_LEVEL` and `MCPConfig.LOG_LEVEL` both derive from `VF_LOG_LEVEL`, but `vectorforge/api/config.py`'s `APIConfig.LOG_LEVEL` reads from an unprefixed `LOG_LEVEL` env var instead — same attribute name, three different env vars behind it.
+- [x] `LOG_LEVEL` name collision across config classes: `VFGConfig.LOG_LEVEL` and `MCPConfig.LOG_LEVEL` both derive from `VF_LOG_LEVEL`, but `vectorforge/api/config.py`'s `APIConfig.LOG_LEVEL` reads from an unprefixed `LOG_LEVEL` env var instead — same attribute name, three different env vars behind it. Turned out to be dead code (never read anywhere, not validated). Fixed: deleted `APIConfig.LOG_LEVEL`; corrected `Dockerfile`, `docker-compose.yml`, and `README.md`'s env var table to use `VF_LOG_LEVEL` (the variable that actually works — already correct in `.env.example`).
+
+Found while fixing the above (not yet fixed, same category):
+- [] `README.md`'s env var table also documents `MAX_COLLECTIONS` and `COLLECTION_CACHE_SIZE` without the `VF_` prefix — same dead-env-var bug pattern as `LOG_LEVEL` had; real vars are `VF_MAX_COLLECTIONS`/`VF_COLLECTION_CACHE_SIZE`.
+- [] `vectorforge_mcp/README.md`'s "MCPConfig Settings" table (~line 510-522) is stale: most rows say Env Var "(none)" but actually have working `VF_`-prefixed env vars (`SERVER_NAME`→`VF_SERVER_NAME`, `DEFAULT_TOP_K`→`VF_DEFAULT_TOP_K`, `LOG_LEVEL`→`VF_LOG_LEVEL`, etc.), and it lists a `LOG_FORMAT` setting that doesn't exist in current `MCPConfig` (real fields are `LOG_FILE`, `LOG_JSON_CONSOLE`, `LOG_MAX_TEXT_LEN`, `LOG_MAX_BYTES`, `LOG_BACKUP_COUNT`).
 
 Same spirit as the add/delete merge + Batch* rename:
 - [] `doc_ids` vs `ids` inconsistency: `DocumentsResponse`/`DocumentIdsInput` use `ids`, but `FileUploadResponse`/`FileDeleteResponse` use `doc_ids` for the same concept.
