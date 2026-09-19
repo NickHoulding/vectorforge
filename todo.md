@@ -13,7 +13,7 @@ Found while fixing the above (not yet fixed, same category):
 
 Same spirit as the add/delete merge + Batch* rename:
 - [x] `doc_ids` vs `ids` inconsistency: `DocumentsResponse`/`DocumentIdsInput` use `ids`, but `FileUploadResponse`/`FileDeleteResponse` used `doc_ids` for the same concept. Fixed: renamed to `ids` throughout (models, API, `VectorEngine.delete_file()`, tests, README) — MCP layer needed no changes since it just passes the response through.
-- [] `doc`/`docs` vs `document`/`documents` naming split: REST functions and `VectorEngine` methods say `get_doc`, `add_docs`, `delete_docs`; the MCP tools calling the same endpoints say `get_document`, `add_documents`, `delete_documents`.
+- [x] `doc`/`docs` vs `document`/`documents` naming split: REST functions said `get_doc`, `add_docs`, `delete_docs`; the MCP tools calling the same endpoints say `get_document`, `add_documents`, `delete_documents`. Fixed: renamed the 3 REST route functions in `vectorforge/api/documents.py` to match. Scoped narrowly per decision — `VectorEngine`'s `get_doc`/`add_docs`/`delete_docs` methods (147+ call sites in tests/benchmarks) left as-is; purely cosmetic, not worth the much larger diff.
 - [] `GET /collections/{name}/files/list` is the only list-shaped endpoint with a redundant `/list` suffix (compare `GET /collections`, `GET /documents`).
 
 Lower priority / nice-to-have:

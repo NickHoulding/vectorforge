@@ -23,7 +23,7 @@ router: APIRouter = APIRouter()
 )
 @require_collection
 @handle_api_errors
-def get_doc(collection_name: str, doc_id: str) -> DocumentDetail:
+def get_document(collection_name: str, doc_id: str) -> DocumentDetail:
     """
     Retrieve a single document by ID from a collection
 
@@ -60,7 +60,7 @@ def get_doc(collection_name: str, doc_id: str) -> DocumentDetail:
 )
 @require_collection
 @handle_api_errors
-def add_docs(collection_name: str, body: DocumentsInput) -> DocumentsResponse:
+def add_documents(collection_name: str, body: DocumentsInput) -> DocumentsResponse:
     """
     Add one or more pre-extracted documents to a collection
 
@@ -99,7 +99,7 @@ def add_docs(collection_name: str, body: DocumentsInput) -> DocumentsResponse:
 )
 @require_collection
 @handle_api_errors
-def delete_docs(collection_name: str, body: DocumentIdsInput) -> DocumentsResponse:
+def delete_documents(collection_name: str, body: DocumentIdsInput) -> DocumentsResponse:
     """
     Delete one or more documents by ID from a collection
 
