@@ -15,7 +15,6 @@ from .documents import (
     BatchDocumentResponse,
     DocumentDetail,
     DocumentInput,
-    DocumentResponse,
 )
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
 from .index import IndexStatsResponse
@@ -33,7 +32,6 @@ from .search import SearchQuery, SearchResponse, SearchResult
 
 __all__: list[str] = [
     "DocumentInput",
-    "DocumentResponse",
     "DocumentDetail",
     "BatchDocumentResponse",
     "BatchDocumentInput",

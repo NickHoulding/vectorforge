@@ -70,7 +70,7 @@ The Model Context Protocol (MCP) is an open standard that enables AI assistants 
 
 ## Key Features
 
-### **15 MCP Tools**
+### **14 MCP Tools**
 Organized into 6 categories:
 
 **Collections** (4 tools)
@@ -79,11 +79,10 @@ Organized into 6 categories:
 - Create a collection with optional metadata
 - Delete a collection
 
-**Documents** (4 tools)
+**Documents** (3 tools)
 - Get document by ID
 - Add one or more documents with metadata
-- Delete document
-- Batch delete documents
+- Delete one or more documents
 
 **Files** (3 tools)
 - List indexed files
@@ -126,7 +125,7 @@ All tools (except `check_health`) accept a `collection_name` parameter, defaulti
 │  VectorForge    │ ← You are here
 │  MCP Server     │
 ├─────────────────┤
-│ • 15 MCP Tools  │
+│ • 14 MCP Tools  │
 │ • Error Handler │
 │ • Logging       │
 └────────┬────────┘
@@ -284,7 +283,7 @@ Replace `/absolute/path/to/vectorforge` with the absolute path to your VectorFor
 
 In Claude, ask: "What VectorForge tools are available?"
 
-Claude should list all 15 MCP tools. `vectorforge` should appear as listed and enabled under the MCP connections menu.
+Claude should list all 14 MCP tools. `vectorforge` should appear as listed and enabled under the MCP connections menu.
 
 ### **Connecting from Other MCP Clients**
 
@@ -371,27 +370,17 @@ Index one or more text documents for semantic search. Generates embeddings autom
 "Add these three documents to the index: ..."
 ```
 
-#### `delete_document`
-Permanently remove a document and its embeddings.
+#### `delete_documents`
+Permanently remove one or more documents and their embeddings in a single request. IDs that do not exist are silently ignored.
 
 **Parameters:**
-- `doc_id` (str) - Document ID to delete
+- `doc_ids` (list) - List of document UUIDs to delete. Pass a single-item list to delete just one document.
 - `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
 
 **Example:**
 ```
 "Delete document 550e8400-e29b-41d4-a716-446655440000"
-```
 
-#### `batch_delete_documents`
-Permanently remove multiple documents and their embeddings in a single request. IDs that do not exist are silently ignored.
-
-**Parameters:**
-- `doc_ids` (list) - List of document UUIDs to delete
-- `collection_name` (str, optional) - Collection name (default: `"vectorforge"`)
-
-**Example:**
-```
 "Delete documents abc-123, def-456, and ghi-789"
 ```
 

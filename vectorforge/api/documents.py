@@ -11,7 +11,6 @@ from vectorforge.models import (
     BatchDocumentInput,
     BatchDocumentResponse,
     DocumentDetail,
-    DocumentResponse,
 )
 
 router: APIRouter = APIRouter()
@@ -95,51 +94,14 @@ def add_docs(collection_name: str, body: BatchDocumentInput) -> BatchDocumentRes
 
 
 @router.delete(
-    "/collections/{collection_name}/documents/{doc_id}",
-    response_model=DocumentResponse,
-)
-@require_collection
-@handle_api_errors
-def delete_doc(collection_name: str, doc_id: str) -> DocumentResponse:
-    """
-    Delete a single document by ID from a collection
-
-    Removes a specific document chunk and its embedding from the collection.
-
-    Args:
-        collection_name: Name of the collection
-        doc_id: Unique document identifier to delete
-
-    Returns:
-        DocumentResponse: Deletion confirmation with document ID
-
-    Raises:
-        HTTPException: 404 if collection or document not found
-        HTTPException: 500 if deletion fails
-
-    Example:
-        DELETE /collections/customer_docs/documents/doc_123
-    """
-    engine = manager.get_engine(collection_name)
-    deleted: list[str] = engine.delete_docs([doc_id])
-
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    return DocumentResponse(id=doc_id, status="deleted")
-
-
-@router.delete(
     "/collections/{collection_name}/documents",
     response_model=BatchDocumentResponse,
 )
 @require_collection
 @handle_api_errors
-def delete_docs_batch(
-    collection_name: str, body: BatchDeleteInput
-) -> BatchDocumentResponse:
+def delete_docs(collection_name: str, body: BatchDeleteInput) -> BatchDocumentResponse:
     """
-    Delete multiple documents by ID from a collection in a single batch request
+    Delete one or more documents by ID from a collection
 
     Removes all matching documents and their embeddings in one ChromaDB call.
     IDs that do not exist are silently ignored; only the IDs that were actually
@@ -147,7 +109,7 @@ def delete_docs_batch(
 
     Args:
         collection_name: Name of the collection
-        body: List of document IDs to delete (1-MAX_BATCH_SIZE entries)
+        body: Document IDs to delete (1-MAX_BATCH_SIZE entries)
 
     Returns:
         BatchDocumentResponse: List of deleted document IDs and status

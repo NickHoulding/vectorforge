@@ -39,25 +39,6 @@ class DocumentInput(BaseModel):
     )
 
 
-class DocumentResponse(BaseModel):
-    """Response model for document operations.
-
-    Returned after successfully adding or deleting a document, providing
-    confirmation with the document ID and operation status.
-
-    Attributes:
-        id: Unique identifier (UUID) of the document.
-        status: Operation result (e.g., 'indexed', 'deleted').
-    """
-
-    model_config = ConfigDict(
-        json_schema_extra={"example": {"id": "abc-123-def", "status": "indexed"}}
-    )
-
-    id: str = Field(..., description="Unique document identifier")
-    status: str = Field(..., description="Operation status")
-
-
 class BatchDocumentResponse(BaseModel):
     """Response model for batch document operations.
 

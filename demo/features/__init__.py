@@ -26,11 +26,7 @@ FEATURES: dict[str, tuple[Callable[..., Any], str]] = {
     ),
     "documents:add": (documents.add, "Add one or more documents"),
     "documents:get": (documents.get, "Fetch a document by ID"),
-    "documents:delete": (documents.delete, "Delete a document by ID"),
-    "documents:batch_delete": (
-        documents.batch_delete,
-        "Batch-delete documents by ID list",
-    ),
+    "documents:delete": (documents.delete, "Delete one or more documents by ID"),
     "files:upload": (files.upload, "Upload and index a .pdf or .txt file"),
     "files:list": (files.list_all, "List indexed files in a collection"),
     "files:delete": (files.delete, "Delete all chunks for a file"),

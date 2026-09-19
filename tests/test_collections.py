@@ -653,7 +653,7 @@ def test_list_collections_total_decreases_after_delete(client: TestClient) -> No
 def test_get_collection_document_count_decreases_after_delete(
     client: TestClient,
 ) -> None:
-    """document_count reflects documents removed via DELETE /documents/{id}."""
+    """document_count reflects documents removed via DELETE /documents."""
     client.post("/collections", json={"name": "shrink_col"})
 
     client.post(
@@ -667,7 +667,11 @@ def test_get_collection_document_count_decreases_after_delete(
     doc_id = r2.json()["ids"][0]
 
     assert client.get("/collections/shrink_col").json()["document_count"] == 2
-    client.delete(f"/collections/shrink_col/documents/{doc_id}")
+    client.request(
+        "DELETE",
+        "/collections/shrink_col/documents",
+        json={"ids": [doc_id]},
+    )
     assert client.get("/collections/shrink_col").json()["document_count"] == 1
 
 

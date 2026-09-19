@@ -70,47 +70,25 @@ def add_documents(
 
 
 @mcp.tool(
-    description="Permanently remove a document and its embeddings from the index. Cannot be undone."
+    description="Permanently remove one or more documents and their embeddings from the index in a single request. IDs that do not exist are silently ignored. Cannot be undone."
 )
 @handle_tool_errors
-def delete_document(
-    doc_id: str,
-    collection_name: str = MCPConfig.DEFAULT_COLLECTION_NAME,
-) -> dict[str, Any]:
-    """Delete a single document by ID.
-
-    Args:
-      doc_id: Unique document identifier (UUID) to permanently delete.
-      collection_name: Name of the collection (defaults to 'vectorforge').
-
-    Returns:
-      Dictionary with document ID and deletion status.
-    """
-    logger.debug("Deleting document: doc_id=%s, collection=%s", doc_id, collection_name)
-    data = delete(f"/collections/{collection_name}/documents/{doc_id}")
-    logger.info("Deleted document %s from collection %s", doc_id, collection_name)
-    return build_success_response(data)
-
-
-@mcp.tool(
-    description="Permanently remove multiple documents and their embeddings in a single request. IDs that do not exist are silently ignored. Cannot be undone."
-)
-@handle_tool_errors
-def batch_delete_documents(
+def delete_documents(
     doc_ids: list[str],
     collection_name: str = MCPConfig.DEFAULT_COLLECTION_NAME,
 ) -> dict[str, Any]:
-    """Delete multiple documents by ID in one request.
+    """Delete one or more documents by ID in one request.
 
     Args:
-      doc_ids: List of document UUIDs to permanently delete.
+      doc_ids: List of document UUIDs to permanently delete. Pass a
+        single-item list to delete just one document.
       collection_name: Name of the collection (defaults to 'vectorforge').
 
     Returns:
       Dictionary with list of deleted document IDs and status.
     """
     logger.debug(
-        "Batch deleting documents: count=%d, collection=%s",
+        "Deleting documents: count=%d, collection=%s",
         len(doc_ids),
         collection_name,
     )
@@ -119,6 +97,6 @@ def batch_delete_documents(
         json={"ids": doc_ids},
     )
     logger.info(
-        "Batch deleted %d documents from collection %s", len(doc_ids), collection_name
+        "Deleted %d documents from collection %s", len(doc_ids), collection_name
     )
     return build_success_response(data)

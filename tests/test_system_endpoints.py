@@ -290,7 +290,9 @@ def test_metrics_after_add_delete_cycle(client, sample_doc, multiple_added_docs)
         == initial_metrics["usage"]["documents_added"] + 1
     )
 
-    client.delete(f"/collections/vectorforge/documents/{doc_id}")
+    client.request(
+        "DELETE", "/collections/vectorforge/documents", json={"ids": [doc_id]}
+    )
 
     after_delete = client.get("/collections/vectorforge/metrics").json()
     assert (
@@ -474,7 +476,11 @@ def test_metrics_after_deletions(client, multiple_added_docs):
     initial_metrics = client.get("/collections/vectorforge/metrics").json()
 
     for i in range(6):
-        client.delete(f"/collections/vectorforge/documents/{multiple_added_docs[i]}")
+        client.request(
+            "DELETE",
+            "/collections/vectorforge/documents",
+            json={"ids": [multiple_added_docs[i]]},
+        )
 
     after_metrics = client.get("/collections/vectorforge/metrics").json()
     assert (
@@ -769,7 +775,11 @@ def test_peak_document_count_stays_same_when_documents_deleted(client):
     assert peak_after_add >= 5
 
     for i in range(3):
-        client.delete(f"/collections/vectorforge/documents/{doc_ids[i]}")
+        client.request(
+            "DELETE",
+            "/collections/vectorforge/documents",
+            json={"ids": [doc_ids[i]]},
+        )
 
     metrics2 = client.get("/collections/vectorforge/metrics").json()
     peak_after_delete = metrics2["index"]["total_documents_peak"]

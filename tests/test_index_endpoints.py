@@ -82,7 +82,9 @@ def test_index_stats_after_adding_documents(client):
 def test_index_stats_after_document_deletion(client, multiple_added_docs):
     """Test that stats update correctly after document deletion."""
     doc_id = multiple_added_docs[0]
-    client.delete(f"/collections/vectorforge/documents/{doc_id}")
+    client.request(
+        "DELETE", "/collections/vectorforge/documents", json={"ids": [doc_id]}
+    )
 
     stats = client.get("/collections/vectorforge/stats").json()
     expected_total_docs = 19
@@ -98,7 +100,11 @@ def test_index_stats_embedding_dimension_is_384(client):
 def test_index_stats_multiple_deletions_immediate_removal(client, multiple_added_docs):
     """Test that multiple deletions are immediately reflected in stats."""
     for i in range(4):
-        client.delete(f"/collections/vectorforge/documents/{multiple_added_docs[i]}")
+        client.request(
+            "DELETE",
+            "/collections/vectorforge/documents",
+            json={"ids": [multiple_added_docs[i]]},
+        )
 
     stats = client.get("/collections/vectorforge/stats").json()
 

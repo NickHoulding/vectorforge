@@ -252,8 +252,7 @@ collections:delete          Delete a collection
 
 documents:add               Add one or more documents
 documents:get               Fetch a document by ID
-documents:delete            Delete a document by ID
-documents:batch_delete      Batch-delete documents by ID list
+documents:delete            Delete one or more documents by ID
 
 files:upload                Upload and index a .pdf or .txt file
 files:list                  List indexed files in a collection
@@ -623,18 +622,19 @@ response = requests.get(
 document = response.json()
 ```
 
-### **6. Delete Document**
+### **6. Delete Documents**
+
+`DELETE /documents` always takes an `ids` list. Pass a single-item list to delete just one
+document, or multiple items to delete many in one request.
 
 ```python
-doc_id = "550e8400-e29b-41d4-a716-446655440000"
+# Delete a single document (a one-item list)
 response = requests.delete(
-    f"http://localhost:3001/collections/vectorforge/documents/{doc_id}"
+    "http://localhost:3001/collections/vectorforge/documents",
+    json={"ids": ["550e8400-e29b-41d4-a716-446655440000"]},
 )
-```
 
-### **6a. Batch Delete Documents**
-
-```python
+# Delete multiple documents in one request
 response = requests.delete(
     "http://localhost:3001/collections/vectorforge/documents",
     json={
@@ -658,7 +658,7 @@ deleted_ids = response.json()["ids"]
 }
 ```
 
-Only IDs that actually existed are returned. If none of the requested IDs exist, HTTP 404 is returned. Batches are capped at `MAX_BATCH_SIZE` (default 100).
+Only IDs that actually existed are returned. If none of the requested IDs exist, HTTP 404 is returned. Requests are capped at `MAX_BATCH_SIZE` (default 100).
 
 ### **7. Get Metrics**
 

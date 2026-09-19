@@ -48,17 +48,8 @@ def get() -> None:
 
 
 def delete() -> None:
-    """Prompt for a document ID and delete it from a collection."""
-    print("\n-- Delete Document --")
-    collection_name = client.prompt_collection()
-    doc_id = client.prompt("Document ID")
-    resp = client.delete(f"/collections/{collection_name}/documents/{doc_id}")
-    client.print_response(resp)
-
-
-def batch_delete() -> None:
-    """Prompt for a comma-separated list of IDs and delete all matching documents."""
-    print("\n-- Batch Delete Documents --")
+    """Prompt for one or more document IDs and delete them from a collection."""
+    print("\n-- Delete Documents --")
     collection_name = client.prompt_collection()
     raw = client.prompt("Document IDs (comma-separated)")
     ids = [i.strip() for i in raw.split(",") if i.strip()]

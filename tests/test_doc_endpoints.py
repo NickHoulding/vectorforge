@@ -3,7 +3,6 @@
 Covers:
     POST   /collections/{collection_name}/documents
     GET    /collections/{collection_name}/documents/{doc_id}
-    DELETE /collections/{collection_name}/documents/{doc_id}
     DELETE /collections/{collection_name}/documents
 """
 
@@ -145,14 +144,22 @@ def test_doc_add_creates_document_with_id(client, sample_doc):
 
 
 def test_doc_delete_returns_200(client, added_doc):
-    """Test that DELETE /collections/vectorforge/documents/{id} returns 200 status."""
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    """Test that DELETE /collections/vectorforge/documents returns 200 status."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     assert response.status_code == 200
 
 
 def test_doc_delete_returns_deleted_status(client, added_doc):
-    """Test that DELETE /collections/vectorforge/documents/{id} returns deleted status."""
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    """Test that DELETE /collections/vectorforge/documents returns deleted status."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     data = response.json()
     assert data["status"] == "deleted"
 
@@ -160,7 +167,9 @@ def test_doc_delete_returns_deleted_status(client, added_doc):
 def test_doc_delete_removes_from_index(client, added_doc):
     """Test that deleted document is no longer retrievable."""
     doc_id = added_doc["id"]
-    client.delete(f"/collections/vectorforge/documents/{doc_id}")
+    client.request(
+        "DELETE", "/collections/vectorforge/documents", json={"ids": [doc_id]}
+    )
 
     get_response = client.get(f"/collections/vectorforge/documents/{doc_id}")
     assert get_response.status_code == 404
@@ -168,7 +177,11 @@ def test_doc_delete_removes_from_index(client, added_doc):
 
 def test_doc_delete_returns_404_when_not_found(client):
     """Test 404 response when deleting a non-existent document."""
-    response = client.delete("/collections/vectorforge/documents/nonexistent-id")
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": ["nonexistent-id"]},
+    )
     assert response.status_code == 404
 
 
@@ -281,7 +294,11 @@ def test_doc_add_with_unicode_content(client, sample_doc):
 
 def test_doc_get_deleted_document(client, added_doc):
     """Test that getting a deleted document returns 404."""
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     assert response.status_code == 200
 
     response = client.get(f"/collections/vectorforge/documents/{added_doc['id']}")
@@ -290,10 +307,18 @@ def test_doc_get_deleted_document(client, added_doc):
 
 def test_doc_delete_same_document_twice(client, added_doc):
     """Test that deleting the same document twice returns 404 on second attempt."""
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     assert response.status_code == 200
 
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     assert response.status_code == 404
 
 
@@ -353,7 +378,11 @@ def test_doc_deletion_does_not_affect_other_documents(client, sample_doc):
         "/collections/vectorforge/documents", json={"documents": [doc3_data]}
     ).json()["ids"][0]
 
-    delete_response = client.delete(f"/collections/vectorforge/documents/{doc1_id}")
+    delete_response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [doc1_id]},
+    )
     assert delete_response.status_code == 200
 
     doc2_response = client.get(f"/collections/vectorforge/documents/{doc2_id}")
@@ -407,10 +436,18 @@ def test_doc_full_lifecycle(client, sample_doc):
     assert get_response.status_code == 200
 
     get_doc_id = get_response.json()["id"]
-    del_response = client.delete(f"/collections/vectorforge/documents/{get_doc_id}")
+    del_response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [get_doc_id]},
+    )
     assert del_response.status_code == 200
 
-    del_response = client.delete(f"/collections/vectorforge/documents/{get_doc_id}")
+    del_response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [get_doc_id]},
+    )
     assert del_response.status_code == 404
 
 
@@ -436,12 +473,16 @@ def test_doc_add_response_contains_all_required_fields(client, sample_doc):
 
 
 def test_doc_delete_response_contains_all_required_fields(client, added_doc):
-    """Test that successful delete response contains id and status fields."""
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    """Test that successful delete response contains ids and status fields."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     assert response.status_code == 200
 
     response_data = response.json()
-    assert "id" in response_data
+    assert "ids" in response_data
     assert "status" in response_data
 
 
@@ -474,8 +515,12 @@ def test_doc_get_with_invalid_uuid_format(client):
 
 
 def test_doc_delete_with_invalid_uuid_format(client):
-    """Test that DELETE /collections/vectorforge/documents/{id} with malformed UUID returns 404."""
-    response = client.delete("/collections/vectorforge/documents/malformed-uuid")
+    """Test that DELETE /collections/vectorforge/documents with a malformed UUID returns 404."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": ["malformed-uuid"]},
+    )
     assert response.status_code == 404
 
 
@@ -502,12 +547,16 @@ def test_doc_add_returns_status_field(client, sample_doc):
 
 
 def test_doc_delete_returns_id_field(client, added_doc):
-    """Test that delete response contains 'id' field."""
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    """Test that delete response contains 'ids' field."""
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     assert response.status_code == 200
 
     response_data = response.json()
-    assert "id" in response_data
+    assert "ids" in response_data
 
 
 def test_doc_get_after_multiple_adds(client, sample_doc):
@@ -550,7 +599,11 @@ def test_doc_delete_increments_docs_deleted_metric(client, added_doc):
     initial_metrics = client.get("/collections/vectorforge/stats").json()
     initial_count = initial_metrics["total_documents"]
 
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     assert response.status_code == 200
 
     updated_metrics = client.get("/collections/vectorforge/stats").json()
@@ -658,7 +711,9 @@ def test_doc_get_after_index_compaction(client, sample_doc):
         doc_ids.append(resp.json()["ids"][0])
 
     for doc_id in doc_ids[:3]:
-        client.delete(f"/collections/vectorforge/documents/{doc_id}")
+        client.request(
+            "DELETE", "/collections/vectorforge/documents", json={"ids": [doc_id]}
+        )
 
     for doc_id in doc_ids[3:]:
         response = client.get(f"/collections/vectorforge/documents/{doc_id}")
@@ -683,7 +738,9 @@ def test_doc_operations_update_all_relevant_metrics(client, sample_doc):
         > initial_metrics["index"]["total_documents"]
     )
 
-    client.delete(f"/collections/vectorforge/documents/{doc_id}")
+    client.request(
+        "DELETE", "/collections/vectorforge/documents", json={"ids": [doc_id]}
+    )
     after_delete = client.get("/collections/vectorforge/metrics").json()
     assert (
         after_delete["usage"]["documents_deleted"]
@@ -715,7 +772,11 @@ def test_doc_delete_increments_deleted_count(client, added_doc):
     initial_metrics = client.get("/collections/vectorforge/metrics").json()
     initial_deleted = initial_metrics["usage"]["documents_deleted"]
 
-    client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
 
     updated_metrics = client.get("/collections/vectorforge/metrics").json()
     assert updated_metrics["usage"]["documents_deleted"] == initial_deleted + 1
@@ -819,7 +880,7 @@ def test_batch_add_missing_documents_field_returns_422(client):
 
 
 # =============================================================================
-# Batch Delete Endpoint Tests (DELETE /documents)
+# Multi-Document Delete Tests (DELETE /documents with 2+ ids)
 # =============================================================================
 
 

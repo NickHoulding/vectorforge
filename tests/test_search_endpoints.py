@@ -277,7 +277,11 @@ def test_search_response_format(client):
 
 def test_search_excludes_deleted_documents(client, added_doc):
     """Test that search results don't include deleted documents."""
-    response = client.delete(f"/collections/vectorforge/documents/{added_doc['id']}")
+    response = client.request(
+        "DELETE",
+        "/collections/vectorforge/documents",
+        json={"ids": [added_doc["id"]]},
+    )
     assert response.status_code == 200
 
     response = client.post(
