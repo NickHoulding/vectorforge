@@ -17,7 +17,7 @@ Same spirit as the add/delete merge + Batch* rename:
 - [x] `GET /collections/{name}/files/list` was the only list-shaped endpoint with a redundant `/list` suffix (compare `GET /collections`, `GET /documents`). Fixed: renamed to plain `GET /collections/{name}/files` across the API, demo, MCP tool, and tests.
 
 Lower priority / nice-to-have:
-- [] Stats/metrics naming spread across four names (`get_collection_stats`, `get_index_stats`, `get_collection_metrics`, `get_metrics`) for what's really two concepts, inconsistent across REST/engine/MCP layers.
+- [x] Stats/metrics naming spread across four names (`get_collection_stats`, `get_index_stats`, `get_collection_metrics`, `get_metrics`) for what's really two concepts, inconsistent across REST/engine/MCP layers. Fixed: renamed the 2 REST route functions (`get_collection_stats`→`get_index_stats`, `get_collection_metrics`→`get_metrics`) to match the engine method + MCP tool names that already agreed with each other.
 - [] `search` (REST function name) vs `search_documents` (MCP tool name) — the one REST/MCP pair that doesn't share a name.
 - [] Stale docstring in `vectorforge/models/metadata.py` references a nonexistent `add_doc()` function.
 - [] Leftover "batch add"/"batch delete" wording in comments/docstrings (`config.py`, `vector_engine.py`, `api/documents.py`) that survived the `Batch*` model rename.

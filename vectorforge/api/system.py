@@ -85,7 +85,7 @@ async def liveness_check() -> dict[str, str]:
 @router.get("/collections/{collection_name}/metrics", response_model=MetricsResponse)
 @require_collection
 @handle_api_errors
-def get_collection_metrics(collection_name: str) -> MetricsResponse:
+def get_metrics(collection_name: str) -> MetricsResponse:
     """Return comprehensive metrics for a specific collection.
 
     Gathers index statistics, query performance, usage counters, system info,

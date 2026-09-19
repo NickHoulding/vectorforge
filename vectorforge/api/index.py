@@ -14,7 +14,7 @@ router: APIRouter = APIRouter()
 @router.get("/collections/{collection_name}/stats", response_model=IndexStatsResponse)
 @require_collection
 @handle_api_errors
-def get_collection_stats(collection_name: str) -> IndexStatsResponse:
+def get_index_stats(collection_name: str) -> IndexStatsResponse:
     """
     Get quick index statistics for a specific collection
 
