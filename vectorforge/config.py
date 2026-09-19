@@ -49,7 +49,7 @@ class VFGConfig:
     """Maximum character length for document content."""
 
     MAX_BATCH_SIZE: int = int(os.getenv("VF_MAX_BATCH_SIZE", "100"))
-    """Maximum number of documents per batch add or batch delete request."""
+    """Maximum number of documents allowed in a single add or delete request."""
 
     MIN_QUERY_LENGTH: int = int(os.getenv("VF_MIN_QUERY_LENGTH", "1"))
     """Minimum character length for search queries."""

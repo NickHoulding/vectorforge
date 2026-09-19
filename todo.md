@@ -19,5 +19,5 @@ Same spirit as the add/delete merge + Batch* rename:
 Lower priority / nice-to-have:
 - [x] Stats/metrics naming spread across four names (`get_collection_stats`, `get_index_stats`, `get_collection_metrics`, `get_metrics`) for what's really two concepts, inconsistent across REST/engine/MCP layers. Fixed: renamed the 2 REST route functions (`get_collection_stats`→`get_index_stats`, `get_collection_metrics`→`get_metrics`) to match the engine method + MCP tool names that already agreed with each other.
 - [x] `search` (REST function name) vs `search_documents` (MCP tool name) — the one REST/MCP pair that doesn't share a name. Fixed: renamed the REST function to `search_documents`.
-- [] Stale docstring in `vectorforge/models/metadata.py` references a nonexistent `add_doc()` function.
-- [] Leftover "batch add"/"batch delete" wording in comments/docstrings (`config.py`, `vector_engine.py`, `api/documents.py`) that survived the `Batch*` model rename.
+- [x] Stale docstring in `vectorforge/models/metadata.py` referenced a nonexistent `add_doc()` function. Fixed: now says `add_docs()`.
+- [x] Leftover "batch add"/"batch delete" wording in comments/docstrings (`config.py`, `vector_engine.py`) that survived the `Batch*` model rename. Fixed: reworded to describe add/delete as ordinary single requests, not a distinguishing "batch" feature; kept accurate implementation-detail mentions of "batch-encodes" and `MAX_BATCH_SIZE` as-is.

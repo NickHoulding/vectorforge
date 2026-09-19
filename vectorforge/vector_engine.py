@@ -475,17 +475,17 @@ class VectorEngine:
                 )
 
     def add_docs(self, docs: list[dict[str, Any]]) -> list[str]:
-        """Add multiple documents to the vector index in a single batch operation.
+        """Add one or more documents to the vector index in a single request.
 
         Validates all documents before any are indexed, then batch-encodes
         embeddings and adds them in a single ChromaDB call. Updates metrics
-        once for the entire batch.
+        once for the entire request.
 
         Args:
             docs: List of document dicts, each with a required ``content`` key
                 and an optional ``metadata`` key. All documents are validated
                 before any are written; a validation error on any single document
-                aborts the whole batch.
+                aborts the entire request.
 
         Returns:
             List of unique document IDs (UUID v4) in the same order as ``docs``.

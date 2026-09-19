@@ -19,7 +19,7 @@ class StandardMetadata(BaseModel):
     - Can be used with create_metadata() helper for document creation
 
     PAIRING RULE (for document creation only):
-    When creating documents via add_doc(), if you include source or
+    When creating documents via add_docs(), if you include source or
     chunk_index in metadata, BOTH must be provided together. This ensures
     proper document tracking and reconstruction.
 
