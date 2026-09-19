@@ -349,8 +349,8 @@ open htmlcov/index.html      # macOS
 | `VF_LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
 | `CHROMA_DATA_DIR` | `./data/chroma` | Directory for ChromaDB persistent storage |
 | `HF_HOME` | `~/.cache/huggingface` | HuggingFace model cache directory |
-| `MAX_COLLECTIONS` | `100` | Maximum number of collections allowed |
-| `COLLECTION_CACHE_SIZE` | `50` | Number of collection engines held in the FIFO cache |
+| `VF_MAX_COLLECTIONS` | `100` | Maximum number of collections allowed |
+| `VF_COLLECTION_CACHE_SIZE` | `50` | Number of collection engines held in the FIFO cache |
 
 ---
 
