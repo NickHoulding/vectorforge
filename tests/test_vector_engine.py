@@ -1070,7 +1070,7 @@ def test_delete_file_returns_dict(vector_engine):
     assert "status" in result
     assert "filename" in result
     assert "chunks_deleted" in result
-    assert "doc_ids" in result
+    assert "ids" in result
 
 
 def test_delete_file_deletes_all_chunks(vector_engine):
@@ -1130,7 +1130,7 @@ def test_delete_file_returns_deleted_count(vector_engine):
     assert result["chunks_deleted"] == 2
 
 
-def test_delete_file_returns_doc_ids(vector_engine):
+def test_delete_file_returns_ids(vector_engine):
     """Test that delete_file returns list of deleted document IDs."""
     doc_id1 = vector_engine.add_docs(
         [
@@ -1151,9 +1151,9 @@ def test_delete_file_returns_doc_ids(vector_engine):
 
     result = vector_engine.delete_file("file.txt")
 
-    assert doc_id1 in result["doc_ids"]
-    assert doc_id2 in result["doc_ids"]
-    assert len(result["doc_ids"]) == 2
+    assert doc_id1 in result["ids"]
+    assert doc_id2 in result["ids"]
+    assert len(result["ids"]) == 2
 
 
 def test_delete_file_returns_not_found_for_nonexistent(vector_engine):
@@ -1163,7 +1163,7 @@ def test_delete_file_returns_not_found_for_nonexistent(vector_engine):
 
     assert result["status"] == "not_found"
     assert result["chunks_deleted"] == 0
-    assert result["doc_ids"] == []
+    assert result["ids"] == []
 
 
 def test_delete_file_updates_metrics(vector_engine):

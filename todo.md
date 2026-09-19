@@ -12,7 +12,7 @@ Found while fixing the above (not yet fixed, same category):
 - [x] `vectorforge_mcp/README.md`'s "MCPConfig Settings" table (~line 510-522) was stale: most rows said Env Var "(none)" but actually have working `VF_`-prefixed env vars, and it listed a nonexistent `LOG_FORMAT` setting while missing 5 real ones. Fixed: table now lists all 11 actual `MCPConfig` fields with correct env vars and defaults; `LOG_FORMAT` dropped.
 
 Same spirit as the add/delete merge + Batch* rename:
-- [] `doc_ids` vs `ids` inconsistency: `DocumentsResponse`/`DocumentIdsInput` use `ids`, but `FileUploadResponse`/`FileDeleteResponse` use `doc_ids` for the same concept.
+- [x] `doc_ids` vs `ids` inconsistency: `DocumentsResponse`/`DocumentIdsInput` use `ids`, but `FileUploadResponse`/`FileDeleteResponse` used `doc_ids` for the same concept. Fixed: renamed to `ids` throughout (models, API, `VectorEngine.delete_file()`, tests, README) — MCP layer needed no changes since it just passes the response through.
 - [] `doc`/`docs` vs `document`/`documents` naming split: REST functions and `VectorEngine` methods say `get_doc`, `add_docs`, `delete_docs`; the MCP tools calling the same endpoints say `get_document`, `add_documents`, `delete_documents`.
 - [] `GET /collections/{name}/files/list` is the only list-shaped endpoint with a redundant `/list` suffix (compare `GET /collections`, `GET /documents`).
 

@@ -117,7 +117,7 @@ async def upload_file(
     return FileUploadResponse(
         filename=file.filename or "",
         chunks_created=len(doc_ids),
-        doc_ids=doc_ids,
+        ids=doc_ids,
         status="indexed",
     )
 
@@ -160,5 +160,5 @@ def delete_file(collection_name: str, filename: str) -> FileDeleteResponse:
         status=deletion_metrics["status"],
         filename=deletion_metrics["filename"],
         chunks_deleted=deletion_metrics["chunks_deleted"],
-        doc_ids=deletion_metrics["doc_ids"],
+        ids=deletion_metrics["ids"],
     )

@@ -13,7 +13,7 @@ class FileUploadResponse(BaseModel):
     Attributes:
         filename: Name of the uploaded file.
         chunks_created: Number of text chunks the file was split into.
-        doc_ids: List of unique IDs for each created document chunk.
+        ids: List of unique IDs for each created document chunk.
         status: Upload operation result (typically 'indexed').
     """
 
@@ -22,7 +22,7 @@ class FileUploadResponse(BaseModel):
             "example": {
                 "filename": "textbook.pdf",
                 "chunks_created": 5,
-                "doc_ids": ["abc-123", "def-456", "ghi-789"],
+                "ids": ["abc-123", "def-456", "ghi-789"],
                 "status": "indexed",
             }
         }
@@ -30,7 +30,7 @@ class FileUploadResponse(BaseModel):
 
     filename: str = Field(..., description="Name of uploaded file")
     chunks_created: int = Field(..., description="Number of text chunks created")
-    doc_ids: list[str] = Field(..., description="List of document IDs created")
+    ids: list[str] = Field(..., description="List of document IDs created")
     status: str = Field(..., description="Upload operation status")
 
 
@@ -43,7 +43,7 @@ class FileDeleteResponse(BaseModel):
     Attributes:
         filename: Name of the deleted file.
         chunks_deleted: Number of document chunks that were deleted.
-        doc_ids: List of unique IDs for each deleted document chunk.
+        ids: List of unique IDs for each deleted document chunk.
         status: Deletion operation result (e.g., 'deleted', 'not_found').
     """
 
@@ -52,7 +52,7 @@ class FileDeleteResponse(BaseModel):
             "example": {
                 "filename": "textbook.pdf",
                 "chunks_deleted": 5,
-                "doc_ids": ["abc-123", "def-456", "ghi-789"],
+                "ids": ["abc-123", "def-456", "ghi-789"],
                 "status": "deleted",
             }
         }
@@ -60,7 +60,7 @@ class FileDeleteResponse(BaseModel):
 
     filename: str = Field(..., description="Name of deleted file")
     chunks_deleted: int = Field(..., description="Number of chunks deleted")
-    doc_ids: list[str] = Field(..., description="List of deleted document IDs")
+    ids: list[str] = Field(..., description="List of deleted document IDs")
     status: str = Field(..., description="Delete operation status")
 
 

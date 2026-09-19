@@ -107,7 +107,7 @@ def test_file_upload_creates_multiple_chunks(upload_file, large_file_content):
     """Test that uploading a file creates multiple document chunks."""
     resp = upload_file("test_document.txt", large_file_content)
     assert resp.status_code == 201
-    assert len(resp.json()["doc_ids"]) > 0
+    assert len(resp.json()["ids"]) > 0
 
 
 def test_file_upload_returns_chunk_count(uploaded_test_file):
@@ -116,16 +116,16 @@ def test_file_upload_returns_chunk_count(uploaded_test_file):
     assert isinstance(uploaded_test_file["chunks_created"], int)
 
 
-def test_file_upload_returns_doc_ids(uploaded_test_file):
+def test_file_upload_returns_ids(uploaded_test_file):
     """Test that file upload response includes all document ID strings."""
-    assert "doc_ids" in uploaded_test_file
-    assert isinstance(uploaded_test_file["doc_ids"], list)
-    assert all(isinstance(doc_id, str) for doc_id in uploaded_test_file["doc_ids"])
+    assert "ids" in uploaded_test_file
+    assert isinstance(uploaded_test_file["ids"], list)
+    assert all(isinstance(doc_id, str) for doc_id in uploaded_test_file["ids"])
 
 
 def test_file_upload_chunks_have_metadata(client, uploaded_test_file):
     """Test that uploaded file chunks contain source and chunk_index metadata."""
-    for doc_id in uploaded_test_file["doc_ids"]:
+    for doc_id in uploaded_test_file["ids"]:
         resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert resp.status_code == 200
 
@@ -170,7 +170,7 @@ def test_file_delete_removes_all_chunks(client, uploaded_test_file):
     resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
-    for doc_id in resp.json()["doc_ids"]:
+    for doc_id in resp.json()["ids"]:
         resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert resp.status_code == 404
 
@@ -205,7 +205,7 @@ def test_file_delete_response_contains_chunks_deleted_count(client, uploaded_tes
     assert isinstance(data["chunks_deleted"], int)
 
 
-def test_file_delete_response_contains_doc_ids(client, uploaded_test_file):
+def test_file_delete_response_contains_ids(client, uploaded_test_file):
     """Test that delete response includes list of deleted document IDs."""
     resp = client.delete(
         f"/collections/vectorforge/files/{uploaded_test_file['filename']}"
@@ -213,9 +213,9 @@ def test_file_delete_response_contains_doc_ids(client, uploaded_test_file):
     assert resp.status_code == 200
 
     data = resp.json()
-    assert "doc_ids" in data
-    assert isinstance(data["doc_ids"], list)
-    assert all(isinstance(doc_id, str) for doc_id in data["doc_ids"])
+    assert "ids" in data
+    assert isinstance(data["ids"], list)
+    assert all(isinstance(doc_id, str) for doc_id in data["ids"])
 
 
 def test_file_list_includes_uploaded_filenames(client, uploaded_test_file):
@@ -243,11 +243,11 @@ def test_file_upload_with_duplicate_filename(upload_file):
 
     resp1 = upload_file(filename, b"First version")
     assert resp1.status_code == 201
-    doc_ids_1 = resp1.json()["doc_ids"]
+    doc_ids_1 = resp1.json()["ids"]
 
     resp2 = upload_file(filename, b"Second version with different content")
     assert resp2.status_code == 201
-    doc_ids_2 = resp2.json()["doc_ids"]
+    doc_ids_2 = resp2.json()["ids"]
 
     assert len(doc_ids_1) > 0
     assert len(doc_ids_2) > 0
@@ -258,11 +258,11 @@ def test_file_delete_does_not_affect_other_files(client, upload_file):
     """Test that deleting one file doesn't affect other uploaded files."""
     resp1 = upload_file("file1.txt", b"Content of first file")
     assert resp1.status_code == 201
-    doc_ids_1 = resp1.json()["doc_ids"]
+    doc_ids_1 = resp1.json()["ids"]
 
     resp2 = upload_file("file2.txt", b"Content of second file")
     assert resp2.status_code == 201
-    doc_ids_2 = resp2.json()["doc_ids"]
+    doc_ids_2 = resp2.json()["ids"]
 
     resp = client.delete("/collections/vectorforge/files/file1.txt")
     assert resp.status_code == 200
@@ -289,16 +289,16 @@ def test_file_upload_response_format(upload_file):
     data = resp.json()
     assert "filename" in data
     assert "chunks_created" in data
-    assert "doc_ids" in data
+    assert "ids" in data
     assert "status" in data
 
     assert isinstance(data["filename"], str)
     assert isinstance(data["chunks_created"], int)
-    assert isinstance(data["doc_ids"], list)
+    assert isinstance(data["ids"], list)
     assert isinstance(data["status"], str)
 
     assert data["filename"] == filename
-    assert data["chunks_created"] == len(data["doc_ids"])
+    assert data["chunks_created"] == len(data["ids"])
     assert data["status"] == "indexed"
 
 
@@ -310,7 +310,7 @@ def test_file_upload_large_pdf(upload_file):
     assert resp.status_code == 201
     data = resp.json()
     assert data["chunks_created"] > 1
-    assert len(data["doc_ids"]) > 1
+    assert len(data["ids"]) > 1
 
 
 def test_file_upload_pdf_with_special_characters_in_filename(upload_file):
@@ -346,9 +346,9 @@ def test_file_upload_pdf_extracts_text(client, upload_file):
     assert resp.status_code == 201
     data = resp.json()
     assert data["chunks_created"] > 0
-    assert len(data["doc_ids"]) > 0
+    assert len(data["ids"]) > 0
 
-    doc_resp = client.get(f"/collections/vectorforge/documents/{data['doc_ids'][0]}")
+    doc_resp = client.get(f"/collections/vectorforge/documents/{data['ids'][0]}")
     assert doc_resp.status_code == 200
     assert "content" in doc_resp.json()
 
@@ -360,7 +360,7 @@ def test_file_upload_txt_decodes_utf8(client, upload_file):
     resp = upload_file("utf8_test.txt", utf8_content.encode("utf-8"))
     assert resp.status_code == 201
 
-    doc_id = resp.json()["doc_ids"][0]
+    doc_id = resp.json()["ids"][0]
     doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
     assert doc_resp.status_code == 200
 
@@ -515,7 +515,7 @@ def test_file_upload_chunk_metadata_contains_chunk_index(
     resp = upload_file("chunk_index_test.txt", large_file_content)
     assert resp.status_code == 201
 
-    doc_ids = resp.json()["doc_ids"]
+    doc_ids = resp.json()["ids"]
     assert len(doc_ids) > 1
 
     for i, doc_id in enumerate(doc_ids):
@@ -533,7 +533,7 @@ def test_file_upload_chunk_metadata_contains_source(client, upload_file):
     resp = upload_file(filename, b"Testing source file metadata")
     assert resp.status_code == 201
 
-    for doc_id in resp.json()["doc_ids"]:
+    for doc_id in resp.json()["ids"]:
         doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert doc_resp.status_code == 200
 
@@ -567,12 +567,12 @@ def test_file_delete_response_structure(client, upload_file):
     assert "status" in data
     assert "filename" in data
     assert "chunks_deleted" in data
-    assert "doc_ids" in data
+    assert "ids" in data
 
     assert isinstance(data["status"], str)
     assert isinstance(data["filename"], str)
     assert isinstance(data["chunks_deleted"], int)
-    assert isinstance(data["doc_ids"], list)
+    assert isinstance(data["ids"], list)
 
 
 def test_file_upload_multiple_files_sequential(upload_file):
@@ -610,7 +610,7 @@ def test_file_upload_chunk_overlap_behavior(client, upload_file):
     resp = upload_file("overlap_test.txt", content.encode("utf-8"))
     assert resp.status_code == 201
 
-    doc_ids = resp.json()["doc_ids"]
+    doc_ids = resp.json()["ids"]
 
     if len(doc_ids) > 1:
         resp1 = client.get(f"/collections/vectorforge/documents/{doc_ids[0]}")
@@ -630,7 +630,7 @@ def test_file_delete_returns_all_chunk_ids_for_multipart_file(client, upload_fil
     upload_resp = upload_file("multipart_delete_test.txt", large_content)
     assert upload_resp.status_code == 201
 
-    uploaded_doc_ids = set(upload_resp.json()["doc_ids"])
+    uploaded_doc_ids = set(upload_resp.json()["ids"])
     chunks_created = upload_resp.json()["chunks_created"]
 
     delete_resp = client.delete(
@@ -638,7 +638,7 @@ def test_file_delete_returns_all_chunk_ids_for_multipart_file(client, upload_fil
     )
     assert delete_resp.status_code == 200
 
-    deleted_doc_ids = set(delete_resp.json()["doc_ids"])
+    deleted_doc_ids = set(delete_resp.json()["ids"])
     chunks_deleted = delete_resp.json()["chunks_deleted"]
 
     assert uploaded_doc_ids == deleted_doc_ids
@@ -729,7 +729,7 @@ def test_file_upload_chunk_boundaries_no_content_loss(client, upload_file):
     resp = upload_file("boundary_test.txt", original_content.encode("utf-8"))
     assert resp.status_code == 201
 
-    doc_ids = resp.json()["doc_ids"]
+    doc_ids = resp.json()["ids"]
 
     all_content = ""
     for doc_id in doc_ids:
@@ -752,9 +752,9 @@ def test_file_upload_single_character_file(client, upload_file):
     assert resp.status_code == 201
     data = resp.json()
     assert data["chunks_created"] == 1
-    assert len(data["doc_ids"]) == 1
+    assert len(data["ids"]) == 1
 
-    doc_resp = client.get(f"/collections/vectorforge/documents/{data['doc_ids'][0]}")
+    doc_resp = client.get(f"/collections/vectorforge/documents/{data['ids'][0]}")
     assert doc_resp.json()["content"] == "X"
 
 
@@ -779,7 +779,7 @@ def test_file_delete_mixed_files_preserves_others(client, upload_file):
     for filename, content in files_data:
         resp = upload_file(filename, content)
         assert resp.status_code == 201
-        uploaded_files[filename] = resp.json()["doc_ids"]
+        uploaded_files[filename] = resp.json()["ids"]
 
     resp = client.delete("/collections/vectorforge/files/file_b.txt")
     assert resp.status_code == 200
@@ -815,7 +815,7 @@ def test_file_upload_newlines_and_formatting_preserved(client, upload_file):
     resp = upload_file("formatting_test.txt", content_with_formatting.encode("utf-8"))
     assert resp.status_code == 201
 
-    doc_id = resp.json()["doc_ids"][0]
+    doc_id = resp.json()["ids"][0]
     doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
     retrieved_content = doc_resp.json()["content"]
 
@@ -915,7 +915,7 @@ def test_file_upload_custom_chunk_size_limits_chunk_length(client):
     )
     assert resp.status_code == 201
 
-    for doc_id in resp.json()["doc_ids"]:
+    for doc_id in resp.json()["ids"]:
         doc_resp = client.get(f"/collections/vectorforge/documents/{doc_id}")
         assert doc_resp.status_code == 200
         assert len(doc_resp.json()["content"]) <= chunk_size
@@ -932,7 +932,7 @@ def test_file_upload_zero_overlap_produces_non_overlapping_chunks(client):
     )
     assert resp.status_code == 201
 
-    doc_ids = resp.json()["doc_ids"]
+    doc_ids = resp.json()["ids"]
     assert len(doc_ids) >= 2
 
     resp0 = client.get(f"/collections/vectorforge/documents/{doc_ids[0]}")
@@ -967,7 +967,7 @@ def test_file_upload_custom_chunk_overlap_creates_overlapping_chunks(client):
     )
     assert resp.status_code == 201
 
-    doc_ids = resp.json()["doc_ids"]
+    doc_ids = resp.json()["ids"]
     assert len(doc_ids) >= 2
 
     resp0 = client.get(f"/collections/vectorforge/documents/{doc_ids[0]}")

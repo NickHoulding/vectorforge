@@ -607,7 +607,7 @@ result = response.json()
 {
   "filename": "document.pdf",
   "chunks_created": 15,
-  "doc_ids": ["uuid1", "uuid2", "...", "uuid15"],
+  "ids": ["uuid1", "uuid2", "...", "uuid15"],
   "status": "indexed"
 }
 ```

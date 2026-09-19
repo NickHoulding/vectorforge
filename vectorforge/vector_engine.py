@@ -643,7 +643,7 @@ class VectorEngine:
                 - status: 'deleted' if chunks found, 'not_found' if no matches
                 - filename: The filename that was searched for
                 - chunks_deleted: Number of chunks deleted
-                - doc_ids: List of deleted document IDs
+                - ids: List of deleted document IDs
         """
         logger.debug(
             "delete_file: collection=%s filename=%s", self.collection.name, filename
@@ -661,7 +661,7 @@ class VectorEngine:
                 "status": "not_found",
                 "filename": filename,
                 "chunks_deleted": 0,
-                "doc_ids": [],
+                "ids": [],
             }
 
         deleted_ids = self.delete_docs(doc_ids)
@@ -676,7 +676,7 @@ class VectorEngine:
             "status": "deleted",
             "filename": filename,
             "chunks_deleted": len(deleted_ids),
-            "doc_ids": deleted_ids,
+            "ids": deleted_ids,
         }
 
     def get_metrics(self) -> dict[str, Any]:
