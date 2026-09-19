@@ -39,11 +39,11 @@ class DocumentInput(BaseModel):
     )
 
 
-class BatchDocumentResponse(BaseModel):
-    """Response model for batch document operations.
+class DocumentsResponse(BaseModel):
+    """Response model for document add/delete operations.
 
-    Returned after successfully adding or deleting multiple documents, providing
-    the list of affected document IDs and the operation status.
+    Returned after successfully adding or deleting one or more documents,
+    providing the list of affected document IDs and the operation status.
 
     Attributes:
         ids: Unique identifiers (UUIDs) of the affected documents.
@@ -60,7 +60,7 @@ class BatchDocumentResponse(BaseModel):
     status: str = Field(..., description="Operation status")
 
 
-class BatchDocumentInput(BaseModel):
+class DocumentsInput(BaseModel):
     """Input model for adding one or more documents in a single request.
 
     Accepts a list of document inputs (content + optional metadata) and indexes
@@ -90,11 +90,12 @@ class BatchDocumentInput(BaseModel):
     )
 
 
-class BatchDeleteInput(BaseModel):
-    """Input model for deleting multiple documents by ID in a single batch request.
+class DocumentIdsInput(BaseModel):
+    """Input model for deleting one or more documents by ID in a single request.
 
     Accepts a list of document IDs and removes all matching documents in one
-    operation. IDs that do not exist are silently ignored.
+    operation. Always a list, even for a single document. IDs that do not
+    exist are silently ignored.
 
     Attributes:
         ids: List of document IDs to delete; must contain between 1 and

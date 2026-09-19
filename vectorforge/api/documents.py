@@ -7,10 +7,10 @@ from fastapi import APIRouter, HTTPException, status
 from vectorforge.api import manager
 from vectorforge.api.decorators import handle_api_errors, require_collection
 from vectorforge.models import (
-    BatchDeleteInput,
-    BatchDocumentInput,
-    BatchDocumentResponse,
     DocumentDetail,
+    DocumentIdsInput,
+    DocumentsInput,
+    DocumentsResponse,
 )
 
 router: APIRouter = APIRouter()
@@ -56,11 +56,11 @@ def get_doc(collection_name: str, doc_id: str) -> DocumentDetail:
 @router.post(
     "/collections/{collection_name}/documents",
     status_code=status.HTTP_201_CREATED,
-    response_model=BatchDocumentResponse,
+    response_model=DocumentsResponse,
 )
 @require_collection
 @handle_api_errors
-def add_docs(collection_name: str, body: BatchDocumentInput) -> BatchDocumentResponse:
+def add_docs(collection_name: str, body: DocumentsInput) -> DocumentsResponse:
     """
     Add one or more pre-extracted documents to a collection
 
@@ -75,7 +75,7 @@ def add_docs(collection_name: str, body: BatchDocumentInput) -> BatchDocumentRes
         body: Documents to add (1-MAX_BATCH_SIZE entries)
 
     Returns:
-        BatchDocumentResponse: List of created document IDs and status
+        DocumentsResponse: List of created document IDs and status
 
     Raises:
         HTTPException: 404 if collection not found
@@ -90,16 +90,16 @@ def add_docs(collection_name: str, body: BatchDocumentInput) -> BatchDocumentRes
     docs: list[dict[str, Any]] = [doc.model_dump() for doc in body.documents]
     doc_ids: list[str] = engine.add_docs(docs)
 
-    return BatchDocumentResponse(ids=doc_ids, status="indexed")
+    return DocumentsResponse(ids=doc_ids, status="indexed")
 
 
 @router.delete(
     "/collections/{collection_name}/documents",
-    response_model=BatchDocumentResponse,
+    response_model=DocumentsResponse,
 )
 @require_collection
 @handle_api_errors
-def delete_docs(collection_name: str, body: BatchDeleteInput) -> BatchDocumentResponse:
+def delete_docs(collection_name: str, body: DocumentIdsInput) -> DocumentsResponse:
     """
     Delete one or more documents by ID from a collection
 
@@ -112,7 +112,7 @@ def delete_docs(collection_name: str, body: BatchDeleteInput) -> BatchDocumentRe
         body: Document IDs to delete (1-MAX_BATCH_SIZE entries)
 
     Returns:
-        BatchDocumentResponse: List of deleted document IDs and status
+        DocumentsResponse: List of deleted document IDs and status
 
     Raises:
         HTTPException: 404 if collection not found or none of the provided IDs exist
@@ -128,4 +128,4 @@ def delete_docs(collection_name: str, body: BatchDeleteInput) -> BatchDocumentRe
     if not deleted:
         raise HTTPException(status_code=404, detail="No matching documents found")
 
-    return BatchDocumentResponse(ids=deleted, status="deleted")
+    return DocumentsResponse(ids=deleted, status="deleted")

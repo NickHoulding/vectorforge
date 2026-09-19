@@ -10,11 +10,11 @@ from .collections import (
     DocumentListResponse,
 )
 from .documents import (
-    BatchDeleteInput,
-    BatchDocumentInput,
-    BatchDocumentResponse,
     DocumentDetail,
+    DocumentIdsInput,
     DocumentInput,
+    DocumentsInput,
+    DocumentsResponse,
 )
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
 from .index import IndexStatsResponse
@@ -33,9 +33,9 @@ from .search import SearchQuery, SearchResponse, SearchResult
 __all__: list[str] = [
     "DocumentInput",
     "DocumentDetail",
-    "BatchDocumentResponse",
-    "BatchDocumentInput",
-    "BatchDeleteInput",
+    "DocumentsResponse",
+    "DocumentsInput",
+    "DocumentIdsInput",
     # Collections
     "CollectionCreateRequest",
     "CollectionCreateResponse",
