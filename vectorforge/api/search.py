@@ -15,7 +15,7 @@ router: APIRouter = APIRouter()
 @router.post("/collections/{collection_name}/search", response_model=SearchResponse)
 @require_collection
 @handle_api_errors
-def search(collection_name: str, search_params: SearchQuery) -> SearchResponse:
+def search_documents(collection_name: str, search_params: SearchQuery) -> SearchResponse:
     """Perform semantic search within a specific collection.
 
     Searches the collection's vector index using semantic similarity to find
