@@ -238,8 +238,8 @@ def _parse_document_filters(filters_raw: str | None) -> dict[str, Any] | None:
     "/collections/{collection_name}/documents",
     response_model=DocumentListResponse,
 )
-@handle_api_errors
 @require_collection
+@handle_api_errors
 def list_documents(
     collection_name: str, params: DocumentListParams = Depends()
 ) -> DocumentListResponse:
@@ -285,6 +285,7 @@ def list_documents(
 
 
 @router.get("/collections/{collection_name}", response_model=CollectionInfo)
+@require_collection
 @handle_api_errors
 def get_collection(collection_name: str) -> CollectionInfo:
     """
@@ -307,16 +308,14 @@ def get_collection(collection_name: str) -> CollectionInfo:
         GET /collections/customer_docs
         ```
     """
-    try:
-        return manager.get_collection_info(collection_name)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return manager.get_collection_info(collection_name)
 
 
 @router.delete(
     "/collections/{collection_name}",
     response_model=CollectionDeleteResponse,
 )
+@require_collection
 @handle_api_errors
 def delete_collection(
     collection_name: str,
@@ -361,10 +360,7 @@ def delete_collection(
             detail=f"Cannot delete default collection '{VFGConfig.DEFAULT_COLLECTION_NAME}'",
         )
 
-    try:
-        manager.delete_collection(collection_name)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    manager.delete_collection(collection_name)
 
     return CollectionDeleteResponse(
         status="success",
