@@ -513,13 +513,17 @@ Located in [`config.py`](config.py):
 
 | Setting | Default | Env Var | Description |
 |---------|---------|---------|-------------|
-| `SERVER_NAME` | `"VectorForge MCP Server"` | (none) | Display name reported to MCP clients |
-| `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | (none) | Server description reported to MCP clients |
+| `SERVER_NAME` | `"VectorForge MCP Server"` | `VF_SERVER_NAME` | Display name reported to MCP clients |
+| `SERVER_DESCRIPTION` | `"Model Context Protocol..."` | `VF_SERVER_DESCRIPTION` | Server description reported to MCP clients |
 | `VECTORFORGE_API_BASE_URL` | `"http://localhost:3001"` | `VECTORFORGE_API_BASE_URL` | Base URL of the VectorForge REST API |
-| `DEFAULT_COLLECTION_NAME` | `"vectorforge"` | (none) | Collection used when none is specified |
-| `DEFAULT_TOP_K` | `10` | (none) | Default number of results for `search_documents` |
-| `LOG_LEVEL` | `logging.INFO` | (none) | Logging level (DEBUG, INFO, WARNING, ERROR) |
-| `LOG_FORMAT` | `"%(asctime)s - %(name)s..."` | (none) | Log message format |
+| `DEFAULT_COLLECTION_NAME` | `"vectorforge"` | `VF_DEFAULT_COLLECTION_NAME` | Collection used when none is specified |
+| `DEFAULT_TOP_K` | `10` | `VF_DEFAULT_TOP_K` | Default number of results for `search_documents` |
+| `LOG_LEVEL` | `logging.INFO` | `VF_LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
+| `LOG_FILE` | `".logs/vectorforge_mcp.log"` | `VF_LOG_FILE` | Path to the rotating log file |
+| `LOG_JSON_CONSOLE` | `false` | `VF_LOG_JSON_CONSOLE` | Output JSON format to console instead of human-readable |
+| `LOG_MAX_TEXT_LEN` | `100` | `VF_LOG_MAX_TEXT_LEN` | Maximum characters for text values logged (truncation limit) |
+| `LOG_MAX_BYTES` | `10485760` | `VF_LOG_MAX_BYTES` | Maximum size per log file before rotation, in bytes |
+| `LOG_BACKUP_COUNT` | `5` | `VF_LOG_BACKUP_COUNT` | Number of rotated log file backups to keep |
 
 ### **Customizing Configuration**
 
