@@ -30,7 +30,7 @@ def list_files(
     """
     logger.debug("Listing files: collection=%s", collection_name)
     data = get(f"/collections/{collection_name}/files/list")
-    file_count = len(data.get("files", []))
+    file_count = len(data.get("filenames", []))
     logger.info("Listed %d files from collection %s", file_count, collection_name)
     return build_success_response(data)
 
