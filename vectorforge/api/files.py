@@ -13,9 +13,7 @@ from vectorforge.models import FileDeleteResponse, FileListResponse, FileUploadR
 router: APIRouter = APIRouter()
 
 
-@router.get(
-    "/collections/{collection_name}/files/list", response_model=FileListResponse
-)
+@router.get("/collections/{collection_name}/files", response_model=FileListResponse)
 @require_collection
 @handle_api_errors
 def list_files(collection_name: str) -> FileListResponse:
@@ -36,7 +34,7 @@ def list_files(collection_name: str) -> FileListResponse:
         HTTPException: 500 if internal server error occurs
 
     Example:
-        GET /collections/customer_docs/files/list
+        GET /collections/customer_docs/files
     """
     engine = manager.get_engine(collection_name)
     filenames: list[str] = engine.list_files()

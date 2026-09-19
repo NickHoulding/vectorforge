@@ -29,7 +29,7 @@ def list_files(
       List of filenames that have been uploaded and indexed.
     """
     logger.debug("Listing files: collection=%s", collection_name)
-    data = get(f"/collections/{collection_name}/files/list")
+    data = get(f"/collections/{collection_name}/files")
     file_count = len(data.get("filenames", []))
     logger.info("Listed %d files from collection %s", file_count, collection_name)
     return build_success_response(data)

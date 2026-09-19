@@ -608,7 +608,7 @@ def test_file_isolation_between_collections(
         files={"file": ("isolation_test.txt", io.BytesIO(file_content), "text/plain")},
     )
 
-    response = client.get(f"/collections/{col_b}/files/list")
+    response = client.get(f"/collections/{col_b}/files")
     assert response.status_code == 200
     assert "isolation_test.txt" not in response.json()["filenames"]
 
@@ -723,7 +723,7 @@ def test_file_list_shows_uploaded_file_in_correct_collection(
         files={"file": ("positive_test.txt", io.BytesIO(file_content), "text/plain")},
     )
 
-    response = client.get("/collections/file_col/files/list")
+    response = client.get("/collections/file_col/files")
     assert response.status_code == 200
     assert "positive_test.txt" in response.json()["filenames"]
 

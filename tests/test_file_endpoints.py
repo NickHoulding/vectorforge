@@ -1,7 +1,7 @@
 """Tests for file processing and management endpoints.
 
 Covers:
-    GET    /collections/{collection_name}/files/list
+    GET    /collections/{collection_name}/files
     POST   /collections/{collection_name}/files/upload
     DELETE /collections/{collection_name}/files/{filename}
 """
@@ -69,14 +69,14 @@ def get_metrics(client):
 
 
 def test_file_list_returns_200(client):
-    """Test that GET /collections/vectorforge/files/list returns 200 status."""
-    response = client.get("/collections/vectorforge/files/list")
+    """Test that GET /collections/vectorforge/files returns 200 status."""
+    response = client.get("/collections/vectorforge/files")
     assert response.status_code == 200
 
 
 def test_file_list_returns_filenames_list(client):
     """Test that file list response contains filenames list."""
-    response = client.get("/collections/vectorforge/files/list")
+    response = client.get("/collections/vectorforge/files")
     data = response.json()
     assert "filenames" in data
     assert isinstance(data["filenames"], list)
@@ -84,7 +84,7 @@ def test_file_list_returns_filenames_list(client):
 
 def test_file_list_empty_when_no_files_uploaded(client):
     """Test that file list is empty when no files have been uploaded."""
-    resp = client.get("/collections/vectorforge/files/list")
+    resp = client.get("/collections/vectorforge/files")
     assert resp.status_code == 200
     assert len(resp.json()["filenames"]) == 0
 
@@ -220,7 +220,7 @@ def test_file_delete_response_contains_ids(client, uploaded_test_file):
 
 def test_file_list_includes_uploaded_filenames(client, uploaded_test_file):
     """Test that file list includes filenames of uploaded files."""
-    resp = client.get("/collections/vectorforge/files/list")
+    resp = client.get("/collections/vectorforge/files")
     assert resp.status_code == 200
     assert uploaded_test_file["filename"] in resp.json()["filenames"]
 
@@ -232,7 +232,7 @@ def test_file_list_excludes_deleted_files(client, uploaded_test_file):
     resp = client.delete(f"/collections/vectorforge/files/{filename}")
     assert resp.status_code == 200
 
-    resp = client.get("/collections/vectorforge/files/list")
+    resp = client.get("/collections/vectorforge/files")
     assert resp.status_code == 200
     assert filename not in resp.json()["filenames"]
 
@@ -468,7 +468,7 @@ def test_file_list_after_multiple_uploads(client, upload_file):
         resp = upload_file(filename, f"Content of {filename}".encode("utf-8"))
         assert resp.status_code == 201
 
-    resp = client.get("/collections/vectorforge/files/list")
+    resp = client.get("/collections/vectorforge/files")
     assert resp.status_code == 200
 
     file_list = resp.json()["filenames"]
@@ -544,7 +544,7 @@ def test_file_upload_chunk_metadata_contains_source(client, upload_file):
 
 def test_file_list_response_structure(client):
     """Test that file list response has the correct structure."""
-    resp = client.get("/collections/vectorforge/files/list")
+    resp = client.get("/collections/vectorforge/files")
     assert resp.status_code == 200
 
     data = resp.json()
@@ -663,7 +663,7 @@ def test_file_upload_filename_with_unicode_characters(client, upload_file):
     assert resp.status_code == 201
     assert resp.json()["filename"] == filename
 
-    list_resp = client.get("/collections/vectorforge/files/list")
+    list_resp = client.get("/collections/vectorforge/files")
     assert filename in list_resp.json()["filenames"]
 
     delete_resp = client.delete(f"/collections/vectorforge/files/{filename}")
@@ -689,7 +689,7 @@ def test_file_list_returns_unique_filenames(client, upload_file):
         resp = upload_file(filename, f"Version {i}".encode("utf-8"))
         assert resp.status_code == 201
 
-    resp = client.get("/collections/vectorforge/files/list")
+    resp = client.get("/collections/vectorforge/files")
     filenames = resp.json()["filenames"]
 
     assert filename in filenames
@@ -801,7 +801,7 @@ def test_file_delete_mixed_files_preserves_others(client, upload_file):
             == 200
         )
 
-    list_resp = client.get("/collections/vectorforge/files/list")
+    list_resp = client.get("/collections/vectorforge/files")
     filenames = list_resp.json()["filenames"]
     assert "file_a.txt" in filenames
     assert "file_c.txt" in filenames
@@ -849,7 +849,7 @@ def test_file_operations_consistency_across_multiple_uploads_and_deletes(
             assert resp.status_code == 200
             active_files.discard(filename)
 
-    list_resp = client.get("/collections/vectorforge/files/list")
+    list_resp = client.get("/collections/vectorforge/files")
     current_files = set(list_resp.json()["filenames"])
 
     for active_file in active_files:

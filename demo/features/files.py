@@ -42,7 +42,7 @@ def list_all() -> None:
     """Fetch and display the names of all indexed files in a collection."""
     print("\n-- List Files --")
     collection_name = client.prompt_collection()
-    resp = client.get(f"/collections/{collection_name}/files/list")
+    resp = client.get(f"/collections/{collection_name}/files")
     client.print_response(resp)
 
 
