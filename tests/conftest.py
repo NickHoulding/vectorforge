@@ -31,8 +31,11 @@ def anyio_backend() -> str:
 def use_temp_chroma_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[str, Any, None]:
     """Redirect ChromaDB to a temporary directory for each test.
 
-    Automatically runs before every test. Sets the CHROMA_DATA_DIR environment
-    variable to a fresh temporary path so each test gets isolated on-disk storage
+    Automatically runs before every test. ``This fixture repoints
+    ``manager.chroma_client`` directly at a fresh ``PersistentClient`` backed
+    by a temporary directory, clears the engine cache, and recreates the
+    default collection there, so every test (including ``client``-fixture
+    tests that go through ``manager``) gets real isolated on-disk storage
     that is cleaned up automatically on teardown.
 
     Yields:
@@ -41,7 +44,16 @@ def use_temp_chroma_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[str, Any, 
     with tempfile.TemporaryDirectory() as tmpdir:
         chroma_path = os.path.join(tmpdir, "chroma_test")
         monkeypatch.setenv("CHROMA_DATA_DIR", chroma_path)
+
+        manager.chroma_client = chromadb.PersistentClient(path=chroma_path)
+        manager.chroma_path = chroma_path
+        with manager._cache_lock:
+            manager._engine_cache.clear()
+        manager._ensure_default_collection()
+
         yield chroma_path
+
+        SharedSystemClient.clear_system_cache()
 
 
 @pytest.fixture
@@ -58,7 +70,7 @@ def client() -> TestClient:
 
 
 @pytest.fixture(autouse=True)
-def reset_engine() -> Generator[None, Any, None]:
+def reset_engine(use_temp_chroma_dir: str) -> Generator[None, Any, None]:
     """Clear the engine state before each test.
 
     Automatically runs before every test to ensure a clean slate.
@@ -69,6 +81,10 @@ def reset_engine() -> Generator[None, Any, None]:
     Also wipes the metrics.db row for the default collection so that
     lifetime-persistent counters start at zero for every test, matching
     the behaviour of a brand-new collection.
+
+    Depends on ``use_temp_chroma_dir`` to guarantee it runs first each test,
+    since it must operate on the temp-directory-backed client that fixture
+    installs on ``manager``.
 
     Yields:
         None

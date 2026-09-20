@@ -402,12 +402,12 @@ def test_get_doc_includes_metadata(vector_engine):
 
 
 # =============================================================================
-# delete_doc() Tests
+# delete_docs() Tests
 # =============================================================================
 
 
 def test_delete_doc_returns_non_empty_list_for_existing_doc(vector_engine):
-    """Test that delete_doc returns a non-empty list when deleting an existing document."""
+    """Test that delete_docs returns a non-empty list when deleting an existing document."""
     doc_id = vector_engine.add_docs([{"content": "Test content", "metadata": {}}])[0]
     result = vector_engine.delete_docs([doc_id])
 
@@ -415,7 +415,7 @@ def test_delete_doc_returns_non_empty_list_for_existing_doc(vector_engine):
 
 
 def test_delete_doc_returns_empty_list_for_nonexistent_doc(vector_engine):
-    """Test that delete_doc returns an empty list for a non-existent document."""
+    """Test that delete_docs returns an empty list for a non-existent document."""
     result = vector_engine.delete_docs(["nonexistent-uuid"])
 
     assert result == []
