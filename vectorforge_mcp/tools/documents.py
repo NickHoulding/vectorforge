@@ -24,7 +24,8 @@ def get_document(
 
     Args:
       doc_id: Unique document identifier (UUID).
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
 
     Returns:
       Dictionary with document ID, content, and metadata.
@@ -51,7 +52,8 @@ def add_documents(
     Args:
       documents: List of document objects, each with 'content' and optional 'metadata'.
         Pass a single-item list to add just one document.
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
 
     Returns:
       Dictionary with list of created document IDs and status.
@@ -82,7 +84,8 @@ def delete_documents(
     Args:
       doc_ids: List of document UUIDs to permanently delete. Pass a
         single-item list to delete just one document.
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
 
     Returns:
       Dictionary with list of deleted document IDs and status.

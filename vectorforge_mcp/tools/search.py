@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @handle_tool_errors
 def search_documents(
     query: str,
-    top_k: int = MCPConfig.DEFAULT_TOP_K,
+    top_k: int | None = None,
     where: dict[str, Any] | None = None,
     collection_name: str = MCPConfig.DEFAULT_COLLECTION_NAME,
 ) -> dict[str, Any]:
@@ -30,25 +30,30 @@ def search_documents(
 
     Args:
       query: Search query string (natural language).
-      top_k: Number of top results to return (default: 10, max: 100).
+      top_k: Number of top results to return. Omit to use the API's
+        configured default (``VFGConfig.DEFAULT_TOP_K``); bounded by the
+        API's configured maximum (``VFGConfig.MAX_TOP_K``).
       where: Optional metadata filters as dict. Examples:
           - {"source": "textbook.pdf"} - exact match
           - {"year": {"$gte": 2024}} - greater than or equal
           - {"category": {"$in": ["AI", "ML"]}} - value in list
           - {"source": "guide.pdf", "chunk_index": 0} - multiple conditions (AND)
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
 
     Returns:
       List of search results with document IDs, content, similarity scores, and metadata.
     """
     logger.debug(
-        "Searching documents: query_len=%d, top_k=%d, has_filters=%s, collection=%s",
+        "Searching documents: query_len=%d, top_k=%s, has_filters=%s, collection=%s",
         len(query),
         top_k,
         where is not None,
         collection_name,
     )
-    body: dict[str, Any] = {"query": query, "top_k": top_k}
+    body: dict[str, Any] = {"query": query}
+    if top_k is not None:
+        body["top_k"] = top_k
     if where is not None:
         body["filters"] = where
 

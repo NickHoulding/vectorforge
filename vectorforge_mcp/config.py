@@ -44,9 +44,6 @@ class MCPConfig:
     )
     """Default collection used when no collection_name argument is provided to a tool."""
 
-    DEFAULT_TOP_K: int = int(os.environ.get("VF_DEFAULT_TOP_K", "10"))
-    """Default number of search results returned by search_documents."""
-
     # =============================================================================
     # Logging
     # =============================================================================
@@ -120,16 +117,6 @@ class MCPConfig:
         if len(cls.DEFAULT_COLLECTION_NAME) == 0:
             logger.error("Validation failed: DEFAULT_COLLECTION_NAME cannot be empty")
             raise ValueError("DEFAULT_COLLECTION_NAME cannot be empty")
-
-        logger.debug("Validating DEFAULT_TOP_K: %d", cls.DEFAULT_TOP_K)
-        if not isinstance(cls.DEFAULT_TOP_K, int):
-            logger.error("Validation failed: DEFAULT_TOP_K must be an int")
-            raise ValueError("DEFAULT_TOP_K must be an int")
-        if cls.DEFAULT_TOP_K <= 0:
-            logger.error(
-                "Validation failed: DEFAULT_TOP_K=%d must be > 0", cls.DEFAULT_TOP_K
-            )
-            raise ValueError("DEFAULT_TOP_K must be > 0")
 
         logger.debug("Validating LOG_LEVEL: %s", logging.getLevelName(cls.LOG_LEVEL))
         if not isinstance(cls.LOG_LEVEL, int):

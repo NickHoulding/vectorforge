@@ -12,6 +12,52 @@ from .utils import build_error_response
 logger = logging.getLogger(__name__)
 
 
+def _build_tool_error_response(exc: Exception, func_name: str) -> dict[str, Any]:
+    """Translate a caught exception into a standardised error response dict.
+
+    Args:
+      exc: The exception caught by a tool wrapper.
+      func_name: Name of the wrapped tool function, for logging.
+
+    Returns:
+      A ``{"success": False, ...}`` response dict per ``handle_tool_errors``'s
+      docstring.
+    """
+    if isinstance(exc, requests.ConnectionError):
+        logger.error("Connection error in %s: %s", func_name, str(exc), exc_info=True)
+        return build_error_response(
+            Exception("VectorForge API is not available"),
+            details="Connection refused - check if API is running",
+        )
+
+    if isinstance(exc, requests.Timeout):
+        logger.error("Timeout error in %s: %s", func_name, str(exc), exc_info=True)
+        return build_error_response(
+            Exception("Request timeout"),
+            details="VectorForge API request timed out",
+        )
+
+    if isinstance(exc, requests.HTTPError):
+        status_code = exc.response.status_code if exc.response is not None else None
+
+        try:
+            detail = exc.response.json().get("detail", str(exc))
+        except Exception:
+            detail = str(exc)
+
+        logger.error(
+            "HTTP error in %s: status=%s, detail=%s",
+            func_name,
+            status_code,
+            detail,
+            exc_info=True,
+        )
+        return build_error_response(Exception(detail), details=status_code)
+
+    logger.error("Unexpected error in %s: %s", func_name, str(exc), exc_info=True)
+    return build_error_response(Exception("Operation failed"), details=str(exc))
+
+
 def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
     """Wrap a tool function with standardised error handling.
 
@@ -34,53 +80,8 @@ def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
             result = cast(dict[str, Any], func(*args, **kwargs))
             logger.debug("Tool function %s completed successfully", func.__name__)
             return result
-
-        except requests.ConnectionError as e:
-            logger.error(
-                "Connection error in %s: %s",
-                func.__name__,
-                str(e),
-                exc_info=True,
-            )
-            return build_error_response(
-                Exception("VectorForge API is not available"),
-                details="Connection refused - check if API is running",
-            )
-        except requests.Timeout as e:
-            logger.error(
-                "Timeout error in %s: %s",
-                func.__name__,
-                str(e),
-                exc_info=True,
-            )
-            return build_error_response(
-                Exception("Request timeout"),
-                details="VectorForge API request timed out",
-            )
-        except requests.HTTPError as e:
-            status_code = e.response.status_code if e.response is not None else None
-
-            try:
-                detail = e.response.json().get("detail", str(e))
-            except Exception:
-                detail = str(e)
-
-            logger.error(
-                "HTTP error in %s: status=%s, detail=%s",
-                func.__name__,
-                status_code,
-                detail,
-                exc_info=True,
-            )
-            return build_error_response(Exception(detail), details=status_code)
         except Exception as e:
-            logger.error(
-                "Unexpected error in %s: %s",
-                func.__name__,
-                str(e),
-                exc_info=True,
-            )
-            return build_error_response(Exception("Operation failed"), details=str(e))
+            return _build_tool_error_response(e, func.__name__)
 
     @functools.wraps(func)
     async def async_wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -89,53 +90,8 @@ def handle_tool_errors(func: Callable[..., Any]) -> Callable[..., Any]:
             result = cast(dict[str, Any], await func(*args, **kwargs))
             logger.debug("Async tool function %s completed successfully", func.__name__)
             return result
-
-        except requests.ConnectionError as e:
-            logger.error(
-                "Connection error in %s: %s",
-                func.__name__,
-                str(e),
-                exc_info=True,
-            )
-            return build_error_response(
-                Exception("VectorForge API is not available"),
-                details="Connection refused - check if API is running",
-            )
-        except requests.Timeout as e:
-            logger.error(
-                "Timeout error in %s: %s",
-                func.__name__,
-                str(e),
-                exc_info=True,
-            )
-            return build_error_response(
-                Exception("Request timeout"),
-                details="VectorForge API request timed out",
-            )
-        except requests.HTTPError as e:
-            status_code = e.response.status_code if e.response is not None else None
-
-            try:
-                detail = e.response.json().get("detail", str(e))
-            except Exception:
-                detail = str(e)
-
-            logger.error(
-                "HTTP error in %s: status=%s, detail=%s",
-                func.__name__,
-                status_code,
-                detail,
-                exc_info=True,
-            )
-            return build_error_response(Exception(detail), details=status_code)
         except Exception as e:
-            logger.error(
-                "Unexpected error in %s: %s",
-                func.__name__,
-                str(e),
-                exc_info=True,
-            )
-            return build_error_response(Exception("Operation failed"), details=str(e))
+            return _build_tool_error_response(e, func.__name__)
 
     if inspect.iscoroutinefunction(func):
         return async_wrapper

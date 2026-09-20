@@ -23,7 +23,8 @@ def list_files(
     """List all indexed files in the vector store.
 
     Args:
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
 
     Returns:
       List of filenames that have been uploaded and indexed.
@@ -49,7 +50,8 @@ def upload_file(
 
     Args:
       file_path: Absolute path to the file to upload (supports .pdf, .txt).
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
       chunk_size: Maximum characters per chunk (default: 500).
       chunk_overlap: Overlapping characters between chunks (default: 50).
 
@@ -104,7 +106,8 @@ def delete_file(
 
     Args:
       filename: Name of the source file to delete (exact match).
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
 
     Returns:
       Dictionary with deletion status, filename, chunks deleted, and document IDs.

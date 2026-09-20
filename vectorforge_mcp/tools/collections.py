@@ -84,7 +84,7 @@ def create_collection(
 
 
 @mcp.tool(
-    description="Permanently delete a collection and all its documents. Requires confirmation. Cannot delete the default 'vectorforge' collection."
+    description="Permanently delete a collection and all its documents. Requires confirmation. Cannot delete the default collection."
 )
 @handle_tool_errors
 def delete_collection(collection_name: str, confirm: bool = False) -> dict[str, Any]:

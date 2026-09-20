@@ -22,7 +22,8 @@ def get_metrics(
     """Get comprehensive system metrics.
 
     Args:
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
 
     Returns:
       Dictionary with detailed performance, usage, memory, timestamp, and system metrics.

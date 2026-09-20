@@ -20,7 +20,8 @@ def get_index_stats(
     """Get quick index statistics.
 
     Args:
-      collection_name: Name of the collection (defaults to 'vectorforge').
+      collection_name: Name of the collection. Defaults to
+        ``MCPConfig.DEFAULT_COLLECTION_NAME``.
 
     Returns:
       Dictionary with index statistics including document count and embedding dimension.
