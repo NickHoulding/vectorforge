@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # target: production
 
     image: vectorforge:latest
 
@@ -15,9 +14,6 @@ services:
     environment:
       - CHROMA_DATA_DIR=/data/chroma
       - VF_LOG_LEVEL=INFO
-      # Uncomment to customize:
-      # - API_PORT=3001
-      # - API_HOST=0.0.0.0
 
     volumes:
       - vectorforge-data:/data
@@ -31,16 +27,6 @@ services:
       start_period: 40s
 
     restart: unless-stopped
-
-    # Resource Limits
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '2'
-    #       memory: 2G
-    #     reservations:
-    #       cpus: '1'
-    #       memory: 1G
 
 volumes:
   vectorforge-data:
