@@ -27,6 +27,6 @@ def health_live() -> None:
 def metrics() -> None:
     """GET /collections/{name}/metrics: comprehensive collection metrics."""
     print("\n-- Collection Metrics --")
-    collection_name = client.prompt("Collection name", default="vectorforge")
+    collection_name = client.prompt_collection()
     resp = client.get(f"/collections/{collection_name}/metrics")
     client.print_response(resp)

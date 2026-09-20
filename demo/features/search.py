@@ -8,7 +8,7 @@ from demo import client
 def search() -> None:
     """POST /collections/{name}/search: semantic similarity search."""
     print("\n-- Search --")
-    collection_name = client.prompt("Collection name", default="vectorforge")
+    collection_name = client.prompt_collection()
     query = client.prompt("Query text")
     top_k = client.prompt_int("top_k (number of results)", default=5)
     filters = client.prompt_json("Metadata filter (where)")
