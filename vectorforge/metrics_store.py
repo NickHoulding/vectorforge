@@ -9,24 +9,6 @@ import sqlite3
 from contextlib import contextmanager
 from typing import Any, Generator
 
-# Columns that hold integer counters (support atomic INCREMENT).
-_COUNTER_COLUMNS: frozenset[str] = frozenset(
-    {
-        "total_queries",
-        "docs_added",
-        "docs_deleted",
-        "chunks_created",
-        "files_uploaded",
-        "total_documents_peak",
-    }
-)
-
-# Columns that hold floating-point accumulators (support atomic INCREMENT).
-_FLOAT_COLUMNS: frozenset[str] = frozenset({"total_query_time_ms"})
-
-# Columns that hold signed byte-counts (may decrease; use direct SET).
-_SIZE_COLUMNS: frozenset[str] = frozenset({"total_doc_size_bytes"})
-
 # All persisted numeric / text columns (excludes PK and session-only fields).
 _ALL_COLUMNS: tuple[str, ...] = (
     "total_queries",
@@ -181,31 +163,4 @@ class MetricsStore:
             conn.execute(
                 f"UPDATE metrics SET {set_clause} WHERE collection_name = ?",
                 values,
-            )
-
-    def increment(self, collection_name: str, field: str, delta: int | float) -> None:
-        """Atomically increment a numeric counter column.
-
-        Uses a single ``UPDATE … SET col = col + delta`` statement so that
-        concurrent increments cannot produce lost-update anomalies.
-
-        Args:
-            collection_name: Name of the collection row to update.
-            field: Column name to increment. Must be in
-                ``_COUNTER_COLUMNS`` or ``_FLOAT_COLUMNS``.
-            delta: Value to add (positive) or subtract (negative).
-
-        Raises:
-            ValueError: If ``field`` is not an incrementable column.
-        """
-        if field not in _COUNTER_COLUMNS and field not in _FLOAT_COLUMNS:
-            raise ValueError(
-                f"Field '{field}' is not an incrementable metrics column. "
-                f"Use save() for direct assignment."
-            )
-
-        with self._connect() as conn:
-            conn.execute(
-                f"UPDATE metrics SET {field} = {field} + ? WHERE collection_name = ?",
-                (delta, collection_name),
             )

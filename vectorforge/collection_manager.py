@@ -30,7 +30,8 @@ class CollectionManager:
 
     Attributes:
         chroma_client: ChromaDB PersistentClient for database operations
-        model: Shared SentenceTransformer model (memory optimization)
+        embedding_model: Shared SentenceTransformer model (memory optimization)
+        reranking_model: Shared CrossEncoder model for result reranking
 
     Example:
         >>> manager = CollectionManager()

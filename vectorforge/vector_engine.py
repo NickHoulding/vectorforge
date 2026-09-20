@@ -22,7 +22,7 @@ from vectorforge import __version__
 from vectorforge.config import VFGConfig
 from vectorforge.logging import _sanitize_text_for_logging
 from vectorforge.metrics_store import MetricsStore
-from vectorforge.models import DocumentDetail, SearchResult
+from vectorforge.models import SearchResult
 
 logger = logging.getLogger(__name__)
 
