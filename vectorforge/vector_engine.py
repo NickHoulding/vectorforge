@@ -272,7 +272,13 @@ class VectorEngine:
 
         Args:
             query: Text query to search for.
-            top_k: Maximum number of results to return. Defaults to 10.
+            top_k: Maximum number of results to return. Defaults to
+                    ``VFGConfig.DEFAULT_TOP_K``.
+            rerank: Whether to apply cross-encoder reranking to the initial
+                    results. Defaults to ``VFGConfig.SHOULD_RERANK``.
+            top_n: Maximum number of results to return after reranking (only
+                    used when ``rerank`` is ``True``). Defaults to
+                    ``VFGConfig.DEFAULT_TOP_N``.
             filters: Optional metadata filters as key-value pairs. All filters
                     must match (AND logic). Matching is case-sensitive and
                     uses exact equality or operator expressions

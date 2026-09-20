@@ -1,4 +1,4 @@
-"""VectorForge - High-performance in-memory vector database."""
+"""VectorForge - High-performance vector database."""
 
 try:
     from importlib.metadata import version

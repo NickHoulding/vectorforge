@@ -1,7 +1,7 @@
 [project]
 name = "vectorforge"
 version = "1.0.3"
-description = "High-performance in-memory vector database"
+description = "High-performance vector database"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.121.2",
