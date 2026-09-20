@@ -22,7 +22,6 @@ htmlcov/
 .mypy_cache/
 
 # Directories
-chroma_data/
 data/
 vectorforge_mcp/
 *.db

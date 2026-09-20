@@ -4,14 +4,9 @@ __pycache__/
 .vscode/
 .mypy_cache/
 data/
-tests/data/
 .venv/
-.ruff_cache/
 .logs/
 .env
-
-# ChromaDB
-chroma_data/
 
 # Coverage reports
 *.coverage
@@ -24,8 +19,5 @@ benchmarks/results/*
 benchmarks/results/*/*
 !benchmarks/results/*/0001_baseline.json
 .benchmarks/
-
-# Personal
-docs/personal/
 
 todo.md
