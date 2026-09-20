@@ -329,7 +329,7 @@ def delete_collection(
     to proceed.
 
     **Default Collection Protection:** Cannot delete the default collection
-    ('vectorforge') to prevent accidental data loss.
+    (see ``VFGConfig.DEFAULT_COLLECTION_NAME``) to prevent accidental data loss.
 
     Args:
         collection_name: Name of the collection to delete
