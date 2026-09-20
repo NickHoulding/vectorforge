@@ -114,7 +114,6 @@ Perfect for building:
 ### **Index Management**
 - **Automatic Persistence** - ChromaDB automatically persists all changes to disk
 - **Index Statistics** - Real-time metrics on document counts and health
-- **Directory Management** - Save/load operations support custom directory paths
 
 ### **Comprehensive Metrics**
 - **Performance Metrics** - Query times, averages, min/max, percentiles
@@ -176,20 +175,20 @@ vectorforge/
 │   ├── search.py       # Semantic search
 │   ├── index.py        # Index stats
 │   ├── system.py       # Health & metrics
-│   ├── config.py       # Collection metadata config
-│   └── decorators.py   # Error handling & auth decorators
+│   ├── config.py       # API server config (host, port)
+│   └── decorators.py   # Error handling decorators
 ├── models/             # Pydantic models (data layer)
 │   ├── collections.py
 │   ├── documents.py
 │   ├── files.py
 │   ├── search.py
 │   ├── index.py
-│   ├── metrics.py
-│   └── metadata.py
+│   └── metrics.py
 ├── vector_engine.py    # Core vector operations (business logic)
-├── collection_manager.py
+├── collection_manager.py # Collection lifecycle & metadata config
 ├── doc_processor.py    # Text extraction and chunking
-└── metrics_store.py    # SQLite-backed metrics persistence
+├── metrics_store.py    # SQLite-backed metrics persistence
+└── logging.py          # Centralized logging configuration
 ```
 
 **Rationale**: Separation of concerns enables testing and maintainability.
@@ -227,7 +226,7 @@ The `demo/` directory contains an interactive REPL that lets you exercise every 
 ### **How it works**
 
 1. On startup the demo checks whether the VectorForge API is accessible. If it isn't, it runs `docker compose up -d` automatically to start the API container and waits for it to become live before proceeding.
-2. A menu of 19 feature keys is displayed. Type any key to invoke that endpoint. The demo will prompt you for the required parameters, fire the request, and pretty-print the JSON response.
+2. A menu of 17 feature keys is displayed. Type any key to invoke that endpoint. The demo will prompt you for the required parameters, fire the request, and pretty-print the JSON response.
 3. On exit you are asked what to do with the API container: leave it running, stop it, remove it, or remove it along with all volume data.
 
 ### **Prerequisites**
@@ -249,6 +248,7 @@ collections:create          Create a new collection
 collections:list            List all collections
 collections:get             Get details for one collection
 collections:delete          Delete a collection
+collections:list_documents  List documents in a collection with pagination
 
 documents:add               Add one or more documents
 documents:get               Fetch a document by ID
