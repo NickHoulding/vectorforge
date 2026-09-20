@@ -27,6 +27,7 @@ import pytest
 from faker import Faker
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
+from vectorforge import __version__
 from vectorforge.config import VFGConfig
 from vectorforge.vector_engine import VectorEngine
 
@@ -114,7 +115,7 @@ def _bulk_populate(
 ) -> None:
     """Populate a VectorEngine with documents using fast bulk insertion.
 
-    Bypasses ``engine.add_doc`` (which triggers a SQLite write per document)
+    Bypasses ``engine.add_docs`` (which triggers a SQLite write per document)
     by encoding all documents in one batched ``model.encode`` call and
     inserting them directly via ``collection.add``.  Use this for fixture
     setup only, not for benchmarking the insertion path itself.
@@ -299,7 +300,7 @@ def pytest_benchmark_update_json(
         benchmarks: Benchmark results.
         output_json: JSON output dictionary to update.
     """
-    output_json["vectorforge_version"] = "1.0.0"
+    output_json["vectorforge_version"] = __version__
     output_json["benchmark_scales"] = SCALES
 
 
