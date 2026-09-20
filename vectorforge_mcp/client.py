@@ -96,38 +96,6 @@ def post(
     return response.json()
 
 
-def put(
-    path: str,
-    json: dict[str, Any] | None = None,
-    params: dict[str, Any] | None = None,
-) -> Any:
-    """Send a PUT request and return the parsed JSON response.
-
-    Args:
-      path: API path relative to the base URL.
-      json: JSON request body.
-      params: Optional query parameters.
-
-    Returns:
-      Parsed JSON response body.
-    """
-    url = _url(path)
-    logger.debug("PUT request: path=%s, has_json=%s", path, json is not None)
-
-    start_time = time.time()
-    response = requests.put(url, json=json, params=params)
-    elapsed = time.time() - start_time
-
-    logger.info(
-        "PUT %s completed: status=%d, duration=%.2fs",
-        path,
-        response.status_code,
-        elapsed,
-    )
-    response.raise_for_status()
-    return response.json()
-
-
 def delete(
     path: str,
     json: dict[str, Any] | None = None,

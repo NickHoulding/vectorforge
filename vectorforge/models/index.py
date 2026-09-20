@@ -9,6 +9,7 @@ class IndexStatsResponse(BaseModel):
     Provides essential metrics about the current state of the vector index.
 
     Attributes:
+        status: Operation status.
         total_documents: Number of active documents in the index.
         embedding_dimension: Dimensionality of the embedding vectors.
     """

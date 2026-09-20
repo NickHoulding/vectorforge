@@ -18,7 +18,6 @@ from .documents import (
 )
 from .files import FileDeleteResponse, FileListResponse, FileUploadResponse
 from .index import IndexStatsResponse
-from .metadata import StandardMetadata, create_metadata
 from .metrics import (
     ChromaDBMetrics,
     IndexMetrics,
@@ -54,9 +53,6 @@ __all__: list[str] = [
     "SearchResponse",
     # Index
     "IndexStatsResponse",
-    # Metadata
-    "StandardMetadata",
-    "create_metadata",
     # Metrics
     "IndexMetrics",
     "PerformanceMetrics",
